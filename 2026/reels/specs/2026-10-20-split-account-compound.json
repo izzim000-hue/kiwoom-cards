@@ -1,0 +1,10 @@
+{"basis":"가상 예시 · 연 4% 가정 · 세금·수수료 미반영","scenes":[
+{"top":"돈의 구조 설계 #3","lines":["같은 월 40만 원","<g>3년 먼저</g> 넣으면?"]},
+{"top":"한 통장에 모으면 · 가상 예시","lines":["노후 몫은","<g>3년 뒤</g>부터","<s>교육·차 자금 먼저</s>"]},
+{"top":"목적별 통장으로 나누면","lines":["노후 몫은","<g>지금</g>부터","<s>45세부터 월 40만 원 따로</s>"]},
+{"top":"65세까지 넣은 원금","lines":["9,600만 vs 8,160만","차이 <g>1,440만 원</g>"]},
+{"top":"연 4% 복리 가정 시 · 65세","lines":["1억 4,671만","vs 1억 1,660만","차이 <g>약 3,011만</g>"]},
+{"top":"원금 차이보다","lines":["<g>약 1,571만 원</g> 더","먼저 넣은 돈이","더 오래 굴러간 몫"]},
+{"frames":[{"src": "../frames/2026-10-20-split-account-compound/calc_00.png", "dur": 0.9}, {"src": "../frames/2026-10-20-split-account-compound/calc_01.png", "dur": 0.45}, {"src": "../frames/2026-10-20-split-account-compound/calc_02.png", "dur": 0.45}, {"src": "../frames/2026-10-20-split-account-compound/calc_03.png", "dur": 0.45}, {"src": "../frames/2026-10-20-split-account-compound/calc_04.png", "dur": 0.45}, {"src": "../frames/2026-10-20-split-account-compound/calc_05.png", "dur": 0.45}, {"src": "../frames/2026-10-20-split-account-compound/calc_06.png", "dur": 1.4}, {"src": "../frames/2026-10-20-split-account-compound/calc_07.png", "dur": 2.6}]
+},
+{"top":"","lines":["저장해두고","내 숫자로","계산해 보세요","<s>프로필 링크 · 복리 계산기</s>"]}]}

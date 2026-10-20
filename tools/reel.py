@@ -7,8 +7,9 @@ spec.json 예시:
    ...,
    {"top": "", "lines": ["저장해두고", "내 적금도 계산해 보세요", "<s>프로필 링크 · 1분 노후자금 계산기</s>"]}]}
 <g>..</g> = 금색 강조, <s>..</s> = 작은 회색 글씨. 한 줄 0.85초씩 나타나고 장면 끝에서 1.9초 멈춤.
+화면 녹화 장면: {"frames": [{"src": "a.png", "dur": 1.2}, ...]} (1080x1920 PNG, spec 파일 기준 상대경로). 진행 막대는 이어서 그림.
 """
-import json, sys, subprocess, tempfile, os
+import json, sys, subprocess, tempfile, os, base64
 from playwright.sync_api import sync_playwright
 SAGE="#DEE9E0"; DG="#2F4F3E"; GOLD="#B08D46"; LINE=0.85; HOLD=1.9
 def frame(top,lines,k,prog,basis):
@@ -21,15 +22,19 @@ def frame(top,lines,k,prog,basis):
 <div style="font-size:50px;font-weight:700;color:{DG};min-height:60px">{top}</div>
 <div style="font-size:100px;font-weight:900;line-height:1.3;letter-spacing:-.03em;color:{DG};display:flex;flex-direction:column">{out}</div>
 <div style="position:absolute;left:96px;right:96px;bottom:150px;display:flex;justify-content:space-between;font-size:30px;color:#5B6E62"><span>{basis}</span><b>@kiwoom.mentor</b></div></div></body>'''
+def shot(src,prog):
+    return f'<body style="margin:0"><div style="width:1080px;height:1920px;position:relative;background:url(data:image/png;base64,{base64.b64encode(open(src,'rb').read()).decode()}) 0 0/1080px 1920px"><div style="position:absolute;left:0;top:0;height:14px;width:{prog*100:.1f}%;background:{DG}"></div></div></body>'
 def main(spec,out):
-    s=json.load(open(spec,encoding="utf-8")); seq=[]
+    s=json.load(open(spec,encoding="utf-8")); seq=[]; base=os.path.dirname(os.path.abspath(spec))
     for sc in s["scenes"]:
+        if "frames" in sc:
+            seq+=[("img",os.path.join(base,f["src"]),None,f["dur"]) for f in sc["frames"]]; continue
         for k in range(1,len(sc["lines"])+1): seq.append((sc["top"],sc["lines"],k,LINE if k<len(sc["lines"]) else HOLD))
     total=sum(x[3] for x in seq); t=0; d=tempfile.mkdtemp(); files=[]
     with sync_playwright() as pw:
         b=pw.chromium.launch(); pg=b.new_page(viewport={"width":1080,"height":1920})
         for n,(top,lines,k,dur) in enumerate(seq):
-            t+=dur; pg.set_content(frame(top,lines,k,t/total,s.get("basis",""))); pg.wait_for_timeout(60)
+            t+=dur; pg.set_content(shot(lines,t/total) if top=="img" else frame(top,lines,k,t/total,s.get("basis",""))); pg.wait_for_timeout(60)
             f=f"{d}/v{n:03d}.png"; pg.screenshot(path=f); files.append((f,dur))
         b.close()
     open(f"{d}/seq.txt","w").write("".join(f"file '{f}'\nduration {du}\n" for f,du in files)+f"file '{files[-1][0]}'\n")
