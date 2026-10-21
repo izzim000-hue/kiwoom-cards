@@ -7,6 +7,7 @@ spec.json 예시:
    ...,
    {"top": "", "lines": ["저장해두고", "내 적금도 계산해 보세요", "<s>프로필 링크 · 1분 노후자금 계산기</s>"]}]}
 <g>..</g> = 금색 강조, <s>..</s> = 작은 회색 글씨. 한 줄 0.85초씩 나타나고 장면 끝에서 1.9초 멈춤.
+"reveal": "all" 이면 장면의 모든 줄을 한 번에 보여 주고, 장면별 "dur"(초, 기본 3)만큼 유지.
 """
 import json, sys, subprocess, tempfile, os
 from playwright.sync_api import sync_playwright
@@ -24,6 +25,7 @@ def frame(top,lines,k,prog,basis):
 def main(spec,out):
     s=json.load(open(spec,encoding="utf-8")); seq=[]
     for sc in s["scenes"]:
+        if s.get("reveal")=="all": seq.append((sc["top"],sc["lines"],len(sc["lines"]),sc.get("dur",3))); continue
         for k in range(1,len(sc["lines"])+1): seq.append((sc["top"],sc["lines"],k,LINE if k<len(sc["lines"]) else HOLD))
     total=sum(x[3] for x in seq); t=0; d=tempfile.mkdtemp(); files=[]
     with sync_playwright() as pw:
@@ -35,5 +37,6 @@ def main(spec,out):
     open(f"{d}/seq.txt","w").write("".join(f"file '{f}'\nduration {du}\n" for f,du in files)+f"file '{files[-1][0]}'\n")
     subprocess.run(["ffmpeg","-loglevel","error","-y","-f","concat","-safe","0","-i",f"{d}/seq.txt","-f","lavfi","-i","anullsrc=r=44100:cl=stereo",
       "-vf","fps=30,format=yuv420p","-c:v","libx264","-crf","20","-c:a","aac","-shortest","-t",f"{total:.2f}","-movflags","+faststart",out],check=True)
-    first=len(s["scenes"][0]["lines"]); print(f"duration={total:.1f}s cover_ms={int((LINE*(first-1)+0.4)*1000)}")
+    first=len(s["scenes"][0]["lines"]); cover=0.4 if s.get("reveal")=="all" else LINE*(first-1)+0.4
+    print(f"duration={total:.1f}s cover_ms={int(cover*1000)}")
 if __name__=="__main__": main(sys.argv[1],sys.argv[2])
