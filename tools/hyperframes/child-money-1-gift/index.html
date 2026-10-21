@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ko" data-resolution="portrait">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1080, height=1920" />
+<script src="gsap.min.js"></script>
+<style>
+@font-face{font-family:'Noto Sans CJK KR';src:local('Noto Sans CJK KR')}
+:root{--dg:#2F4F3E;--dg2:#24402F;--gold:#C9A45C;--cream:#F4EFE3;--mute:#A9BCAF}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1080px;height:1920px;overflow:hidden;background:var(--dg)}
+#root{width:100%;height:100%;position:relative;font-family:'Noto Sans CJK KR',sans-serif;color:var(--cream);
+ background:radial-gradient(circle at 80% 15%,#3B6450 0,var(--dg) 45%,var(--dg2) 100%)}
+.scene{position:absolute;inset:0;padding:0 96px;display:flex;flex-direction:column;justify-content:center;gap:34px}
+.tag{display:inline-block;align-self:flex-start;font-size:44px;font-weight:700;color:var(--dg);background:var(--gold);padding:12px 28px;border-radius:14px}
+.big{font-size:96px;font-weight:900;line-height:1.25;letter-spacing:-.03em}
+.gold{color:var(--gold)}
+.num{font-size:190px;font-weight:900;color:var(--gold);letter-spacing:-.04em;line-height:1}
+.num small{font-size:90px}
+.sub{font-size:44px;font-weight:500;color:var(--mute);line-height:1.45}
+.badge{display:inline-block;padding:4px 30px;border:8px solid var(--gold);border-radius:28px;color:var(--gold)}
+.bars{display:flex;align-items:flex-end;gap:48px;height:820px;margin-top:20px}
+.bar{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:20px;height:100%}
+.bar .fill{width:100%;background:var(--cream);border-radius:20px 20px 0 0;transform-origin:bottom}
+.bar.g .fill{background:var(--gold)}
+.bar .v{font-size:56px;font-weight:900}
+.bar.g .v{color:var(--gold)}
+.bar .k{font-size:40px;color:var(--mute);font-weight:700}
+.kw{font-size:120px;font-weight:900;color:var(--dg);background:var(--gold);padding:10px 50px;border-radius:30px;align-self:flex-start}
+#prog{position:absolute;left:0;top:0;height:14px;width:100%;background:var(--gold);transform-origin:left}
+#foot{position:absolute;left:96px;right:96px;bottom:150px;display:flex;justify-content:space-between;font-size:30px;color:var(--mute)}
+#foot b{color:var(--cream)}
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-duration="24" data-width="1080" data-height="1920">
+
+ <!-- ===== 데이터 블록: 장면 문구는 여기만 고치면 됩니다 ===== -->
+ <section id="s1" class="scene clip" data-start="0" data-duration="4.2">
+  <div class="tag">아이 통장 1편 · 증여</div>
+  <div class="big">공제 한도 안이면</div>
+  <div class="num"><span id="n1">0</span><small>만 원</small></div>
+  <div class="sub">미성년 기간 동안 증여세 없이<br>(신고 기준)</div>
+ </section>
+
+ <section id="s2" class="scene clip" data-start="4.2" data-duration="4.6">
+  <div class="tag">먼저 알아둘 것</div>
+  <div class="big l">부모가 아이 통장에<br>넣어 준 돈은</div>
+  <div class="big l"><span class="badge" id="b2">증여</span>가<br>될 수 있어요</div>
+  <div class="sub l">용돈·세뱃돈 모은 돈도 마찬가지</div>
+ </section>
+
+ <section id="s3" class="scene clip" data-start="8.8" data-duration="5.6">
+  <div class="tag">10년마다 다시 생기는 공제</div>
+  <div class="sub">누적 공제 한도 (부모 합산)</div>
+  <div class="bars">
+   <div class="bar"><div class="v">2,000만</div><div class="fill" style="height:180px"></div><div class="k">0세~</div></div>
+   <div class="bar"><div class="v">4,000만</div><div class="fill" style="height:360px"></div><div class="k">+10세</div></div>
+   <div class="bar g"><div class="v">9,000만</div><div class="fill" style="height:600px"></div><div class="k">+20세(성년)</div></div>
+  </div>
+ </section>
+
+ <section id="s4" class="scene clip" data-start="14.4" data-duration="4.6">
+  <div class="tag">왜 일찍 할까</div>
+  <div class="big l">일찍 넣을수록</div>
+  <div class="big l">불어난 돈도</div>
+  <div class="big l"><span class="gold">아이 몫</span>으로</div>
+  <div class="sub l">구체적 판단은 세무 전문가와 확인</div>
+ </section>
+
+ <section id="s5" class="scene clip" data-start="19.0" data-duration="5.0">
+  <div class="tag">그럼 이 돈, 어떻게 굴릴까?</div>
+  <div class="big l">2편에서 이어집니다</div>
+  <div class="sub l">증여 로드맵 PDF가 필요하면 댓글에</div>
+  <div class="kw" id="kw">증여</div>
+ </section>
+ <!-- ===== 데이터 블록 끝 ===== -->
+
+ <div id="prog"></div>
+ <div id="foot"><span>2026년 10월 현행 세법 기준 · 일반 정보</span><b>@kiwoom.mentor</b></div>
+</div>
+<script>
+// 장면 시작 시각(초). 속도 조절은 위 data-start/duration과 여기만 맞추면 됩니다.
+const S = { s1: 0, s2: 4.2, s3: 8.8, s4: 14.4, s5: 19.0, end: 24 };
+const tl = gsap.timeline({ paused: true });
+const n1 = document.getElementById("n1");
+const c = { v: 0 };
+tl.fromTo("#prog", { scaleX: 0 }, { scaleX: 1, duration: S.end, ease: "none" }, 0);
+// s1: 숫자 카운트업
+tl.from("#s1 .tag", { y: -40, opacity: 0, duration: .5 }, S.s1);
+tl.from("#s1 .big", { y: 40, opacity: 0, duration: .5 }, S.s1 + .1);
+tl.to(c, { v: 4000, duration: 1.2, ease: "power2.out", onUpdate: () => { n1.textContent = Math.round(c.v).toLocaleString("ko-KR"); } }, S.s1 + .2);
+tl.from("#s1 .num", { scale: .7, opacity: 0, duration: .6, ease: "back.out(2)" }, S.s1 + .2);
+tl.from("#s1 .sub", { opacity: 0, duration: .5 }, S.s1 + 1.3);
+// s2
+tl.from("#s2 .tag", { y: -40, opacity: 0, duration: .5 }, S.s2);
+tl.from("#s2 .l", { y: 50, opacity: 0, duration: .5, stagger: .6 }, S.s2 + .1);
+tl.from("#b2", { scale: 1.8, duration: .6, ease: "back.out(3)" }, S.s2 + .8);
+// s3: 막대 성장
+tl.from("#s3 .tag, #s3 .sub", { y: -40, opacity: 0, duration: .5 }, S.s3);
+tl.from("#s3 .fill", { scaleY: 0, duration: .9, stagger: .9, ease: "power3.out" }, S.s3 + .3);
+tl.from("#s3 .v", { opacity: 0, y: 30, duration: .5, stagger: .9 }, S.s3 + .7);
+// s4
+tl.from("#s4 .tag", { y: -40, opacity: 0, duration: .5 }, S.s4);
+tl.from("#s4 .l", { x: -80, opacity: 0, duration: .5, stagger: .65 }, S.s4 + .1);
+// s5
+tl.from("#s5 .tag", { y: -40, opacity: 0, duration: .5 }, S.s5);
+tl.from("#s5 .l", { y: 40, opacity: 0, duration: .5, stagger: .5 }, S.s5 + .1);
+tl.from("#kw", { scale: 0, duration: .7, ease: "back.out(2.5)" }, S.s5 + 1.1);
+tl.to("#kw", { scale: 1.08, duration: .5, yoyo: true, repeat: 3, ease: "sine.inOut" }, S.s5 + 2.0);
+window.__timelines["main"] = tl;
+tl.seek(0);
+</script>
+</body>
+</html>
