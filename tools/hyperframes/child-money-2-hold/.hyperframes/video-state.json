@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "historyId": "05533b11-b938-4f06-8fdf-a3759d84c392",
+  "currentRevision": "225b06ed-2a82-442f-b76f-1b6c99101879",
+  "pendingChanges": false,
+  "files": {
+    "gsap.min.js": {
+      "hash": "c174bfce53a729418d57a8ad8625e7247c793a22fef8e2851e3cfa3de9cd8280",
+      "content": "/root/.cache/hyperframes/history/05533b11-b938-4f06-8fdf-a3759d84c392/blobs/c1/c174bfce53a729418d57a8ad8625e7247c793a22fef8e2851e3cfa3de9cd8280"
+    },
+    "hyperframes.json": {
+      "hash": "53dbce1e19aa713cbb12ee0bc4d206143b45ab15e6ffbfcaa8f69572d4d24d50",
+      "content": "/root/.cache/hyperframes/history/05533b11-b938-4f06-8fdf-a3759d84c392/blobs/53/53dbce1e19aa713cbb12ee0bc4d206143b45ab15e6ffbfcaa8f69572d4d24d50"
+    },
+    "index.html": {
+      "hash": "0c0e93e23e958ea4bac9e65d00e2b20197c9848d1dc9fdd379c4862eed89fec2",
+      "content": "/root/.cache/hyperframes/history/05533b11-b938-4f06-8fdf-a3759d84c392/blobs/0c/0c0e93e23e958ea4bac9e65d00e2b20197c9848d1dc9fdd379c4862eed89fec2"
+    },
+    "meta.json": {
+      "hash": "7d7b7da6a038077c0f3f61b4d5d54ff89da0dbad3fc08c87f9927d81f16d3340",
+      "content": "/root/.cache/hyperframes/history/05533b11-b938-4f06-8fdf-a3759d84c392/blobs/7d/7d7b7da6a038077c0f3f61b4d5d54ff89da0dbad3fc08c87f9927d81f16d3340"
+    },
+    "package.json": {
+      "hash": "5786cb705ecfe866b485d77f5ad197c19fc3a07baea94985aa773a0bf294d38b",
+      "content": "/root/.cache/hyperframes/history/05533b11-b938-4f06-8fdf-a3759d84c392/blobs/57/5786cb705ecfe866b485d77f5ad197c19fc3a07baea94985aa773a0bf294d38b"
+    }
+  },
+  "revisions": {
+    "fdb63077-4a0f-4c81-a41f-7b02caf2104a": {
+      "actor": {
+        "kind": "outside",
+        "name": "Outside"
+      },
+      "label": "Changed outside the app",
+      "startedAt": 1792575526325,
+      "endedAt": 1792575526326,
+      "files": {
+        "index.html": {
+          "before": "/root/.cache/hyperframes/history/05533b11-b938-4f06-8fdf-a3759d84c392/blobs/5f/5fc513b05b44171066e293e3a87e7594bcda5a2021a4465a68d67438e8d73b5b",
+          "after": "/root/.cache/hyperframes/history/05533b11-b938-4f06-8fdf-a3759d84c392/blobs/39/396be86edb3ec0d7f19b3f11c150cb17354d816bdb64ebad1da1a22575f31035"
+        }
+      }
+    },
+    "5cdff995-9b54-4f30-9f22-11ef618770a0": {
+      "actor": {
+        "kind": "outside",
+        "name": "Outside"
+      },
+      "label": "Changed outside the app",
+      "startedAt": 1792575611875,
+      "endedAt": 1792575611877,
+      "files": {
+        "index.html": {
+          "before": "/root/.cache/hyperframes/history/05533b11-b938-4f06-8fdf-a3759d84c392/blobs/39/396be86edb3ec0d7f19b3f11c150cb17354d816bdb64ebad1da1a22575f31035",
+          "after": "/root/.cache/hyperframes/history/05533b11-b938-4f06-8fdf-a3759d84c392/blobs/69/69467f622de51d4ef547929121837779d7437e0539c70ac042ec2c0eb9d6daf6"
+        }
+      }
+    },
+    "225b06ed-2a82-442f-b76f-1b6c99101879": {
+      "actor": {
+        "kind": "outside",
+        "name": "Outside"
+      },
+      "label": "Changed outside the app",
+      "startedAt": 1792577034713,
+      "endedAt": 1792577034714,
+      "files": {
+        "index.html": {
+          "before": "/root/.cache/hyperframes/history/05533b11-b938-4f06-8fdf-a3759d84c392/blobs/69/69467f622de51d4ef547929121837779d7437e0539c70ac042ec2c0eb9d6daf6",
+          "after": "/root/.cache/hyperframes/history/05533b11-b938-4f06-8fdf-a3759d84c392/blobs/0c/0c0e93e23e958ea4bac9e65d00e2b20197c9848d1dc9fdd379c4862eed89fec2"
+        }
+      }
+    }
+  },
+  "checks": {
+    "latest": null,
+    "revisions": {},
+    "unversioned": []
+  },
+  "snapshots": {
+    "latest": null,
+    "revisions": {},
+    "unversioned": []
+  },
+  "renders": {
+    "latest": {
+      "id": "c02e30a1-5f9a-4712-80fc-8e0c242a00de",
+      "completedAt": 1792577084147,
+      "output": "/tmp/hf_raw.mp4",
+      "status": "completed",
+      "revision": "225b06ed-2a82-442f-b76f-1b6c99101879"
+    },
+    "retainedRevisions": [
+      "225b06ed-2a82-442f-b76f-1b6c99101879",
+      "5cdff995-9b54-4f30-9f22-11ef618770a0"
+    ]
+  },
+  "pendingArtifactCleanup": []
+}

@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="ko" data-resolution="portrait">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1080, height=1920" />
+<script src="gsap.min.js"></script>
+<style>
+@font-face{font-family:'Noto Sans CJK KR';src:local('Noto Sans CJK KR')}
+:root{--dg:#2F4F3E;--dg2:#24402F;--gold:#C9A45C;--cream:#F4EFE3;--mute:#A9BCAF}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1080px;height:1920px;overflow:hidden;background:var(--dg)}
+#root{width:100%;height:100%;position:relative;font-family:'Noto Sans CJK KR',sans-serif;color:var(--cream);
+ background:radial-gradient(circle at 80% 15%,#3B6450 0,var(--dg) 45%,var(--dg2) 100%)}
+.scene{position:absolute;inset:0;padding:0 96px;display:flex;flex-direction:column;justify-content:center;gap:34px}
+.tag{display:inline-block;align-self:flex-start;font-size:44px;font-weight:700;color:var(--dg);background:var(--gold);padding:12px 28px;border-radius:14px}
+.big{font-size:96px;font-weight:900;line-height:1.25;letter-spacing:-.03em}
+.gold{color:var(--gold)}
+.num{font-size:190px;font-weight:900;color:var(--gold);letter-spacing:-.04em;line-height:1}
+.num small{font-size:90px}
+.sub{font-size:44px;font-weight:500;color:var(--mute);line-height:1.45}
+.badge{display:inline-block;padding:4px 30px;border:8px solid var(--gold);border-radius:28px;color:var(--gold)}
+.bars{display:flex;align-items:flex-end;gap:48px;height:820px;margin-top:20px}
+.bar{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:20px;height:100%}
+.bar .fill{width:100%;background:var(--cream);border-radius:20px 20px 0 0;transform-origin:bottom}
+.bar.g .fill{background:var(--gold)}
+.bar .v{font-size:56px;font-weight:900}
+.bar.g .v{color:var(--gold)}
+.bar .k{font-size:40px;color:var(--mute);font-weight:700}
+.kw{font-size:120px;font-weight:900;color:var(--dg);background:var(--gold);padding:10px 50px;border-radius:30px;align-self:flex-start}
+#prog{position:absolute;left:0;top:0;height:14px;width:100%;background:var(--gold);transform-origin:left}
+#foot{position:absolute;left:96px;right:96px;bottom:150px;display:flex;justify-content:space-between;font-size:30px;color:var(--mute)}
+#foot b{color:var(--cream)}
+.hrow{display:flex;flex-direction:column;gap:12px}
+.hrow .lab{display:flex;justify-content:space-between;font-size:44px;font-weight:700}
+.hrow .lab b{font-size:60px;font-weight:900}
+.hrow.g .lab b{color:var(--gold)}
+.hrow .track{height:56px;background:rgba(255,255,255,.08);border-radius:14px;overflow:hidden}
+.hrow .hf{height:100%;background:var(--cream);border-radius:14px;transform-origin:left}
+.hrow.g .hf{background:var(--gold)}
+.hrow .risk{font-size:34px;color:var(--mute)}
+.list{display:flex;flex-direction:column;gap:56px}
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-duration="25.2" data-width="1080" data-height="1920">
+
+ <!-- ===== 데이터 블록: 장면 문구는 여기만 고치면 됩니다 ===== -->
+ <section id="s1" class="scene clip" data-start="0" data-duration="4.4">
+  <div class="tag">아이 통장 2편 · 거치</div>
+  <div class="big">같은 1,080만 원이<br>30세엔 최대</div>
+  <div class="num"><span id="n1">0</span><small>만 원?</small></div>
+  <div class="sub">연 3~7% 가정 예시 · 아동수당 월 10만 원 9년</div>
+ </section>
+
+ <section id="s2" class="scene clip" data-start="4.4" data-duration="5.2">
+  <div class="tag">핵심은 거치기간</div>
+  <div class="sub">연 3%(가정)로 손대지 않고 두면</div>
+  <div class="bars">
+   <div class="bar"><div class="v">1,238만</div><div class="fill" style="height:250px"></div><div class="k">9세</div></div>
+   <div class="bar"><div class="v">1,721만</div><div class="fill" style="height:350px"></div><div class="k">20세</div></div>
+   <div class="bar g"><div class="v">2,323만</div><div class="fill" style="height:470px"></div><div class="k">30세</div></div>
+  </div>
+ </section>
+
+ <section id="s3" class="scene clip" data-start="9.6" data-duration="6">
+  <div class="tag">30세 기준 · 가정 비교</div>
+  <div class="list">
+   <div class="hrow"><div class="lab"><span>예적금 시 (연 3% 가정)</span><b>2,323만</b></div><div class="track"><div class="hf" style="width:36%"></div></div></div>
+   <div class="hrow"><div class="lab"><span>채권 투자 시 (연 5% 가정)</span><b>3,879만</b></div><div class="track"><div class="hf" style="width:60%"></div></div></div>
+   <div class="hrow g"><div class="lab"><span>ETF 투자 시 (연 7% 가정)</span><b>6,490만</b></div><div class="track"><div class="hf" style="width:100%"></div></div></div>
+  </div>
+ </section>
+
+ <section id="s4" class="scene clip" data-start="15.6" data-duration="4.6">
+  <div class="tag">그래서 중요한 건</div>
+  <div class="big l">높은 수익률보다</div>
+  <div class="big l"><span class="gold">얼마나 오래</span></div>
+  <div class="big l"><span class="gold">나눠 두느냐</span></div>
+ </section>
+
+ <section id="s5" class="scene clip" data-start="20.2" data-duration="5">
+  <div class="tag">모으는 기간 · 운용 기간 · 쓰는 시점</div>
+  <div class="big l">자녀 미래 자금<br>비교 자료 받기</div>
+  <div class="sub l">댓글에 하트를 남겨 주세요</div>
+  <div class="kw" id="kw">♥</div>
+ </section>
+ <!-- ===== 데이터 블록 끝 ===== -->
+
+ <div id="prog"></div>
+ <div id="foot"><span>수익률은 가정 · 투자상품은 원금 손실 가능</span><b>@kiwoom.mentor</b></div>
+</div>
+<script>
+// 장면 시작 시각(초). 속도 조절은 위 data-start/duration과 여기만 맞추면 됩니다.
+const S = { s1: 0, s2: 4.4, s3: 9.6, s4: 15.6, s5: 20.2, end: 25.2 };
+const tl = gsap.timeline({ paused: true });
+const n1 = document.getElementById("n1");
+const c = { v: 0 };
+tl.fromTo("#prog", { scaleX: 0 }, { scaleX: 1, duration: S.end, ease: "none" }, 0);
+// s1: 숫자 카운트업
+tl.from("#s1 .tag", { y: -40, opacity: 0, duration: .5 }, S.s1);
+tl.from("#s1 .big", { y: 40, opacity: 0, duration: .5 }, S.s1 + .1);
+tl.to(c, { v: 6490, duration: 1.3, ease: "power2.out", onUpdate: () => { n1.textContent = Math.round(c.v).toLocaleString("ko-KR"); } }, S.s1 + .2);
+tl.from("#s1 .num", { scale: .7, opacity: 0, duration: .6, ease: "back.out(2)" }, S.s1 + .2);
+tl.from("#s1 .sub", { opacity: 0, duration: .5 }, S.s1 + 1.4);
+// s2: 막대 성장
+tl.from("#s2 .tag, #s2 .sub", { y: -40, opacity: 0, duration: .5 }, S.s2);
+tl.from("#s2 .fill", { scaleY: 0, duration: .9, stagger: .9, ease: "power3.out" }, S.s2 + .3);
+tl.from("#s2 .v", { opacity: 0, y: 30, duration: .5, stagger: .9 }, S.s2 + .7);
+// s3: 가로 막대 비교
+tl.from("#s3 .tag", { y: -40, opacity: 0, duration: .5 }, S.s3);
+tl.from("#s3 .hrow", { opacity: 0, y: 40, duration: .5, stagger: .9 }, S.s3 + .2);
+tl.from("#s3 .hf", { scaleX: 0, duration: .9, stagger: .9, ease: "power3.out" }, S.s3 + .4);
+// s4
+tl.from("#s4 .tag", { y: -40, opacity: 0, duration: .5 }, S.s4);
+tl.from("#s4 .l", { x: -80, opacity: 0, duration: .5, stagger: .65 }, S.s4 + .1);
+// s5
+tl.from("#s5 .tag", { y: -40, opacity: 0, duration: .5 }, S.s5);
+tl.from("#s5 .l", { y: 40, opacity: 0, duration: .5, stagger: .5 }, S.s5 + .1);
+tl.from("#kw", { scale: 0, duration: .7, ease: "back.out(2.5)" }, S.s5 + 1.1);
+tl.to("#kw", { scale: 1.08, duration: .5, yoyo: true, repeat: 3, ease: "sine.inOut" }, S.s5 + 2.0);
+window.__timelines["main"] = tl;
+tl.seek(0);
+</script>
+</body>
+</html>
