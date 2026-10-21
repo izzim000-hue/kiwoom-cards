@@ -38,7 +38,7 @@ html,body{width:1080px;height:1920px;overflow:hidden;background:var(--dg)}
 .hrow .hf{height:100%;background:var(--cream);border-radius:14px;transform-origin:left}
 .hrow.g .hf{background:var(--gold)}
 .hrow .risk{font-size:34px;color:var(--mute)}
-.list{display:flex;flex-direction:column;gap:40px}
+.list{display:flex;flex-direction:column;gap:56px}
 </style>
 </head>
 <body>
@@ -65,9 +65,9 @@ html,body{width:1080px;height:1920px;overflow:hidden;background:var(--dg)}
  <section id="s3" class="scene clip" data-start="9.6" data-duration="6">
   <div class="tag">30세 기준 · 가정 비교</div>
   <div class="list">
-   <div class="hrow"><div class="lab"><span>은행 예적금 (3% 가정)</span><b>2,323만</b></div><div class="track"><div class="hf" style="width:36%"></div></div><div class="risk">예금자보호 금융회사별 1억 원 한도</div></div>
-   <div class="hrow"><div class="lab"><span>채권형 (5% 가정)</span><b>3,879만</b></div><div class="track"><div class="hf" style="width:60%"></div></div><div class="risk">금리·신용 위험</div></div>
-   <div class="hrow g"><div class="lab"><span>주식형 ETF (7% 가정)</span><b>6,490만</b></div><div class="track"><div class="hf" style="width:100%"></div></div><div class="risk">원금 손실 가능 · 매년 수익률 변동</div></div>
+   <div class="hrow"><div class="lab"><span>예적금 시 (연 3% 가정)</span><b>2,323만</b></div><div class="track"><div class="hf" style="width:36%"></div></div></div>
+   <div class="hrow"><div class="lab"><span>채권 투자 시 (연 5% 가정)</span><b>3,879만</b></div><div class="track"><div class="hf" style="width:60%"></div></div></div>
+   <div class="hrow g"><div class="lab"><span>ETF 투자 시 (연 7% 가정)</span><b>6,490만</b></div><div class="track"><div class="hf" style="width:100%"></div></div></div>
   </div>
  </section>
 
@@ -87,7 +87,7 @@ html,body{width:1080px;height:1920px;overflow:hidden;background:var(--dg)}
  <!-- ===== 데이터 블록 끝 ===== -->
 
  <div id="prog"></div>
- <div id="foot"><span>수익률은 가정 · 세금·수수료 미반영</span><b>@kiwoom.mentor</b></div>
+ <div id="foot"><span>수익률은 가정 · 투자상품은 원금 손실 가능</span><b>@kiwoom.mentor</b></div>
 </div>
 <script>
 // 장면 시작 시각(초). 속도 조절은 위 data-start/duration과 여기만 맞추면 됩니다.

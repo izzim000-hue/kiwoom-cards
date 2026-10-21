@@ -1,7 +1,7 @@
 {
   "version": 1,
   "historyId": "05533b11-b938-4f06-8fdf-a3759d84c392",
-  "currentRevision": "fdb63077-4a0f-4c81-a41f-7b02caf2104a",
+  "currentRevision": "5cdff995-9b54-4f30-9f22-11ef618770a0",
   "pendingChanges": false,
   "files": {
     "gsap.min.js": {
@@ -13,8 +13,8 @@
       "content": "/root/.cache/hyperframes/history/05533b11-b938-4f06-8fdf-a3759d84c392/blobs/53/53dbce1e19aa713cbb12ee0bc4d206143b45ab15e6ffbfcaa8f69572d4d24d50"
     },
     "index.html": {
-      "hash": "396be86edb3ec0d7f19b3f11c150cb17354d816bdb64ebad1da1a22575f31035",
-      "content": "/root/.cache/hyperframes/history/05533b11-b938-4f06-8fdf-a3759d84c392/blobs/39/396be86edb3ec0d7f19b3f11c150cb17354d816bdb64ebad1da1a22575f31035"
+      "hash": "69467f622de51d4ef547929121837779d7437e0539c70ac042ec2c0eb9d6daf6",
+      "content": "/root/.cache/hyperframes/history/05533b11-b938-4f06-8fdf-a3759d84c392/blobs/69/69467f622de51d4ef547929121837779d7437e0539c70ac042ec2c0eb9d6daf6"
     },
     "meta.json": {
       "hash": "7d7b7da6a038077c0f3f61b4d5d54ff89da0dbad3fc08c87f9927d81f16d3340",
@@ -40,6 +40,21 @@
           "after": "/root/.cache/hyperframes/history/05533b11-b938-4f06-8fdf-a3759d84c392/blobs/39/396be86edb3ec0d7f19b3f11c150cb17354d816bdb64ebad1da1a22575f31035"
         }
       }
+    },
+    "5cdff995-9b54-4f30-9f22-11ef618770a0": {
+      "actor": {
+        "kind": "outside",
+        "name": "Outside"
+      },
+      "label": "Changed outside the app",
+      "startedAt": 1792575611875,
+      "endedAt": 1792575611877,
+      "files": {
+        "index.html": {
+          "before": "/root/.cache/hyperframes/history/05533b11-b938-4f06-8fdf-a3759d84c392/blobs/39/396be86edb3ec0d7f19b3f11c150cb17354d816bdb64ebad1da1a22575f31035",
+          "after": "/root/.cache/hyperframes/history/05533b11-b938-4f06-8fdf-a3759d84c392/blobs/69/69467f622de51d4ef547929121837779d7437e0539c70ac042ec2c0eb9d6daf6"
+        }
+      }
     }
   },
   "checks": {
@@ -54,13 +69,14 @@
   },
   "renders": {
     "latest": {
-      "id": "642ca416-aea8-440b-b85c-692f07ef5181",
-      "completedAt": 1792575587116,
+      "id": "e71eff09-d40e-4ef7-9783-9331a0951f47",
+      "completedAt": 1792575663067,
       "output": "/tmp/hf_raw.mp4",
       "status": "completed",
-      "revision": "fdb63077-4a0f-4c81-a41f-7b02caf2104a"
+      "revision": "5cdff995-9b54-4f30-9f22-11ef618770a0"
     },
     "retainedRevisions": [
+      "5cdff995-9b54-4f30-9f22-11ef618770a0",
       "fdb63077-4a0f-4c81-a41f-7b02caf2104a"
     ]
   },
