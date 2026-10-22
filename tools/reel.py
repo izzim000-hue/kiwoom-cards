@@ -6,24 +6,26 @@ spec.json 예시:
    {"top": "헷갈리는 돈 상식 #1", "lines": ["연 5% 적금", "월 100만 원, 1년", "<g>이자 60만 원?</g>"]},
    ...,
    {"top": "", "lines": ["저장해두고", "내 적금도 계산해 보세요", "<s>프로필 링크 · 1분 노후자금 계산기</s>"]}]}
-<g>..</g> = 금색 강조, <s>..</s> = 작은 회색 글씨. 한 줄 0.85초씩 나타나고 장면 끝에서 1.9초 멈춤.
+<g>..</g> = 금색 강조, <s>..</s> = 작은 회청색 글씨. 배경 딥 네이비, 본문 크림. 한 줄 0.85초씩 나타나고 장면 끝에서 1.9초 멈춤.
+"reveal": "all" 이면 장면의 모든 줄을 한 번에 보여 주고, 장면별 "dur"(초, 기본 3)만큼 유지.
 """
 import json, sys, subprocess, tempfile, os
 from playwright.sync_api import sync_playwright
-SAGE="#DEE9E0"; DG="#2F4F3E"; GOLD="#B08D46"; LINE=0.85; HOLD=1.9
+NAVY="#1E2A44"; GOLD="#E8B04B"; CREAM="#F5EFE3"; MUT="#AEB7C8"; LINE=0.85; HOLD=1.9
 def frame(top,lines,k,prog,basis):
     out=""
     for i,l in enumerate(lines):
-        l=l.replace("<g>",f'<span style="color:{GOLD}">').replace("</g>","</span>").replace("<s>",'<span style="font-size:52px;font-weight:700;color:#5B6E62">').replace("</s>","</span>")
+        l=l.replace("<g>",f'<span style="color:{GOLD}">').replace("</g>","</span>").replace("<s>",f'<span style="font-size:52px;font-weight:700;color:{MUT}">').replace("</s>","</span>")
         out+=f'<div style="opacity:{1 if i<k else 0}">{l}</div>'
-    return f'''<body style="margin:0"><div style="width:1080px;height:1920px;background:{SAGE};display:flex;flex-direction:column;justify-content:center;padding:0 96px;gap:40px;font-family:'Noto Sans CJK KR',sans-serif;box-sizing:border-box;position:relative">
-<div style="position:absolute;left:0;top:0;height:14px;width:{prog*100:.1f}%;background:{DG}"></div>
-<div style="font-size:50px;font-weight:700;color:{DG};min-height:60px">{top}</div>
-<div style="font-size:100px;font-weight:900;line-height:1.3;letter-spacing:-.03em;color:{DG};display:flex;flex-direction:column">{out}</div>
-<div style="position:absolute;left:96px;right:96px;bottom:150px;display:flex;justify-content:space-between;font-size:30px;color:#5B6E62"><span>{basis}</span><b>@kiwoom.mentor</b></div></div></body>'''
+    return f'''<body style="margin:0"><div style="width:1080px;height:1920px;background:{NAVY};display:flex;flex-direction:column;justify-content:center;padding:0 96px;gap:40px;font-family:'Noto Sans CJK KR',sans-serif;box-sizing:border-box;position:relative">
+<div style="position:absolute;left:0;top:0;height:14px;width:{prog*100:.1f}%;background:{GOLD}"></div>
+<div style="font-size:50px;font-weight:700;color:{GOLD};min-height:60px">{top}</div>
+<div style="font-size:100px;font-weight:900;line-height:1.3;letter-spacing:-.03em;color:{CREAM};display:flex;flex-direction:column">{out}</div>
+<div style="position:absolute;left:96px;right:96px;bottom:150px;display:flex;justify-content:space-between;font-size:30px;color:{MUT}"><span>{basis}</span><b>@kiwoom.mentor</b></div></div></body>'''
 def main(spec,out):
     s=json.load(open(spec,encoding="utf-8")); seq=[]
     for sc in s["scenes"]:
+        if s.get("reveal")=="all": seq.append((sc["top"],sc["lines"],len(sc["lines"]),sc.get("dur",3))); continue
         for k in range(1,len(sc["lines"])+1): seq.append((sc["top"],sc["lines"],k,LINE if k<len(sc["lines"]) else HOLD))
     total=sum(x[3] for x in seq); t=0; d=tempfile.mkdtemp(); files=[]
     with sync_playwright() as pw:
@@ -35,5 +37,6 @@ def main(spec,out):
     open(f"{d}/seq.txt","w").write("".join(f"file '{f}'\nduration {du}\n" for f,du in files)+f"file '{files[-1][0]}'\n")
     subprocess.run(["ffmpeg","-loglevel","error","-y","-f","concat","-safe","0","-i",f"{d}/seq.txt","-f","lavfi","-i","anullsrc=r=44100:cl=stereo",
       "-vf","fps=30,format=yuv420p","-c:v","libx264","-crf","20","-c:a","aac","-shortest","-t",f"{total:.2f}","-movflags","+faststart",out],check=True)
-    first=len(s["scenes"][0]["lines"]); print(f"duration={total:.1f}s cover_ms={int((LINE*(first-1)+0.4)*1000)}")
+    first=len(s["scenes"][0]["lines"]); cover=0.4 if s.get("reveal")=="all" else LINE*(first-1)+0.4
+    print(f"duration={total:.1f}s cover_ms={int(cover*1000)}")
 if __name__=="__main__": main(sys.argv[1],sys.argv[2])
