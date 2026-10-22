@@ -1,4 +1,4 @@
-"""키움멘토 모션 릴스 생성기 (1080x1920, 30fps, 무음 트랙). 딥그린 바탕 + 큰 숫자 카운트업 + 막대 애니메이션.
+"""키움멘토 모션 릴스 생성기 (1080x1920, 30fps, 무음 트랙). 딥 네이비 바탕 + 큰 숫자 카운트업 + 막대 애니메이션.
 사용: python3 tools/reel_motion.py spec.json 출력.mp4
 장면 type:
   hero  {"tag","lines":[..],"count":{"from","to","unit"},"note"}   숫자가 0.8초 동안 올라감
@@ -14,27 +14,27 @@ from playwright.sync_api import sync_playwright
 FPS = 30
 PAGE = r"""<html><head><style>
 *{box-sizing:border-box;margin:0}
-body{width:1080px;height:1920px;background:#2F4F3E;font-family:'Noto Sans CJK KR',sans-serif;color:#fff;overflow:hidden}
+body{width:1080px;height:1920px;background:#1E2A44;font-family:'Noto Sans CJK KR',sans-serif;color:#F5EFE3;overflow:hidden}
 .sc{position:absolute;inset:0;padding:0 90px;display:flex;flex-direction:column;justify-content:center;gap:44px;opacity:0}
-.tag{align-self:flex-start;background:#B08D46;color:#1F3529;font-size:44px;font-weight:900;padding:14px 30px;border-radius:14px}
+.tag{align-self:flex-start;background:#E8B04B;color:#1E2A44;font-size:44px;font-weight:900;padding:14px 30px;border-radius:14px}
 .big{font-size:104px;font-weight:900;line-height:1.22;letter-spacing:-.035em}
-.g{color:#E2C27A}
-.num{font-size:190px;font-weight:900;letter-spacing:-.04em;color:#E2C27A;line-height:1}
+.g{color:#E8B04B}
+.num{font-size:190px;font-weight:900;letter-spacing:-.04em;color:#E8B04B;line-height:1}
 .unit{font-size:90px}
-.note{font-size:40px;color:#B9CDBF;font-weight:700}
+.note{font-size:40px;color:#AEB7C8;font-weight:700}
 .title{font-size:78px;font-weight:900;line-height:1.25;letter-spacing:-.03em}
 .row{display:flex;flex-direction:column;gap:12px}
 .lab{display:flex;justify-content:space-between;align-items:baseline;font-size:50px;font-weight:900}
-.lab small{font-size:36px;color:#B9CDBF;font-weight:700;margin-left:14px}
-.val{color:#E2C27A;font-size:64px}
+.lab small{font-size:36px;color:#AEB7C8;font-weight:700;margin-left:14px}
+.val{color:#E8B04B;font-size:64px}
 .track{height:64px;background:rgba(255,255,255,.1);border-radius:12px;overflow:hidden}
-.bar{height:100%;width:0;background:linear-gradient(90deg,#8FB59B,#E2C27A);border-radius:12px}
-.risk{font-size:34px;color:#B9CDBF;font-weight:700}
-.li{display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.08);border-left:12px solid #E2C27A;padding:30px 36px;border-radius:14px;font-size:52px;font-weight:900}
-.li span:last-child{color:#E2C27A}
-.kw{align-self:flex-start;font-size:150px;font-weight:900;color:#1F3529;background:#E2C27A;padding:10px 46px;border-radius:24px;letter-spacing:-.03em}
-.pg{position:absolute;left:0;top:0;height:16px;background:#E2C27A}
-.foot{position:absolute;left:90px;right:90px;bottom:140px;display:flex;justify-content:space-between;gap:30px;font-size:30px;color:#B9CDBF;white-space:nowrap}
+.bar{height:100%;width:0;background:linear-gradient(90deg,#C98F2E,#E8B04B);border-radius:12px}
+.risk{font-size:34px;color:#AEB7C8;font-weight:700}
+.li{display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.08);border-left:12px solid #E8B04B;padding:30px 36px;border-radius:14px;font-size:52px;font-weight:900}
+.li span:last-child{color:#E8B04B}
+.kw{align-self:flex-start;font-size:150px;font-weight:900;color:#1E2A44;background:#E8B04B;padding:10px 46px;border-radius:24px;letter-spacing:-.03em}
+.pg{position:absolute;left:0;top:0;height:16px;background:#E8B04B}
+.foot{position:absolute;left:90px;right:90px;bottom:140px;display:flex;justify-content:space-between;gap:30px;font-size:30px;color:#AEB7C8;white-space:nowrap}
 </style></head><body><div class="pg" id="pg"></div><div id="root"></div>
 <div class="foot"><span id="basis"></span><b>@kiwoom.mentor</b></div>
 <script>
