@@ -213,7 +213,7 @@ def check_reel(entry):
 
         spec = load_spec(spec_path)
         n = len(spec["scenes"][0]["lines"])
-        low, high = int(LINE * (n - 1) * 1000), int((LINE * (n - 1) + HOLD) * 1000)
+        low, high = round(LINE * (n - 1) * 1000), round((LINE * (n - 1) + HOLD) * 1000)
         details["cover_ms"] = r.cover_ms
         if r.cover_ms != entry["cover_ms"]:
             reasons.append(f"cover_ms 불일치 (기준 {entry['cover_ms']}, 렌더 {r.cover_ms})")

@@ -38,4 +38,4 @@ def progress_values(states):
 
 def cover_ms(spec):
     first = len(spec["scenes"][0]["lines"])
-    return int((LINE * (first - 1) + 0.4) * 1000)
+    return round((LINE * (first - 1) + 0.4) * 1000)
