@@ -168,8 +168,11 @@ def check_reel(entry):
     committed = REPO_ROOT / entry["mp4"]
     reasons, details = [], {}
 
-    if not committed.is_file() or sha256(committed) != entry["mp4_sha256"]:
-        return ReelResult(stem, VERDICT_FAIL, details, ["게시된 영상이 바뀜 (mp4 sha256 불일치)"])
+    try:
+        if not committed.is_file() or sha256(committed) != entry["mp4_sha256"]:
+            return ReelResult(stem, VERDICT_FAIL, details, ["게시된 영상이 바뀜 (mp4 sha256 불일치)"])
+    except OSError as e:  # 읽기 권한·실행 중 삭제: 이 릴스 하나의 FAIL (다른 릴스 보고를 잃지 않는다)
+        return ReelResult(stem, VERDICT_FAIL, details, [f"게시된 영상을 읽지 못함: {e.__class__.__name__}: {e}"])
 
     if entry["status"] != "reproducible":
         checks = specprobe.probe(committed)
@@ -180,8 +183,11 @@ def check_reel(entry):
         return ReelResult(stem, VERDICT_NONE, details, reasons)
 
     spec_path = REPO_ROOT / entry["spec"]
-    if not spec_path.is_file() or sha256(spec_path) != entry["spec_sha256"]:
-        return ReelResult(stem, VERDICT_FAIL, details, ["원고가 바뀜 (spec sha256 불일치)"])
+    try:
+        if not spec_path.is_file() or sha256(spec_path) != entry["spec_sha256"]:
+            return ReelResult(stem, VERDICT_FAIL, details, ["원고가 바뀜 (spec sha256 불일치)"])
+    except OSError as e:
+        return ReelResult(stem, VERDICT_FAIL, details, [f"원고를 읽지 못함: {e.__class__.__name__}: {e}"])
 
     from .render import render_reel  # playwright 는 렌더할 때만 필요하다
 

@@ -43,6 +43,31 @@ class CheckReelErrors(unittest.TestCase):
         self.assertTrue(any("ValueError" in r for r in res.reasons), res.reasons)
 
 
+class PreRenderReadErrors(unittest.TestCase):
+    """렌더 전 파일 읽기 오류는 그 릴스의 FAIL 이고 다른 릴스의 보고를 막지 않는다 (WR-09)."""
+
+    def test_unreadable_committed_mp4_is_fail(self):
+        with mock.patch.object(golden, "sha256", side_effect=PermissionError("denied")):
+            res = golden.check_reel(first_reproducible())
+        self.assertEqual(res.verdict, golden.VERDICT_FAIL)
+        self.assertTrue(any("PermissionError" in r for r in res.reasons), res.reasons)
+        self.assertIn("FAIL  " + res.stem, golden.format_report([res], [])[0])
+
+    def test_unreadable_spec_is_fail(self):
+        entry = first_reproducible()
+        real = golden.sha256
+
+        def flaky(path):
+            if str(path).endswith(".json"):
+                raise FileNotFoundError("removed mid-run")
+            return real(path)
+
+        with mock.patch.object(golden, "sha256", side_effect=flaky):
+            res = golden.check_reel(entry)
+        self.assertEqual(res.verdict, golden.VERDICT_FAIL)
+        self.assertTrue(any("FileNotFoundError" in r for r in res.reasons), res.reasons)
+
+
 class PartialDetailsReport(unittest.TestCase):
     """check_reel 이 판정 도중 끊겨 details 가 일부만 채워져도 보고서가 죽지 않는다 (CR-01)."""
 
