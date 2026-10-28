@@ -590,22 +590,27 @@ def top_atoms(path):
 | A6 | 업스트림 폰트 커밋 SHA 미확인(sha256만 고정) | 폰트 | 폰트 재다운로드 시 `main`이 바뀌어 해시 불일치 가능 — 무수정 파일을 저장소에 넣으므로 실제 영향 낮음 |
 | A7 | 커밋 MP4가 `<s>`=block 렌더러로 만들어졌다는 추정(도구 커밋 순서 기반). 실제 원인(과거 스크립트 차이)은 확인 불가 | Golden | 증거는 재현 결과(SSIM 0.997)이므로 결론에는 영향 없음 |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **HEAD `reel.py`의 `<s>` 동작을 바꿔도 되는가?**
    - What we know: 커밋 MP4는 `<s>`=block과 일치(10/10), HEAD 코드는 불일치. D-05는 "기존 배치 그대로 재현"이라고만 했음.
    - What's unclear: 사용자가 `python3 tools/reel.py`로 만든 *새* 영상이 MP4와 다르게 나오는 현 동작을 원했는지.
    - Recommendation: legacy = 커밋 MP4 재현으로 확정하고 shim 기본값으로 둔다. 플래너가 1줄 확인 체크를 계획에 넣는다.
+   - RESOLVED: 채택. legacy 배치는 `<s>` = `display:block` (52px/700/#5B6E62)로 커밋 MP4를 재현하며 `tools/reel.py` shim의 기본값이다. 회귀 기준(golden)은 HEAD 코드 출력이 아니라 커밋된 MP4다. 구현·확인: 01-01 tracer(tax-deduction 781프레임, 프레임별 SSIM >= 0.98), 01-04 golden(10편).
 
 2. **우측 150px 여백을 본문 줄에도 적용할지.**
    - What we know: 엄격 적용 시 기존 10편의 195줄 중 8줄(4%)이 새 배치에서 줄바꿈된다. 근거·계정만 적용하면 본문 줄 우측 끝이 최대 968px까지 간다.
    - Recommendation: D-03 문구대로 엄격 적용(상수 `SAFE.right`). 생성기(Phase 2)가 한 줄 8~9자 이내로 쓰게 하는 근거가 됨.
+   - RESOLVED: 엄격 적용. 새 배치에서는 본문 줄도 `constants.SAFE['right']`(150px) 여백 안에 두고, 넘침·줄바꿈은 경고(RIGHT/WRAP)로만 보고한다(글자를 줄이거나 자르지 않음). 구현: 01-03.
 
 3. **경고의 종료 코드 정책.** 경고만 내고 0으로 종료할지, `--strict`에서 비-0으로 낼지. 권고: 기본 0 + 경고 출력, `--strict`/Phase 3 번들 게이트에서 비-0.
+   - RESOLVED: 기본은 경고 출력 + 종료 코드 0, `--strict`면 MP4를 쓴 뒤 종료 코드 3(비-0). 업로드 규격 FAIL은 별도로 종료 코드 4. 구현: 01-03.
 
 4. **폰트 서브셋 여부(재량):** 권고는 무수정 3종(14.5 MB). 레포 크기를 줄이고 싶으면 5.5 MB 서브셋(바이트 동일 렌더 실측) — 사용자 선호 확인 가능.
+   - RESOLVED: 사용자가 01-01 Task 2의 blocking `checkpoint:decision`에서 "원본"(무수정, 권장) 또는 "축소판"(서브셋)을 고른다. 어느 쪽이든 `constants.FONT_VARIANT`에 선택을 기록하고, `constants.FONT_SHA256`·검증 명령·`tools/fonts/README.md`의 해시는 실제로 `tools/fonts/`에 쓴 파일에서 다시 계산한다(위 표의 해시는 업스트림 원본 기준값). 구현: 01-01(선택·해시), 01-02(README).
 
 5. **오버레이 PNG 위치/이름과 어떤 장면을 포함할지** — 플래너 재량(권고: `<out>.safe.png`, 최다 줄 장면 + 첫 장면).
+   - RESOLVED: 새 배치 렌더는 MP4 옆에 `<out-stem>.safe-s01.png`(첫 장면)와 가장 높은 장면의 `<out-stem>.safe-sNN.png`를 쓰고, `--overlay-all`이면 모든 장면을 쓴다. 오버레이는 MP4 프레임에 들어가지 않는다. 구현: 01-03.
 
 ## Environment Availability
 
