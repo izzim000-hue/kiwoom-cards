@@ -89,6 +89,15 @@ class CliExitCodes(unittest.TestCase):
         code, _ = self.run_main(Error("Target closed"))
         self.assertEqual(code, 2)
 
+    def test_missing_playwright_is_exit_2_with_install_hint(self):
+        code, msg = self.run_main(ModuleNotFoundError("No module named 'playwright'", name="playwright"))
+        self.assertEqual(code, 2)
+        self.assertIn("playwright 미설치", msg)
+
+    def test_internal_import_bug_is_not_reported_as_missing_playwright(self):
+        with self.assertRaises(ImportError):
+            self.run_main(ImportError("cannot import name 'x' from 'reelkit.layout'", name="reelkit.layout"))
+
     def test_spec_error_stays_exit_1(self):
         code, msg = self.run_main(reel.SpecError("scenes: 비어 있음"))
         self.assertEqual(code, 1)

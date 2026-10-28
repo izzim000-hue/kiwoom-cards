@@ -25,15 +25,11 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 PLAYWRIGHT_MISSING = "playwright 미설치: python3 -m pip install --user -r tools/requirements.txt"
 
-try:
-    from reelkit.render import render_reel
-    from reelkit.browser import BrowserLaunchError, FontLoadError
-    from reelkit.encode import EncodeError
-    from reelkit.spec import SpecError
-    from reelkit.specprobe import format_report
-except ImportError:
-    print(PLAYWRIGHT_MISSING, file=sys.stderr)
-    sys.exit(2)
+from reelkit.browser import BrowserLaunchError, FontLoadError  # noqa: E402
+from reelkit.encode import EncodeError  # noqa: E402
+from reelkit.render import render_reel  # noqa: E402
+from reelkit.spec import SpecError  # noqa: E402
+from reelkit.specprobe import format_report  # noqa: E402
 
 
 def _playwright_error_types():
@@ -58,7 +54,10 @@ def main(argv=None):
     except SpecError as e:
         print(f"원고 오류: {e}", file=sys.stderr)
         return 1
-    except ImportError:
+    except ImportError as e:
+        # 이 패키지 자체의 결함(잘못된 import 등)을 "playwright 미설치" 로 가리지 않는다
+        if (getattr(e, "name", None) or "").split(".")[0] != "playwright":
+            raise
         print(PLAYWRIGHT_MISSING, file=sys.stderr)
         return 2
     except (FontLoadError, BrowserLaunchError, EncodeError) as e:
