@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 1
 current_phase_name: 렌더 기반 고정 (Render Foundation)
 status: executing
-stopped_at: Completed 01-01-PLAN.md
-last_updated: "2026-10-28T20:55:27.744Z"
+stopped_at: Completed 01-02-PLAN.md
+last_updated: "2026-10-28T21:00:39.577Z"
 last_activity: 2026-10-28
 last_activity_desc: Phase 1 execution started
-state_head: 2fe75c8c48e601cdf960383e3d499021fc9d7a78
+state_head: fdb954ce3ca4438f6a4c262e0dab2b97b5eb104d
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 4
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-28)
 ## Current Position
 
 Phase: 1 (렌더 기반 고정 (Render Foundation)) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-10-28 — Phase 1 execution started
 
@@ -57,6 +57,7 @@ Progress: [░░░░░░░░░░] 0%
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | Phase 1 P01 | 3 min | 3 tasks | 14 files |
+| Phase 1 P02 | 8 min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -70,6 +71,7 @@ Recent decisions affecting current work:
 - [Roadmap]: 회귀 비교 기준. 길이·장면 경계·cover_ms는 정확히 일치해야 하고, 디코드 프레임은 허용 오차로 비교한다
 - [Roadmap]: 모든 산출물은 `2026/reels/drafts/`에서 시작한다. 정식 경로로는 승인 후 promote로만 옮긴다
 - [Phase 1]: Plan 01: 폰트 원본(무수정) 벤더링 FONT_VARIANT=original, 14,494,040 B; legacy 배치 <s>=display:block이 shim 기본; 폰트 로드 실패 시 exit 2로 중단
+- [Phase 1]: Plan 02: legacy 원문 삽입은 유지하고 <g></g><s></s> 네 태그 허용 목록을 렌더 전에 검사한다. reel.py 종료 코드는 0 정상 / 1 원고 오류 / 2 환경 오류
 
 ### Pending Todos
 
@@ -95,6 +97,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-28T20:55:27.712Z
-Stopped at: Completed 01-01-PLAN.md
+Last session: 2026-10-28T21:00:39.545Z
+Stopped at: Completed 01-02-PLAN.md
 Resume file: None
