@@ -32,9 +32,16 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 4 plans
 
 Plans:
+**Wave 1**
 - [ ] 01-01-PLAN.md — 설치 확인·폰트 방식 결정 후, 고정 Playwright + 번들 폰트 + legacy 배치로 게시된 릴스 1편을 다시 만들어 기존 MP4와 대조 (tracer, wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 01-02-PLAN.md — 원고 검사(legacy 마크업 허용 목록, 오류 시 종료 코드 1), 폰트 출처 README, .gitignore (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 01-03-PLAN.md — 업로드 규격 검사(specprobe)와 새 안전영역 배치·줄 넘침 경고·오버레이 미리보기·--strict (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
 - [ ] 01-04-PLAN.md — 사전 점검(doctor)과 SessionStart 훅 자동 설치(설치 없이 렌더하는 경로 포함), 10편 golden 회귀(재현 불가 표기), tools README (wave 4)
 **UI hint**: no
 **Owner input**: 안전영역 기준값(실기기 비공개 업로드로 보정), 기존 릴스 레이아웃 보존 여부(권장: 게시된 기록이므로 그대로 두고 개선은 신규 릴스에만), drafts/ 보존 방식(.gitignore 작성 전 결정. 권장: drafts 전체 gitignore, 자동 커밋 금지)
