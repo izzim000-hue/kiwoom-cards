@@ -18,6 +18,7 @@ spec.json 예시:
 """
 import argparse
 import os
+import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -27,11 +28,21 @@ PLAYWRIGHT_MISSING = "playwright 미설치: python3 -m pip install --user -r too
 try:
     from reelkit.render import render_reel
     from reelkit.browser import BrowserLaunchError, FontLoadError
+    from reelkit.encode import EncodeError
     from reelkit.spec import SpecError
     from reelkit.specprobe import format_report
 except ImportError:
     print(PLAYWRIGHT_MISSING, file=sys.stderr)
     sys.exit(2)
+
+
+def _playwright_error_types():
+    """렌더 중 Playwright 가 던지는 오류 형식. Playwright 가 없으면 빈 튜플(아무것도 잡지 않음)."""
+    try:
+        from playwright.sync_api import Error
+    except ImportError:
+        return ()
+    return (Error,)
 
 
 def main(argv=None):
@@ -50,8 +61,12 @@ def main(argv=None):
     except ImportError:
         print(PLAYWRIGHT_MISSING, file=sys.stderr)
         return 2
-    except (FontLoadError, BrowserLaunchError) as e:
+    except (FontLoadError, BrowserLaunchError, EncodeError) as e:
         print(f"렌더 환경 오류: {e}", file=sys.stderr)
+        return 2
+    except (*_playwright_error_types(), OSError, subprocess.SubprocessError) as e:
+        # ffmpeg/ffprobe 실행, 파일 쓰기, Chromium 실행 중 오류는 원고 오류(1)가 아니라 환경 오류(2)
+        print(f"렌더 환경 오류: {e.__class__.__name__}: {e}", file=sys.stderr)
         return 2
     print(f"duration={r.total:.1f}s cover_ms={r.cover_ms}")
     for w in r.warnings:
