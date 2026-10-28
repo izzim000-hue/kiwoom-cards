@@ -30,11 +30,22 @@ fi
 PROJ="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}"
 REQ="$PROJ/tools/requirements.txt"
 if [ -f "$REQ" ]; then
-  PW_PIN=$(sed -n 's/^playwright==//p' "$REQ" | head -n 1 || true)
+  # 공백·CR(CRLF 체크아웃)·뒤따르는 주석을 무시한다: doctor.read_pin 과 같은 규칙
+  PW_PIN=$(sed -n 's/^[[:space:]]*playwright[[:space:]]*==[[:space:]]*\([^[:space:]#;]*\).*/\1/p' "$REQ" | head -n 1 || true)
   PW_CUR=$(python3 -c 'import importlib.metadata as m; print(m.version("playwright"))' 2>/dev/null || true)
-  if [ -n "$PW_PIN" ] && [ "$PW_PIN" != "$PW_CUR" ]; then
-    if ! python3 -m pip install --quiet --user --retries 1 --timeout 20 -r "$REQ" >&2; then
-      echo "playwright $PW_PIN 설치 실패 — python3 tools/doctor.py 로 원인을 확인하세요" >&2
+  # 같은 컨테이너에서 실패한 설치를 세션마다 되풀이하지 않도록 실패 표시 파일을 남긴다
+  PW_STAMP="${TMPDIR:-/tmp}/.reelkit-pw-install-failed-${PW_PIN:-none}"
+  if [ -n "$PW_PIN" ] && [ "$PW_PIN" != "$PW_CUR" ] && [ ! -e "$PW_STAMP" ]; then
+    # 가상환경에서는 --user 가 거부되므로 뺀다
+    PIP_USER_FLAG="--user"
+    if python3 -c 'import sys; sys.exit(0 if sys.prefix != sys.base_prefix else 1)' 2>/dev/null; then
+      PIP_USER_FLAG=""
+    fi
+    # shellcheck disable=SC2086
+    if ! python3 -m pip install --quiet $PIP_USER_FLAG --retries 1 --timeout 20 -r "$REQ" >&2 &&
+       ! PIP_BREAK_SYSTEM_PACKAGES=1 python3 -m pip install --quiet $PIP_USER_FLAG --retries 1 --timeout 20 -r "$REQ" >&2; then
+      echo "playwright $PW_PIN 설치 실패 — python3 tools/doctor.py 로 원인을 확인하세요 (이 컨테이너에서는 다시 시도하지 않음)" >&2
+      : > "$PW_STAMP" 2>/dev/null || true
     fi
   fi
   python3 "$PROJ"/tools/doctor.py --quiet || true
