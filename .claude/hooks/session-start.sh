@@ -41,9 +41,17 @@ if [ -f "$REQ" ]; then
     if python3 -c 'import sys; sys.exit(0 if sys.prefix != sys.base_prefix else 1)' 2>/dev/null; then
       PIP_USER_FLAG=""
     fi
+    PW_INSTALL_OK=1
     # shellcheck disable=SC2086
     if ! python3 -m pip install --quiet $PIP_USER_FLAG --retries 1 --timeout 20 -r "$REQ" >&2 &&
        ! PIP_BREAK_SYSTEM_PACKAGES=1 python3 -m pip install --quiet $PIP_USER_FLAG --retries 1 --timeout 20 -r "$REQ" >&2; then
+      PW_INSTALL_OK=0
+    else
+      # pip 이 0 으로 끝나도 다른 사본이 가려서 고정 버전이 안 잡힐 수 있다: 같은 방법으로 다시 확인한다
+      PW_CUR=$(python3 -c 'import importlib.metadata as m; print(m.version("playwright"))' 2>/dev/null || true)
+      [ "$PW_PIN" = "$PW_CUR" ] || PW_INSTALL_OK=0
+    fi
+    if [ "$PW_INSTALL_OK" != 1 ]; then
       echo "playwright $PW_PIN 설치 실패 — python3 tools/doctor.py 로 원인을 확인하세요 (이 컨테이너에서는 다시 시도하지 않음)" >&2
       : > "$PW_STAMP" 2>/dev/null || true
     fi
