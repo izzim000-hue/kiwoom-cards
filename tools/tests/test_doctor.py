@@ -8,6 +8,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 TOOLS = Path(__file__).resolve().parents[1]
 REPO = TOOLS.parent
@@ -181,6 +182,31 @@ class Cli(TempDirCase):
         self.assertEqual(len([x for x in r.stdout.splitlines() if x.strip()]), 1)
         self.assertIn("실패", r.stdout)
         self.assertIn("NotoSansKR-Black.otf", r.stderr)
+
+
+class ProbeFailures(unittest.TestCase):
+    """멈추거나 사라진 ffmpeg/ffprobe 는 트레이스백이 아니라 FAIL 한 줄이어야 한다 (세션 시작 훅이 부른다)."""
+
+    def patched(self, exc):
+        return mock.patch("reelkit.doctor.subprocess.run", side_effect=exc)
+
+    def test_timeout_is_a_fail_check(self):
+        with mock.patch("reelkit.doctor.shutil.which", return_value="/usr/bin/ffmpeg"), \
+                self.patched(subprocess.TimeoutExpired(["ffmpeg"], 30)):
+            c = doctor.check_ffmpeg()
+        self.assertEqual(c.level, "fail")
+        self.assertIn("TimeoutExpired", c.detail)
+
+    def test_executable_vanishing_after_which_is_a_fail_check(self):
+        with mock.patch("reelkit.doctor.shutil.which", return_value="/usr/bin/ffprobe"), \
+                self.patched(FileNotFoundError("ffprobe")):
+            c = doctor.check_ffprobe()
+        self.assertEqual(c.level, "fail")
+
+    def test_run_passes_a_timeout(self):
+        with mock.patch("reelkit.doctor.subprocess.run") as run:
+            doctor._run(["ffmpeg", "-version"])
+        self.assertIsNotNone(run.call_args.kwargs.get("timeout"))
 
 
 if __name__ == "__main__":

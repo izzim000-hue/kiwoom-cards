@@ -122,8 +122,15 @@ def check_font_load(b, fonts_dir=constants.FONTS_DIR):
     return Check("font-load", "ok", "Noto Sans KR 400/700/900 로드됨, 시스템 폰트 대체 없음")
 
 
-def _run(cmd):
-    return subprocess.run(cmd, capture_output=True, text=True)
+PROBE_TIMEOUT = 30  # 초. 세션 시작 훅이 doctor 를 동기로 부르므로 멈춘 ffmpeg 가 세션을 붙잡지 않게 한다
+
+
+def _run(cmd, timeout=PROBE_TIMEOUT):
+    """cmd 를 실행한다. 시간 초과나 실행 오류(which 와 실행 사이의 경합 등)는 종료 코드 127 로 돌려준다."""
+    try:
+        return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    except (subprocess.TimeoutExpired, OSError) as e:
+        return subprocess.CompletedProcess(cmd, 127, "", f"{e.__class__.__name__}: {e}")
 
 
 def _first_text_line(text):
