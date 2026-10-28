@@ -1,4 +1,4 @@
-"""원고 -> 프레임 스크린샷 -> MP4 전체 흐름."""
+"""원고 -> 프레임 스크린샷 -> MP4 전체 흐름, 장면별 레이아웃 측정과 안전영역 미리보기."""
 import shutil
 import sys
 import tempfile
@@ -7,7 +7,7 @@ from pathlib import Path
 
 from . import browser, specprobe, timeline
 from .encode import encode_concat
-from .layout import LAYOUTS
+from .layout import LAYOUTS, MEASURE_JS, TAG_JS, LayoutWarning, evaluate_layout, overlay_html
 from .spec import check_legacy_markup, load_spec
 
 
@@ -27,9 +27,70 @@ def _read_spec(spec_path):
     return load_spec(spec_path)
 
 
-def render_reel(spec_path, out_path, *, layout="legacy", keep_work=False):
+def _check_layout_name(layout):
     if layout not in LAYOUTS:
         raise ValueError(f"알 수 없는 배치 '{layout}'. 사용 가능: {', '.join(LAYOUTS)}")
+
+
+def _open_checked_page(b, work):
+    page = browser.open_page(b, work)
+    problems = browser.font_problems(page)
+    if problems:
+        raise browser.FontLoadError(
+            "; ".join(problems)
+            + ". 시스템 폰트로 대체하지 않고 중단합니다. python3 tools/doctor.py 로 점검하세요")
+    return page
+
+
+def _scene_checks(page, layout, scene_number):
+    """장면의 최종 상태가 떠 있는 page 에서 경고를 모은다. (warnings, 측정값 또는 None) 을 돌려준다.
+
+    새 배치만 위치·줄 수를 측정한다. legacy 는 근거·계정명이 항상 아래쪽 UI 영역이라
+    측정하면 게시된 릴스가 전부 경고가 되므로 일부러 건너뛴다. 글꼴 대체 검사는 둘 다 한다.
+    """
+    warnings, measured = [], None
+    if layout == "new":
+        measured = page.evaluate(MEASURE_JS)
+        warnings.extend(evaluate_layout(measured, scene_number))
+    page.evaluate(TAG_JS[layout])
+    labels = page.evaluate(
+        "[...document.querySelectorAll('[data-rk]')].map(e=>[e.dataset.rk, e.textContent.trim().slice(0,30)])")
+    fonts = browser.platform_fonts(page, "[data-rk]")
+    seen = set()
+    for (label, text), used in zip(labels, fonts):
+        if label in seen:
+            continue
+        fallback = [f for f in used if not f.get("isCustomFont")]
+        if fallback:
+            seen.add(label)
+            warnings.append(LayoutWarning(scene_number, label, "FONT_FALLBACK",
+                                          str(fallback[0].get("familyName", "?")), text))
+    return warnings, measured
+
+
+def _tallest_scene(measures):
+    """측정값 중 위 라벨 윗끝에서 계정명 아랫끝까지가 가장 긴 장면 번호(1부터)."""
+    best, best_span = None, -1.0
+    for n, m in measures.items():
+        if not m or not m.get("acct"):
+            continue
+        tops = [e["t"] for e in [m.get("top")] + list(m.get("lines") or []) if e]
+        span = m["acct"]["b"] - (min(tops) if tops else m["acct"]["t"])
+        if span > best_span:
+            best, best_span = n, span
+    return best
+
+
+def _write_overlay(page, make_html, basis, st, prog, path):
+    page.evaluate("h=>{document.body.innerHTML=h}", make_html(st.top, st.lines, st.k, prog, basis))
+    page.evaluate("document.fonts.ready.then(()=>0)")
+    page.evaluate("h=>{document.getElementById('rk-root').insertAdjacentHTML('beforeend', h)}", overlay_html())
+    page.screenshot(path=str(path))
+    page.evaluate("()=>{const o=document.getElementById('rk-ov'); if(o) o.remove()}")
+
+
+def render_reel(spec_path, out_path, *, layout="legacy", keep_work=False, overlay_all=False):
+    _check_layout_name(layout)
     spec = _read_spec(spec_path)
     if layout == "legacy":
         check_legacy_markup(spec)  # 작업 폴더·Chromium 보다 먼저: 거부된 원고는 브라우저도 MP4도 만들지 않는다
@@ -44,23 +105,34 @@ def render_reel(spec_path, out_path, *, layout="legacy", keep_work=False):
     from playwright.sync_api import sync_playwright  # 미설치 시 ImportError 는 CLI 가 안내한다
 
     work = tempfile.mkdtemp(prefix="reelkit-")
+    warnings, overlays = [], []
     try:
         files = []
         with sync_playwright() as pw:
             b, used = browser.launch(pw)
             try:
-                page = browser.open_page(b, work)
-                problems = browser.font_problems(page)
-                if problems:
-                    raise browser.FontLoadError(
-                        "; ".join(problems)
-                        + ". 시스템 폰트로 대체하지 않고 중단합니다. python3 tools/doctor.py 로 점검하세요")
+                page = _open_checked_page(b, work)
+                finals, measures = {}, {}
                 for n, (st, prog) in enumerate(zip(states, progs)):
                     page.evaluate("h=>{document.body.innerHTML=h}", make_html(st.top, st.lines, st.k, prog, basis))
                     page.evaluate("document.fonts.ready.then(()=>0)")
                     f = f"{work}/v{n:03d}.png"
                     page.screenshot(path=f)
                     files.append((f, st.dur))
+                    if st.k == len(st.lines):  # 장면 최종 상태: 스크린샷 뒤에 측정하므로 라벨이 프레임에 남지 않는다
+                        scene = st.scene + 1
+                        ws, measured = _scene_checks(page, layout, scene)
+                        warnings.extend(ws)
+                        finals[scene] = (st, prog)
+                        measures[scene] = measured
+                if layout == "new":
+                    wanted = sorted(finals) if overlay_all else sorted(
+                        {1, _tallest_scene(measures) or 1} & set(finals))
+                    for scene in wanted:
+                        st, prog = finals[scene]
+                        path = out_path.with_name(out_path.stem + f".safe-s{scene:02d}.png")
+                        _write_overlay(page, make_html, basis, st, prog, path)
+                        overlays.append(path)
             finally:
                 b.close()
         encode_concat(files, total, out_path, work)
@@ -71,9 +143,38 @@ def render_reel(spec_path, out_path, *, layout="legacy", keep_work=False):
         else:
             shutil.rmtree(work, ignore_errors=True)
     return RenderResult(out=out_path, total=total, cover_ms=timeline.cover_ms(spec), launch=used,
-                        spec_checks=spec_checks)
+                        warnings=warnings, overlays=overlays, spec_checks=spec_checks)
 
 
 def check_layout(spec_path, layout="new"):
-    """RED 단계 자리표시자."""
-    return None
+    """MP4 를 만들지 않고 장면별 레이아웃 경고만 돌려준다 (Phase 2 가 초안 점검에 재사용)."""
+    _check_layout_name(layout)
+    spec = _read_spec(spec_path)
+    if layout == "legacy":
+        check_legacy_markup(spec)
+    basis = spec.get("basis", "")
+    states = timeline.build_states(spec)
+    progs = timeline.progress_values(states)
+    make_html = LAYOUTS[layout]
+
+    from playwright.sync_api import sync_playwright
+
+    work = tempfile.mkdtemp(prefix="reelkit-check-")
+    warnings = []
+    try:
+        with sync_playwright() as pw:
+            b, _used = browser.launch(pw)
+            try:
+                page = _open_checked_page(b, work)
+                for st, prog in zip(states, progs):
+                    if st.k != len(st.lines):
+                        continue
+                    page.evaluate("h=>{document.body.innerHTML=h}", make_html(st.top, st.lines, st.k, prog, basis))
+                    page.evaluate("document.fonts.ready.then(()=>0)")
+                    ws, _m = _scene_checks(page, layout, st.scene + 1)
+                    warnings.extend(ws)
+            finally:
+                b.close()
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+    return warnings

@@ -37,7 +37,7 @@ def kinds(ws):
 
 def pixel(path, x, y, t=None):
     cmd = ["ffmpeg", "-v", "error"] + (["-ss", str(t)] if t is not None else []) + [
-        "-i", str(path), "-frames:v", "1", "-vf", f"crop=1:1:{x}:{y}", "-f", "rawvideo", "-pix_fmt", "rgb24", "-"]
+        "-i", str(path), "-frames:v", "1", "-vf", f"format=rgb24,crop=1:1:{x}:{y}", "-f", "rawvideo", "-pix_fmt", "rgb24", "-"]
     out = subprocess.run(cmd, capture_output=True, check=True).stdout
     return tuple(out[:3])
 
