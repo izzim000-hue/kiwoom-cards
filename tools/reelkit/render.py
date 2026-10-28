@@ -72,3 +72,8 @@ def render_reel(spec_path, out_path, *, layout="legacy", keep_work=False):
             shutil.rmtree(work, ignore_errors=True)
     return RenderResult(out=out_path, total=total, cover_ms=timeline.cover_ms(spec), launch=used,
                         spec_checks=spec_checks)
+
+
+def check_layout(spec_path, layout="new"):
+    """RED 단계 자리표시자."""
+    return None

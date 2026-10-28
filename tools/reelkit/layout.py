@@ -21,5 +21,39 @@ def legacy_inner_html(top, lines, k, prog, basis):
 <div style="position:absolute;left:96px;right:96px;bottom:150px;display:flex;justify-content:space-between;font-size:30px;color:{MUT}"><span>{basis}</span><b>{ACCOUNT}</b></div></div>'''
 
 
-# Plan 03 에서 "new" 배치를 등록한다
 LAYOUTS = {"legacy": legacy_inner_html}
+
+# --- RED 단계 자리표시자 (다음 커밋에서 구현) ---
+from dataclasses import dataclass  # noqa: E402
+
+
+@dataclass
+class LayoutWarning:
+    scene: int
+    line: str
+    kind: str
+    value: str
+    text: str
+
+    def __str__(self):
+        return ""
+
+
+MEASURE_JS = ""
+TAG_JS = {}
+
+
+def markup_new(text):
+    return ""
+
+
+def new_inner_html(top, lines, k, prog, basis):
+    return ""
+
+
+def evaluate_layout(measure, scene):
+    return []
+
+
+def overlay_html():
+    return ""
