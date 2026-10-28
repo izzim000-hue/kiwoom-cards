@@ -2,17 +2,17 @@
 gsd_state_version: "1.0"
 current_phase: 1
 current_phase_name: 렌더 기반 고정 (Render Foundation)
-status: executing
-stopped_at: Completed 01-03-PLAN.md
-last_updated: "2026-10-28T21:09:49.970Z"
+status: verifying
+stopped_at: Completed 01-04-PLAN.md
+last_updated: "2026-10-28T21:23:08.765Z"
 last_activity: 2026-10-28
 last_activity_desc: Phase 1 execution started
-state_head: 7b63f7eb02f3d73e5c3d5bef7dee659774598910
+state_head: 9efe3b83e4b5eda2b7362a966fb5343770de9de9
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 4
-  completed_plans: 3
+  completed_plans: 4
   percent: 0
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-10-28)
 
 Phase: 1 (렌더 기반 고정 (Render Foundation)) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-28 — Phase 1 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -59,6 +59,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 1 P01 | 3 min | 3 tasks | 14 files |
 | Phase 1 P02 | 8 min | 2 tasks | 6 files |
 | Phase 1 P03 | 14 min | 2 tasks | 9 files |
+| Phase 1 P04 | 17 min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -75,6 +76,9 @@ Recent decisions affecting current work:
 - [Phase 1]: Plan 02: legacy 원문 삽입은 유지하고 <g></g><s></s> 네 태그 허용 목록을 렌더 전에 검사한다. reel.py 종료 코드는 0 정상 / 1 원고 오류 / 2 환경 오류
 - [Phase 1]: [01-03] reel.py exit codes: 3 = --strict with layout warnings, 4 = upload-spec FAIL (4 wins); MP4 is always written first
 - [Phase 1]: [01-03] Legacy layout skips position measurement (only FONT_FALLBACK runs); new layout measured in-browser, warnings reported never auto-fixed
+- [Phase 1]: ENV-02 accepted routes: pinned (hook installs playwright 1.63.0 into the user site) and no-install (system Playwright 1.64.1 + preinstalled Chromium via executable_path); doctor names the version and launch path
+- [Phase 1]: Golden SSIM threshold stays 0.98 (lowest measured 0.9923); manifest built only from committed MP4s and specs, never from renderer output
+- [Phase 1]: Golden treats a not-reproducible reel with an upload-spec FAIL as a failure (exit 1)
 
 ### Pending Todos
 
@@ -100,6 +104,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-28T21:09:49.936Z
-Stopped at: Completed 01-03-PLAN.md
+Last session: 2026-10-28T21:23:08.725Z
+Stopped at: Completed 01-04-PLAN.md
 Resume file: None
