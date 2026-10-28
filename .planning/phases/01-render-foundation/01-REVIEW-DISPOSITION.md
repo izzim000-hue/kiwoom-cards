@@ -5,27 +5,27 @@ titles: json
 findings:
   - id: WR-01
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "ffmpeg / runtime failures escape `reel.py` as tracebacks with exit code 1"
   - id: WR-02
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "`reel.py` import guard reports any ImportError as \"playwright not installed\""
   - id: WR-03
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "One failing reel aborts the entire golden run"
   - id: WR-04
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "`cover_ms` truncates a float and is off by 1 ms for 4-line and 10-line first scenes"
   - id: WR-05
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "SessionStart hook can run a slow failing pip install on every session"
   - id: WR-06
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "Doctor/hook subprocesses have no timeout"
   - id: IN-01
     severity: info
@@ -51,21 +51,21 @@ findings:
     severity: info
     disposition: open
     title: "Hook installs unpinned `@opengsd/gsd-core@latest` and `agent-browser`"
-open: 12
+open: 6
 total: 12
-recorded: 2026-10-28T21:28:13.840Z
+recorded: 2026-10-28T21:47:21.081Z
 ---
 
 # Phase 01: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| WR-01 | warning | open | - |
-| WR-02 | warning | open | - |
-| WR-03 | warning | open | - |
-| WR-04 | warning | open | - |
-| WR-05 | warning | open | - |
-| WR-06 | warning | open | - |
+| WR-01 | warning | fixed | 01-REVIEW-FIX.md |
+| WR-02 | warning | fixed | 01-REVIEW-FIX.md |
+| WR-03 | warning | fixed | 01-REVIEW-FIX.md |
+| WR-04 | warning | fixed | 01-REVIEW-FIX.md |
+| WR-05 | warning | fixed | 01-REVIEW-FIX.md |
+| WR-06 | warning | fixed | 01-REVIEW-FIX.md |
 | IN-01 | info | open | - |
 | IN-02 | info | open | - |
 | IN-03 | info | open | - |
