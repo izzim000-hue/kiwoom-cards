@@ -29,11 +29,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. 새로 만든 릴스에서 근거 표기와 계정명(@kiwoom.mentor)은 인스타그램 하단 UI 영역 밖에 36px 이상 글씨로 보인다. 안전영역 오버레이 미리보기 이미지로 이를 눈으로 확인할 수 있다.
   4. 줄 넘침, 줄바꿈 깨짐, 안전영역 침범이 있는 원고를 렌더하면 해당 장면과 줄을 가리키는 경고가 출력된다.
   5. 렌더된 MP4를 ffprobe 검사에 넣으면 1080×1920, 30fps, H.264 yuv420p, AAC, faststart 충족 여부가 항목별로 확인된다.
-**Plans**: 4 plans
+**Plans**: 1/4 plans executed
 
 Plans:
 **Wave 1**
-- [ ] 01-01-PLAN.md — 설치 확인·폰트 방식 결정 후, 고정 Playwright + 번들 폰트 + legacy 배치로 게시된 릴스 1편을 다시 만들어 기존 MP4와 대조 (tracer, wave 1)
+- [x] 01-01-PLAN.md — 설치 확인·폰트 방식 결정 후, 고정 Playwright + 번들 폰트 + legacy 배치로 게시된 릴스 1편을 다시 만들어 기존 MP4와 대조 (tracer, wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 01-02-PLAN.md — 원고 검사(legacy 마크업 허용 목록, 오류 시 종료 코드 1), 폰트 출처 README, .gitignore (wave 2)
@@ -99,7 +99,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. 렌더 기반 고정 (Render Foundation) | 0/TBD | Not started | - |
+| 1. 렌더 기반 고정 (Render Foundation) | 1/4 | In Progress | - |
 | 2. 초안 생성 (Draft Generation) | 0/TBD | Not started | - |
 | 3. 점검과 검수 묶음 (Compliance & Review Bundle) | 0/TBD | Not started | - |
 | 4. 자막 연출 + 선택 배경음 (Motion & BGM) | 0/TBD | Not started | - |
