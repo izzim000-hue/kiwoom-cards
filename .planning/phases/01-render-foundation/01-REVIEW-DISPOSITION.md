@@ -3,6 +3,58 @@ phase: 01
 review: 01-REVIEW.md
 titles: json
 findings:
+  - id: CR-01
+    severity: critical
+    disposition: open
+    title: "`golden.format_report` raises `KeyError` on the partial results the WR-03 fix now produces"
+  - id: WR-07
+    severity: warning
+    disposition: open
+    title: "golden reports render-time environment failures as reel FAILs (exit 1), contradicting its own exit-code contract"
+  - id: WR-08
+    severity: warning
+    disposition: open
+    title: "Failed pip install leaves no stamp when pip succeeds but the version stays wrong, so the hook reinstalls every session"
+  - id: WR-09
+    severity: warning
+    disposition: open
+    title: "golden pre-render file reads and the render import run outside the per-reel guard"
+  - id: IN-01
+    severity: info
+    disposition: open
+    title: "Legacy markup check does not require balanced tags — OPEN (unchanged)"
+  - id: IN-02
+    severity: info
+    disposition: open
+    title: "Spec loader reports a UTF-8 BOM as a JSON syntax error at line 1 column 1 — OPEN (unchanged)"
+  - id: IN-03
+    severity: info
+    disposition: open
+    title: "Chromium fallback path selection sorts lexicographically — OPEN (unchanged)"
+  - id: IN-04
+    severity: info
+    disposition: open
+    title: "`SMALL` font-size checks can never fire — OPEN (unchanged)"
+  - id: IN-05
+    severity: info
+    disposition: open
+    title: "Doctor's ffmpeg probe does not exercise the features the render uses — OPEN (unchanged)"
+  - id: IN-06
+    severity: info
+    disposition: open
+    title: "Hook installs unpinned `@opengsd/gsd-core@latest` and `agent-browser` under `set -e` — OPEN (unchanged)"
+  - id: IN-07
+    severity: info
+    disposition: open
+    title: "reel.py docstring and tools/README exit-code text omit the new exit-2 causes"
+  - id: IN-08
+    severity: info
+    disposition: open
+    title: "The failure stamp is a predictable file in a shared temp directory"
+  - id: IN-09
+    severity: info
+    disposition: open
+    title: "New tests do not cover the integrated failure path they were written for"
   - id: WR-01
     severity: warning
     disposition: fixed
@@ -27,51 +79,34 @@ findings:
     severity: warning
     disposition: fixed
     title: "Doctor/hook subprocesses have no timeout"
-  - id: IN-01
-    severity: info
-    disposition: open
-    title: "Legacy markup check does not require balanced tags"
-  - id: IN-02
-    severity: info
-    disposition: open
-    title: "Spec loader reports a UTF-8 BOM as a JSON syntax error at line 1 column 1"
-  - id: IN-03
-    severity: info
-    disposition: open
-    title: "Chromium fallback path selection sorts lexicographically"
-  - id: IN-04
-    severity: info
-    disposition: open
-    title: "`SMALL` font-size checks can never fire"
-  - id: IN-05
-    severity: info
-    disposition: open
-    title: "Doctor's ffmpeg probe does not exercise the features the render uses"
-  - id: IN-06
-    severity: info
-    disposition: open
-    title: "Hook installs unpinned `@opengsd/gsd-core@latest` and `agent-browser`"
-open: 6
-total: 12
-recorded: 2026-10-28T21:47:21.081Z
+open: 13
+total: 19
+recorded: 2026-10-28T21:52:01.264Z
 ---
 
 # Phase 01: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| WR-01 | warning | fixed | 01-REVIEW-FIX.md |
-| WR-02 | warning | fixed | 01-REVIEW-FIX.md |
-| WR-03 | warning | fixed | 01-REVIEW-FIX.md |
-| WR-04 | warning | fixed | 01-REVIEW-FIX.md |
-| WR-05 | warning | fixed | 01-REVIEW-FIX.md |
-| WR-06 | warning | fixed | 01-REVIEW-FIX.md |
+| CR-01 | critical | open | - |
+| WR-07 | warning | open | - |
+| WR-08 | warning | open | - |
+| WR-09 | warning | open | - |
 | IN-01 | info | open | - |
 | IN-02 | info | open | - |
 | IN-03 | info | open | - |
 | IN-04 | info | open | - |
 | IN-05 | info | open | - |
 | IN-06 | info | open | - |
+| IN-07 | info | open | - |
+| IN-08 | info | open | - |
+| IN-09 | info | open | - |
+| WR-01 | warning | fixed | 01-REVIEW-FIX.md (not in the current review) |
+| WR-02 | warning | fixed | 01-REVIEW-FIX.md (not in the current review) |
+| WR-03 | warning | fixed | 01-REVIEW-FIX.md (not in the current review) |
+| WR-04 | warning | fixed | 01-REVIEW-FIX.md (not in the current review) |
+| WR-05 | warning | fixed | 01-REVIEW-FIX.md (not in the current review) |
+| WR-06 | warning | fixed | 01-REVIEW-FIX.md (not in the current review) |
 
 Dispositions: `open` (recorded, not yet triaged), `fixed`, `skipped`, `deferred`.
 Set `deferred` by hand and put the reason in the Source cell; both are preserved. A `|` in the reason is kept as prose and escaped on the next run.
