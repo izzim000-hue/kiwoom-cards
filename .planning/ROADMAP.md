@@ -12,7 +12,7 @@
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: 렌더 기반 고정 (Render Foundation)** - 새 세션 재현성, 기존 릴스 회귀 기준, 안전영역·규격 검사
+- [x] **Phase 1: 렌더 기반 고정 (Render Foundation)** - 새 세션 재현성, 기존 릴스 회귀 기준, 안전영역·규격 검사 (completed 2026-10-28)
 - [ ] **Phase 2: 초안 생성 (Draft Generation)** - 주제·카드 원고 → 하우스 패턴 릴스 원고, 수치 등록부, 게시글 문구
 - [ ] **Phase 3: 점검과 검수 묶음 (Compliance & Review Bundle)** - 금소법 표현 점검, 한 번 요청으로 초안 묶음, 승인 게이트 (자동화 완성)
 - [ ] **Phase 4: 자막 연출 + 선택 배경음 (Motion & BGM)** - 줄 진입·장면 전환·카운트업 모션, 라이선스 확인된 배경음
@@ -29,7 +29,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. 새로 만든 릴스에서 근거 표기와 계정명(@kiwoom.mentor)은 인스타그램 하단 UI 영역 밖에 36px 이상 글씨로 보인다. 안전영역 오버레이 미리보기 이미지로 이를 눈으로 확인할 수 있다.
   4. 줄 넘침, 줄바꿈 깨짐, 안전영역 침범이 있는 원고를 렌더하면 해당 장면과 줄을 가리키는 경고가 출력된다.
   5. 렌더된 MP4를 ffprobe 검사에 넣으면 1080×1920, 30fps, H.264 yuv420p, AAC, faststart 충족 여부가 항목별로 확인된다.
-**Plans**: 4/4 plans executed
+**Plans**: 4/4 plans complete
 
 Plans:
 **Wave 1**
@@ -99,7 +99,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. 렌더 기반 고정 (Render Foundation) | 4/4 | In Progress | - |
+| 1. 렌더 기반 고정 (Render Foundation) | 4/4 | Complete    | 2026-10-28 |
 | 2. 초안 생성 (Draft Generation) | 0/TBD | Not started | - |
 | 3. 점검과 검수 묶음 (Compliance & Review Bundle) | 0/TBD | Not started | - |
 | 4. 자막 연출 + 선택 배경음 (Motion & BGM) | 0/TBD | Not started | - |

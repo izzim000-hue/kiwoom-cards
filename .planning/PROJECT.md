@@ -27,6 +27,10 @@
 - ✓ 카드뉴스 6장(1080×1350) PNG 생성 — existing (`tools/cards.py`)
 - ✓ 파일 규칙: `2026/reels/<게시일>-<영문-슬러그>.mp4`, 원고 `2026/reels/specs/*.json` — existing
 - ✓ 표지용 시점(cover_ms) 출력 — existing
+- ✓ 새 세션 사전 점검(`tools/doctor.py`) + Playwright 1.63.0 고정 + Noto Sans KR 벤더링으로 추가 설치 없이 렌더 — Phase 1 (ENV-01, ENV-02)
+- ✓ 기존 10편 회귀 시험(`tools/golden.py`, 프레임 SSIM ≥ 0.98) — Phase 1 (ENV-03)
+- ✓ 새 배치(`--layout new`): 근거 36px·계정명을 본문 아래로, 안전영역 경고·오버레이, Android 실기기 확인 — Phase 1 (ENV-04, ENV-05)
+- ✓ 업로드 규격 ffprobe 검사(1080×1920, 30fps, H.264 yuv420p, AAC, faststart) — Phase 1 (ENV-06)
 
 ### Active
 
@@ -77,6 +81,9 @@
 | 연출은 자막 모션 우선, 배경음은 사용자 제공 음원만, TTS는 v2 | 무음 시청 비중, 저작권·네트워크 제약 | — Pending |
 | 금소법 점검표를 자동 흐름 안에 포함 | 컴플라이언스 리스크를 제작 단계에서 차단 | — Pending |
 | 코드베이스 맵핑 생략 | 콘텐츠 저장소라 코드 구조 분석 이득이 작음 | — Pending |
+| 기존 10편은 legacy 배치 그대로, 새 릴스만 `--layout new` | 게시된 영상 보존, 새 편은 하단 UI 가림 해소 | ✓ Good (Phase 1, Android 실기기 확인) |
+| 폰트 원본 OTF 벤더링 + SHA256 고정 | 세션 이미지에 한글 브랜드 폰트가 없음 | ✓ Good (Phase 1) |
+| 회귀 기준 SSIM 0.98 고정 | 최저 실측 0.9923, 통과시키려고 낮추지 않음 | ✓ Good (Phase 1) |
 
 ## Evolution
 
@@ -96,4 +103,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-28 after initialization*
+*Last updated: 2026-10-28 after Phase 1*

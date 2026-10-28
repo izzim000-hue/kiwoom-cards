@@ -1,19 +1,19 @@
 ---
 gsd_state_version: "1.0"
-current_phase: 1
-current_phase_name: 렌더 기반 고정 (Render Foundation)
-status: verifying
-stopped_at: Completed 01-04-PLAN.md
-last_updated: "2026-10-28T21:23:08.765Z"
+current_phase: 2
+current_phase_name: 초안 생성 (Draft Generation)
+status: planning
+stopped_at: Phase 1 complete, ready to plan Phase 2
+last_updated: "2026-10-28T22:27:47.047Z"
 last_activity: 2026-10-28
-last_activity_desc: Phase 1 execution started
-state_head: 9efe3b83e4b5eda2b7362a966fb5343770de9de9
+last_activity_desc: Phase 1 complete, transitioned to Phase 2
+state_head: 83330e56c8ca56554a54988d6d8005cdafca9600
 progress:
   total_phases: 4
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 4
   completed_plans: 4
-  percent: 0
+  percent: 25
 ---
 
 # Project State
@@ -23,21 +23,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-28)
 
 **Core value:** 주제 하나를 넣으면 기존 브랜드 형식을 지킨, 검수 가능한 릴스 초안 묶음이 10분 안에 나온다. 단정 표현과 근거 없는 수치는 반드시 표시된다.
-**Current focus:** Phase 1 — 렌더 기반 고정 (Render Foundation)
+**Current focus:** Phase 2 — 초안 생성 (Draft Generation)
 
 ## Current Position
 
-Phase: 1 (렌더 기반 고정 (Render Foundation)) — EXECUTING
-Plan: 4 of 4
-Status: Phase complete — ready for verification
-Last activity: 2026-10-28 — Phase 1 execution started
+Phase: 2 — 초안 생성 (Draft Generation)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-28 — Phase 1 complete, transitioned to Phase 2
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [███░░░░░░░] 25%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 0
+- Total plans completed: 4
 - Average duration: -
 - Total execution time: 0.0 hours
 
@@ -45,7 +45,7 @@ Progress: [░░░░░░░░░░] 0%
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 1 | 4 | - | - |
 
 **Recent Trend:**
 - Last 5 plans: -
@@ -86,7 +86,8 @@ None yet.
 
 ### Blockers/Concerns
 
-- [Phase 1 전] 오너 입력: 안전영역 기준값, 기존 릴스 레이아웃 보존 여부, drafts/ 보존 방식(.gitignore)
+- [Phase 2] 새 릴스 초안은 `--layout new`로 렌더한다 (legacy는 기존 10편 재현용)
+- [Phase 1] 안전영역은 Android 실기기에서만 확인함. iOS 미확인
 - [Phase 2] 리서치 필요: 세법·연금 수치 출처(law.go.kr·nts.go.kr 접근 불가), 2026 한도·세액공제율·IRP 개정안 상태 미확인
 - [Phase 3 전] 오너 게이트: 금소법 광고 해당 여부·키움 브랜드 관계, 필수 고지 문구·위치·심의 절차, 표지 방식. 결정 전 기본값은 광고 후보로 간주하고 "미확인"으로 두는 것이다
 - [Phase 3] 리서치 최우선: 금소법 제21·22조·시행령·금융광고 가이드라인 원문 미확인. 규칙은 "초안 규칙"으로 표시한다
@@ -104,6 +105,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-28T21:23:08.725Z
-Stopped at: Completed 01-04-PLAN.md
+Last session: 2026-10-28T22:30:00Z
+Stopped at: Phase 1 complete, ready to plan Phase 2
 Resume file: None
