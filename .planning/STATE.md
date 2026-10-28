@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 1
 current_phase_name: 렌더 기반 고정 (Render Foundation)
 status: executing
-stopped_at: Completed 01-02-PLAN.md
-last_updated: "2026-10-28T21:00:39.577Z"
+stopped_at: Completed 01-03-PLAN.md
+last_updated: "2026-10-28T21:09:49.970Z"
 last_activity: 2026-10-28
 last_activity_desc: Phase 1 execution started
-state_head: fdb954ce3ca4438f6a4c262e0dab2b97b5eb104d
+state_head: 7b63f7eb02f3d73e5c3d5bef7dee659774598910
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 4
-  completed_plans: 2
+  completed_plans: 3
   percent: 0
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-28)
 ## Current Position
 
 Phase: 1 (렌더 기반 고정 (Render Foundation)) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-10-28 — Phase 1 execution started
 
@@ -58,6 +58,7 @@ Progress: [░░░░░░░░░░] 0%
 |------|----------|-------|-------|
 | Phase 1 P01 | 3 min | 3 tasks | 14 files |
 | Phase 1 P02 | 8 min | 2 tasks | 6 files |
+| Phase 1 P03 | 14 min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -72,6 +73,8 @@ Recent decisions affecting current work:
 - [Roadmap]: 모든 산출물은 `2026/reels/drafts/`에서 시작한다. 정식 경로로는 승인 후 promote로만 옮긴다
 - [Phase 1]: Plan 01: 폰트 원본(무수정) 벤더링 FONT_VARIANT=original, 14,494,040 B; legacy 배치 <s>=display:block이 shim 기본; 폰트 로드 실패 시 exit 2로 중단
 - [Phase 1]: Plan 02: legacy 원문 삽입은 유지하고 <g></g><s></s> 네 태그 허용 목록을 렌더 전에 검사한다. reel.py 종료 코드는 0 정상 / 1 원고 오류 / 2 환경 오류
+- [Phase 1]: [01-03] reel.py exit codes: 3 = --strict with layout warnings, 4 = upload-spec FAIL (4 wins); MP4 is always written first
+- [Phase 1]: [01-03] Legacy layout skips position measurement (only FONT_FALLBACK runs); new layout measured in-browser, warnings reported never auto-fixed
 
 ### Pending Todos
 
@@ -97,6 +100,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-28T21:00:39.545Z
-Stopped at: Completed 01-02-PLAN.md
+Last session: 2026-10-28T21:09:49.936Z
+Stopped at: Completed 01-03-PLAN.md
 Resume file: None
