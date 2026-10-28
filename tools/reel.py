@@ -1,6 +1,6 @@
 """키움멘토 자막형 릴스 생성기 (1080x1920, 목소리 없음, 무음 오디오 트랙 포함)
 사용: python3 tools/reel.py spec.json 출력.mp4
-종료 코드: 0 정상, 2 환경 오류(playwright 미설치, Chromium 실행 실패, 번들 폰트 로드 실패)
+종료 코드: 0 정상, 1 원고/입력 오류(파일 없음, JSON 오류, 허용되지 않은 마크업), 2 환경 오류(playwright 미설치, Chromium 실행 실패, 번들 폰트 로드 실패)
 spec.json 예시:
 {"basis": "단리 적금 예시 · 일반과세 15.4% 기준",
  "scenes": [
@@ -20,6 +20,7 @@ PLAYWRIGHT_MISSING = "playwright 미설치: python3 -m pip install --user -r too
 try:
     from reelkit.render import render_reel
     from reelkit.browser import BrowserLaunchError, FontLoadError
+    from reelkit.spec import SpecError
 except ImportError:
     print(PLAYWRIGHT_MISSING, file=sys.stderr)
     sys.exit(2)
@@ -32,6 +33,9 @@ def main(argv=None):
     args = ap.parse_args(argv)
     try:
         r = render_reel(args.spec, args.out, layout="legacy")
+    except SpecError as e:
+        print(f"원고 오류: {e}", file=sys.stderr)
+        return 1
     except ImportError:
         print(PLAYWRIGHT_MISSING, file=sys.stderr)
         return 2

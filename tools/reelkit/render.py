@@ -1,5 +1,4 @@
 """원고 -> 프레임 스크린샷 -> MP4 전체 흐름."""
-import json
 import shutil
 import sys
 import tempfile
@@ -9,6 +8,7 @@ from pathlib import Path
 from . import browser, timeline
 from .encode import encode_concat
 from .layout import LAYOUTS
+from .spec import check_legacy_markup, load_spec
 
 
 @dataclass
@@ -22,14 +22,16 @@ class RenderResult:
 
 
 def _read_spec(spec_path):
-    """원고 JSON 을 기존 reel.py 와 같은 방식으로 읽는다 (Plan 02 에서 spec.load_spec 으로 교체)."""
-    return json.loads(Path(spec_path).read_text(encoding="utf-8"))
+    """원고 JSON 을 읽고 형식을 검사한다. 형식 오류는 SpecError."""
+    return load_spec(spec_path)
 
 
 def render_reel(spec_path, out_path, *, layout="legacy", keep_work=False):
     if layout not in LAYOUTS:
         raise ValueError(f"알 수 없는 배치 '{layout}'. 사용 가능: {', '.join(LAYOUTS)}")
     spec = _read_spec(spec_path)
+    if layout == "legacy":
+        check_legacy_markup(spec)  # 작업 폴더·Chromium 보다 먼저: 거부된 원고는 브라우저도 MP4도 만들지 않는다
     basis = spec.get("basis", "")
     states = timeline.build_states(spec)
     total = timeline.total_duration(states)
