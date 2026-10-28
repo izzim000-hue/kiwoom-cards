@@ -2,189 +2,183 @@
 phase: 01-render-foundation
 reviewed: 2026-10-28T00:00:00Z
 depth: standard
-files_reviewed: 30
+files_reviewed: 11
 files_reviewed_list:
   - .claude/hooks/session-start.sh
-  - .gitignore
-  - tools/README.md
-  - tools/doctor.py
-  - tools/fonts/OFL.txt
-  - tools/fonts/README.md
-  - tools/golden.py
   - tools/reel.py
-  - tools/reelkit/__init__.py
-  - tools/reelkit/browser.py
-  - tools/reelkit/constants.py
   - tools/reelkit/doctor.py
   - tools/reelkit/encode.py
   - tools/reelkit/golden.py
-  - tools/reelkit/layout.py
-  - tools/reelkit/render.py
-  - tools/reelkit/spec.py
-  - tools/reelkit/specprobe.py
-  - tools/reelkit/templates/frame.html
   - tools/reelkit/timeline.py
-  - tools/requirements.txt
-  - tools/specprobe.py
-  - tools/tests/fixtures/bad-layout.json
-  - tools/tests/fixtures/ok-layout.json
-  - tools/tests/golden/manifest.json
   - tools/tests/test_doctor.py
-  - tools/tests/test_golden.py
-  - tools/tests/test_layout.py
-  - tools/tests/test_spec.py
-  - tools/tests/test_specprobe.py
+  - tools/tests/test_encode.py
+  - tools/tests/test_golden_failures.py
+  - tools/tests/test_session_hook.py
+  - tools/tests/test_timeline.py
 findings:
-  critical: 0
-  warning: 6
-  info: 6
-  total: 12
+  critical: 1
+  warning: 3
+  info: 9
+  total: 13
 status: issues_found
 ---
 
-# Phase 1: Code Review Report
+# Phase 1: Code Review Report (re-review after WR-01..WR-06 fixes)
 
 **Reviewed:** 2026-10-28
 **Depth:** standard
-**Files Reviewed:** 30
+**Files Reviewed:** 11
 **Status:** issues_found
 
 ## Summary
 
-Reviewed the render foundation (reelkit package, CLIs, session hook, tests). The 72 non-golden unit tests in `test_doctor`, `test_layout`, `test_spec` and `test_specprobe` pass. I did not re-run the golden render tests (3-4 min). I reproduced two failure paths by running `reel.py` directly.
+This is an incremental re-review of the files changed by the six WR fix commits (`bfeddc6`, `2ddd943`, `11c89e7`, `f836dc7`, `f0c63df`, `71625f4`). I read each file in full and ran the new and changed unit tests. They all pass: 43 tests across `test_timeline`, `test_session_hook`, `test_golden_failures`, `test_encode` and `test_doctor`. I did not re-run the golden render suite. No new security issues were found. All subprocess calls still use argument lists with no shell.
 
-No security vulnerabilities were found. Spec text is validated against a four-tag allow-list in legacy mode and fully escaped in new mode. Chromium blocks `http(s)` requests. All subprocess calls use argument lists with no shell.
+Five of the six warnings are resolved. WR-03 is only partly resolved. The new per-reel `except Exception` stops the run from aborting inside `check_reel`. But the report formatter then crashes with a `KeyError` on exactly the partial results this fix produces, so the user still gets a traceback and loses every reel's report (CR-01). Two smaller problems in the same area are WR-07 and WR-08.
 
-The main weaknesses are failure handling and the CLI exit-code contract:
+### Disposition of the earlier warnings
 
-- Failures from ffmpeg, ffprobe or Playwright at runtime escape as raw tracebacks. They exit with code 1, which the documentation reserves for "spec/input error".
-- One failing golden reel aborts the whole golden run.
-- The session hook can add a slow, failing pip attempt to every session start.
+| ID | Status | Notes |
+|----|--------|-------|
+| WR-01 | Resolved | `encode_concat` now writes `<out>.part.mp4`, replaces only on success, and raises `EncodeError` with ffmpeg's last stderr line. `reel.main` maps `EncodeError`, `OSError`, `SubprocessError` and Playwright `Error` to exit 2. `SpecError` is a `ValueError`, so it is caught first and a missing spec file stays exit 1. The tests cover these paths. Only the doc text is stale (IN-07). |
+| WR-02 | Resolved | The top-level import guard is gone. The `ImportError` handler re-raises unless `e.name` begins with `playwright`. |
+| WR-03 | Partially resolved (reopened) | `check_reel` no longer aborts the run, but `format_report` crashes on the partial `details` it returns (CR-01). Render-time environment errors are also reported as reel FAILs with exit 1 (WR-07). |
+| WR-04 | Resolved | `round()` is used in `timeline.cover_ms` and in the `low`/`high` check. The test covers first scenes of 1 to 12 lines, including 2950 and 8050. |
+| WR-05 | Resolved, with a residual note | The pin parser now matches `doctor.read_pin` (spaces, CRLF, trailing comment). The hook retries with `PIP_BREAK_SYSTEM_PACKAGES=1`, omits `--user` inside a venv, and writes a failure stamp. The tests use a fake python3 and cover these cases. A real pip, PEP 668 or offline run was not exercised (see IN-08). |
+| WR-06 | Resolved | `_run` has a 30 s timeout and turns `TimeoutExpired` and `OSError` into return code 127. `check_ffmpeg` and `check_ffprobe` report FAIL lines. |
 
-There are no structural findings (no `<structural_findings>` block was provided).
+## Critical Issues
+
+### CR-01: `golden.format_report` raises `KeyError` on the partial results the WR-03 fix now produces
+
+**File:** `tools/reelkit/golden.py:277-283` (producer: `golden.py:196-241`)
+**Issue:** `check_reel` now converts any mid-judging exception into a FAIL result. But `details` is filled step by step:
+- `frames` is set at line 197.
+- `boundaries` is set at line 208.
+- `cover_ms` is set at line 217.
+- `ssim_min` is set at line 228.
+- `spec` is set at line 234.
+
+`_fmt_line` then gates on `if "frames" in d:` and reads `d['boundaries']`, `d['cover_ms']`, `d['ssim_min']` and `d['spec']` unconditionally. If `stream_durations`, `boundaries` or `ssim_values` fails after `frames` is set, `_fmt_line` raises `KeyError`. I reproduced both of these:
+- `ReelResult("x", FAIL, {"frames": (1, 1)}, [...])` gives `KeyError('boundaries')`.
+- A result with everything but `ssim_min` gives `KeyError('ssim_min')`.
+
+`main` catches only `ValueError`, `OSError`, `SubprocessError` and `BrokenExecutor`. The result is a raw traceback, exit 1, and no per-reel report. The 10 other reels' results are lost, which is the outcome WR-03 asked to prevent. The new tests only call `check_reel`. None of them runs `format_report` or `_fmt_line` on the returned result, so the crash is not caught.
+
+**Fix:** Make `_fmt_line` tolerant of missing keys:
+```python
+parts = [f"{r.verdict:<4}  {r.stem}"]
+if "frames" in d:
+    parts.append(f"frames {d['frames'][0]}/{d['frames'][1]}")
+if "boundaries" in d:
+    mismatch = d.get("boundary_mismatch")
+    parts.append(f"경계 {d['boundaries']} 일치" if mismatch is None else f"경계 {mismatch}번째 불일치")
+if "cover_ms" in d:
+    parts.append(f"cover_ms {d['cover_ms']}")
+if "ssim_min" in d:
+    parts.append(f"SSIM 최소 {d['ssim_min']:.4f}")
+if "spec" in d:
+    parts.append(f"규격 {d['spec']}")
+```
+Add a test that feeds each partial `details` shape, or the `check_reel` result from the existing mocked failure tests, through `golden.format_report`.
 
 ## Warnings
 
-### WR-01: ffmpeg / runtime failures escape `reel.py` as tracebacks with exit code 1
+### WR-07: golden reports render-time environment failures as reel FAILs (exit 1), contradicting its own exit-code contract
 
-**File:** `tools/reel.py:45-55`, `tools/reelkit/encode.py:14-17`, `tools/reelkit/render.py:138`
-**Issue:** `encode_concat` runs `subprocess.run(..., check=True)` with `-loglevel error`. Only `SpecError`, `ImportError`, `FontLoadError` and `BrowserLaunchError` are caught in `main`.
+**File:** `tools/reelkit/golden.py:186-193, 317-320`
+**Issue:** `main` states that environment problems exit 2 and are kept apart from a reel FAIL (exit 1). `check_reel` catches `Exception` around `render_reel`, and that includes the environment failures `reel.py` classifies as exit 2:
+- `ImportError` for a missing playwright
+- `BrowserLaunchError`
+- `FontLoadError`
+- `EncodeError`
 
-I reproduced this by passing a directory as the output path. The result was a full `CalledProcessError` traceback and exit code 1. The README and docstring define exit 1 as "spec/input error" and 2 as "environment error", so Phase 2 automation will misclassify this failure.
+Each of the 10 reels is then reported as `FAIL 렌더 실패: ...` with exit 1. This produces ten separate, identical failures for one root cause, and a caller cannot tell "the environment is broken" from "the renderer regressed". The tools README documents golden exit 1 as "a reel failed".
 
-Other uncaught paths:
-- `ffmpeg` missing from PATH raises `FileNotFoundError`.
-- A Playwright `Error` or `TimeoutError` during `page.screenshot` or `evaluate` is also uncaught.
-- ffmpeg's stderr is swallowed unless the traceback is read.
+**Fix:** Let environment errors propagate. For example, catch `SpecError` and the genuine render regressions as FAIL, and re-raise `(BrowserLaunchError, FontLoadError, EncodeError, ImportError)`. Then add `EncodeError`, `BrowserLaunchError` and `FontLoadError` to the `except` tuple in `main` that returns 2. Alternatively, run `doctor` once up front. Add a test for it.
 
-There is also a data-loss angle. ffmpeg writes straight to the final `out_path` with `-y`. If encoding fails midway, any existing good MP4 at that path is replaced with a truncated file.
+### WR-08: Failed pip install leaves no stamp when pip succeeds but the version stays wrong, so the hook reinstalls every session
 
-**Fix:**
-```python
-# encode.py: capture stderr, write to a temp name, then rename
-tmp = Path(out).with_name(Path(out).name + ".part.mp4")
-r = subprocess.run([...], capture_output=True, text=True)
-if r.returncode != 0:
-    tmp.unlink(missing_ok=True)
-    raise EncodeError(r.stderr.strip().splitlines()[-1] if r.stderr else f"ffmpeg exit {r.returncode}")
-os.replace(tmp, out)
+**File:** `.claude/hooks/session-start.sh:38-50`
+**Issue:** The stamp is written only when both pip attempts return non-zero. If pip returns 0 but the pin still does not match the importable version, the `PW_PIN != PW_CUR` condition stays true. This happens when:
+- `--user` installs a copy that a system or venv `site-packages` copy shadows.
+- An unusual version string such as `1.63.0.post1` is normalized differently.
 
-# reel.py: add after the existing handlers
-except (EncodeError, FileNotFoundError, OSError) as e:   # and playwright Error
-    print(f"렌더 환경 오류: {e}", file=sys.stderr)
-    return 2
-```
+Every later session then repeats the pip run, up to ~20 s per run with network. The hook has no post-install check that the install worked.
 
-### WR-02: `reel.py` import guard reports any ImportError as "playwright not installed"
+**Fix:** After the install block, recompute `PW_CUR` with the same `importlib.metadata` call. If it still differs from `PW_PIN`, write the stamp and print the same stderr hint.
 
-**File:** `tools/reel.py:27-34`
-**Issue:** The `try` block imports `reelkit.render`, `reelkit.browser`, `reelkit.spec` and `reelkit.specprobe`. A genuine bug in this package (a bad relative import, a typo, a circular import) is caught by `except ImportError` and shown as "playwright 미설치". It then exits with code 2.
+### WR-09: golden pre-render file reads and the render import run outside the per-reel guard
 
-The render module imports Playwright lazily inside `render_reel`, so this top-level guard cannot actually detect a missing Playwright. It only masks real defects. The same applies to the `except ImportError` at line 50, though that one is correctly scoped to the Playwright import.
+**File:** `tools/reelkit/golden.py:171, 183, 186`
+**Issue:** `sha256(committed)`, `sha256(spec_path)` and `from .render import render_reel` run before the `try`. An `OSError` there, such as a permission error or a file removed mid-run, propagates out of the worker. `pool.map` re-raises it at the matching `zip` step and discards the results of the remaining reels. `main` then returns 2 with no per-reel report. This is the same class of issue as WR-03, but at the head of the function.
 
-**Fix:** Remove the top-level `try/except ImportError` and import the modules plainly. Keep the `except ImportError` around `render_reel`, and check `e.name` is `playwright` (or `startswith("playwright")`) before printing the install hint. Otherwise re-raise.
-
-### WR-03: One failing reel aborts the entire golden run
-
-**File:** `tools/reelkit/golden.py:196-201, 207, 227, 263-266, 310-314`
-**Issue:** `check_reel` wraps only `render_reel` in a try/except. The later calls (`frame_count`, `stream_durations`, `boundaries`, `ssim_values`) go through `_run(..., check=True)`, or `subprocess.run(check=True)` in `boundaries`. They can raise `CalledProcessError`, or `ValueError` when `int(out.strip())` hits empty output.
-
-In `run()`, `pool.map` re-raises a worker exception at the matching `zip` iteration. All other reels' results are lost and the exception propagates out of `run()`. `main` catches only `(ValueError, OSError)`. `CalledProcessError` is a `SubprocessError`, so it produces a raw traceback with exit 1. That exit code is indistinguishable from "a reel failed".
-
-A broken ffmpeg install therefore yields no per-reel report.
-
-**Fix:** Wrap the whole body of the `try:` in `check_reel` with `except Exception as e` (which also covers `subprocess.CalledProcessError`) and return a FAIL `ReelResult`. In `main`, also catch `subprocess.SubprocessError` and return 2.
-
-### WR-04: `cover_ms` truncates a float and is off by 1 ms for 4-line and 10-line first scenes
-
-**File:** `tools/reelkit/timeline.py:41`
-**Issue:** `int((LINE * (first - 1) + 0.4) * 1000)` truncates. I computed `first=4` as 2949.9999999999995, giving 2949 instead of 2950. `first=10` gives 8049 instead of 8050. The value is printed as the cover timestamp and recorded in the golden manifest. It is harmless today only because none of the 10 published reels has a first scene of 4 or 10 lines. A new reel would silently get a value that differs from the intended math. `golden.check_reel` has the same truncation pattern at line 216 (`int(LINE * (n - 1) * 1000)`).
-
-**Fix:** Use `round(...)`: `return round((LINE * (first - 1) + 0.4) * 1000)`. Apply the same change in `golden.py:216`. No existing manifest entry changes value, since all published values are exact.
-
-### WR-05: SessionStart hook can run a slow failing pip install on every session
-
-**File:** `.claude/hooks/session-start.sh:33-39`
-**Issue:** The hook re-runs `pip install --user` whenever the installed version differs from the pin. If the install can never succeed, every session start pays the failure cost (`--retries 1 --timeout 20`, so up to about a minute offline). Known failure modes:
-- A virtualenv: `--user` is rejected.
-- PEP 668 externally-managed Python: the hook fails, while the README and doctor advise `PIP_BREAK_SYSTEM_PACKAGES=1`, which the hook never applies.
-- No network.
-
-Also, the pin is parsed with `sed 's/^playwright==//p'`. This is stricter than `doctor.read_pin`, which accepts spaces around `==`, trailing comments and CRLF. A CRLF checkout or a `playwright == 1.63.0` line makes `PW_PIN` differ from `PW_CUR` forever, so pip reruns every session even when the right version is installed.
-
-**Fix:** Strip whitespace and CR from the pin: `PW_PIN=$(sed -n 's/^[[:space:]]*playwright[[:space:]]*==[[:space:]]*\([^[:space:]#;]*\).*/\1/p' "$REQ" | head -n 1)`. Optionally retry once with `PIP_BREAK_SYSTEM_PACKAGES=1`. Skip the install when the doctor already reported an acceptable fallback, or record a stamp file so a failed attempt is not repeated within the same container.
-
-### WR-06: Doctor/hook subprocesses have no timeout
-
-**File:** `tools/reelkit/doctor.py:125-126`
-**Issue:** `_run` calls `subprocess.run(cmd, capture_output=True, text=True)` with no `timeout`. The doctor runs synchronously from the SessionStart hook, so a hung `ffmpeg -encoders` or lavfi probe blocks session start indefinitely. `FileNotFoundError` and `OSError` from a race between `shutil.which` and execution are also unhandled in `check_ffmpeg` and `check_ffprobe`. They would crash the doctor with a traceback instead of reporting a FAIL line.
-
-**Fix:**
-```python
-def _run(cmd, timeout=30):
-    try:
-        return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
-    except (subprocess.TimeoutExpired, OSError) as e:
-        return subprocess.CompletedProcess(cmd, 127, "", f"{e.__class__.__name__}: {e}")
-```
+**Fix:** Wrap the pre-render checks in the same per-reel guard. Return a FAIL `ReelResult` for `OSError`, and keep any `ImportError` loud.
 
 ## Info
 
-### IN-01: Legacy markup check does not require balanced tags
+### Carried forward from the first review (out of fix scope; none were touched)
+
+`git diff 2d81d01..HEAD` shows no change to `spec.py`, `browser.py`, `layout.py`, or the doctor ffmpeg probe. `session-start.sh` changed only below line 24.
+
+### IN-01: Legacy markup check does not require balanced tags — OPEN (unchanged)
 
 **File:** `tools/reelkit/spec.py:49-65`
-**Issue:** `_check_text` only ensures every `<` starts one of the four tags. An unclosed `<g>` in `basis` leaves the outer `<span>` open, so `<b>@kiwoom.mentor</b>` nests inside it. That changes the `justify-content: space-between` layout silently, and `TAG_JS["legacy"]` then finds no account element. This is not exploitable, because the output stays inside the frame. Since legacy is limited to the published specs, the risk is low.
-**Fix:** Optionally count `<g>`/`</g>` and `<s>`/`</s>` and raise `SpecError` on imbalance.
+**Issue:** `_check_text` only ensures every `<` starts one of the four allowed tags. An unclosed `<g>` leaves the outer span open and silently changes the layout. This is not exploitable.
+**Fix:** Count `<g>`/`</g>` and `<s>`/`</s>` and raise `SpecError` on imbalance.
 
-### IN-02: Spec loader reports a UTF-8 BOM as a JSON syntax error at line 1 column 1
+### IN-02: Spec loader reports a UTF-8 BOM as a JSON syntax error at line 1 column 1 — OPEN (unchanged)
 
 **File:** `tools/reelkit/spec.py:19`
-**Issue:** `read_text(encoding="utf-8")` keeps a leading BOM, which many Windows editors write. `json.loads` then fails with "Unexpected UTF-8 BOM". The user only sees "줄 1 열 1".
+**Issue:** `read_text(encoding="utf-8")` keeps a leading BOM. The user sees only "줄 1 열 1".
 **Fix:** Read with `encoding="utf-8-sig"`.
 
-### IN-03: Chromium fallback path selection sorts lexicographically
+### IN-03: Chromium fallback path selection sorts lexicographically — OPEN (unchanged)
 
 **File:** `tools/reelkit/browser.py:41-42`
-**Issue:** `sorted(glob(...))[-1:]` picks the last path as a string. `chromium-999` sorts after `chromium-1243`. Only one revision is likely installed today.
-**Fix:** Sort by the integer revision, for example `key=lambda p: int(re.search(r"chromium-(\d+)", p).group(1))`.
+**Issue:** `sorted(glob(...))[-1:]` compares path strings, so `chromium-999` sorts after `chromium-1243`.
+**Fix:** Sort by the integer revision parsed from the path.
 
-### IN-04: `SMALL` font-size checks can never fire
+### IN-04: `SMALL` font-size checks can never fire — OPEN (unchanged)
 
-**File:** `tools/reelkit/layout.py:165-166, 170-171`
-**Issue:** The basis and account font sizes are set from the same constants (`BASIS_PX`, `ACCT_PX`) that the check compares against. `fs` is read from `getComputedStyle` of an element whose inline `font-size` is exactly that constant, so `fs < BASIS_PX` is unreachable. This is dead validation. It would only matter if the style were later changed independently.
-**Fix:** Keep it as a documented guard, or remove it. If kept, add a test that sets a smaller size and expects `SMALL`.
+**File:** `tools/reelkit/layout.py:165-171`
+**Issue:** The checked font size comes from the same constant that sets it, so the check is dead validation.
+**Fix:** Keep it as a documented guard with a test, or remove it.
 
-### IN-05: Doctor's ffmpeg probe does not exercise the features the render uses
+### IN-05: Doctor's ffmpeg probe does not exercise the features the render uses — OPEN (unchanged)
 
-**File:** `tools/reelkit/doctor.py:136-151`
-**Issue:** The one-frame test covers only `lavfi color` plus libx264. The renderer depends on the `concat` demuxer, the `anullsrc` source, the `fps` filter and `aac`. The aac check only greps the encoder list. The doctor can report OK while a render fails, as in WR-01.
-**Fix:** Add a tiny probe that mirrors the real encode: `-f lavfi -i anullsrc ... -c:a aac -t 0.1 -f null -`.
+**File:** `tools/reelkit/doctor.py:136-151` (now about line 141-160)
+**Issue:** The probe covers only `lavfi color` plus libx264. The render also depends on the `concat` demuxer, `anullsrc`, the `fps` filter and aac. WR-06 added timeouts but did not change what is probed.
+**Fix:** Add a probe that mirrors the real encode, such as `-f lavfi -i anullsrc=... -c:a aac -t 0.1 -f null -`.
 
-### IN-06: Hook installs unpinned `@opengsd/gsd-core@latest` and `agent-browser`
+### IN-06: Hook installs unpinned `@opengsd/gsd-core@latest` and `agent-browser` under `set -e` — OPEN (unchanged)
 
-**File:** `.claude/hooks/session-start.sh:12, 17`
-**Issue:** This is not part of Phase 1. It sits in the same file and runs arbitrary latest-tag npm code at session start, with `set -e` so a failed install aborts the new Phase 1 block as well. Playwright is pinned, but these are not.
-**Fix:** Pin versions, or append `|| true` with a stderr message so a failed npm install does not prevent the Playwright pin and doctor from running.
+**File:** `.claude/hooks/session-start.sh:4, 12, 17`
+**Issue:** A failed npm install aborts the whole hook under `set -euo pipefail`, so the Playwright pin and the doctor never run. The commit comment says the Phase 1 block "does not block the session", but that holds only if the earlier npm steps succeed.
+**Fix:** Pin the versions, or append `|| echo ... >&2` to each npm line.
+
+### New Info items from this re-review
+
+### IN-07: reel.py docstring and tools/README exit-code text omit the new exit-2 causes
+
+**File:** `tools/reel.py:60`, `tools/README.md:27`
+**Issue:** Exit 2 is documented as "playwright not installed, Chromium launch failure, bundled font load failure". It now also covers ffmpeg/encode failure, unwritable output, and Playwright runtime errors, which is the main point of WR-01. Phase 2 automation reads this contract.
+**Fix:** Add "ffmpeg/ffprobe 실행·인코딩 실패, 출력 파일 쓰기 실패" to both places.
+
+### IN-08: The failure stamp is a predictable file in a shared temp directory
+
+**File:** `.claude/hooks/session-start.sh:37, 48`
+**Issue:** `: > "$PW_STAMP"` writes `${TMPDIR:-/tmp}/.reelkit-pw-install-failed-<pin>`. If `/tmp` is shared and another user pre-creates this path as a symlink, the redirect truncates the link target. On a single-user cloud container the risk is negligible. The stamp also suppresses a retry for the rest of the container's life, even after the network comes back. The user must delete it by hand. The failure message does not name the stamp file.
+**Fix:** Keep the stamp under `$PROJ/.planning` or `$HOME/.cache` instead of `/tmp`, and mention the path in the message. Also create it only if it is not a symlink (`[ ! -L ]`).
+
+### IN-09: New tests do not cover the integrated failure path they were written for
+
+**File:** `tools/tests/test_golden_failures.py:20-40`, `tools/tests/test_encode.py:70-72`
+**Issue:**
+- `CheckReelErrors` asserts only on `check_reel`'s return value, never on `format_report`, which is how CR-01 slipped through.
+- `test_playwright_error_is_environment_error` imports `playwright` directly, so it errors rather than skips when Playwright is absent. That is the exact situation the reel.py exit-2 path covers.
+
+**Fix:** Pass the failing result through `golden.format_report` in each test. Use `self.skipTest` when `playwright` cannot be imported, or build a fake error class and patch `_playwright_error_types`.
 
 ---
 
