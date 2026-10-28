@@ -5,7 +5,7 @@ import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from . import browser, timeline
+from . import browser, specprobe, timeline
 from .encode import encode_concat
 from .layout import LAYOUTS
 from .spec import check_legacy_markup, load_spec
@@ -19,6 +19,7 @@ class RenderResult:
     launch: str
     warnings: list = field(default_factory=list)
     overlays: list = field(default_factory=list)
+    spec_checks: list = field(default_factory=list)
 
 
 def _read_spec(spec_path):
@@ -63,9 +64,11 @@ def render_reel(spec_path, out_path, *, layout="legacy", keep_work=False):
             finally:
                 b.close()
         encode_concat(files, total, out_path, work)
+        spec_checks = specprobe.probe(out_path)  # 읽기 전용: 파일을 다시 인코딩하거나 고치지 않는다
     finally:
         if keep_work:
             print(f"작업 폴더 보존: {work}", file=sys.stderr)
         else:
             shutil.rmtree(work, ignore_errors=True)
-    return RenderResult(out=out_path, total=total, cover_ms=timeline.cover_ms(spec), launch=used)
+    return RenderResult(out=out_path, total=total, cover_ms=timeline.cover_ms(spec), launch=used,
+                        spec_checks=spec_checks)

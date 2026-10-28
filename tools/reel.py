@@ -1,6 +1,8 @@
 """키움멘토 자막형 릴스 생성기 (1080x1920, 목소리 없음, 무음 오디오 트랙 포함)
 사용: python3 tools/reel.py spec.json 출력.mp4
-종료 코드: 0 정상, 1 원고/입력 오류(파일 없음, JSON 오류, 허용되지 않은 마크업), 2 환경 오류(playwright 미설치, Chromium 실행 실패, 번들 폰트 로드 실패)
+종료 코드: 0 정상, 1 원고/입력 오류(파일 없음, JSON 오류, 허용되지 않은 마크업), 2 환경 오류(playwright 미설치, Chromium 실행 실패, 번들 폰트 로드 실패),
+          4 출력 MP4 의 업로드 규격 FAIL (MP4 는 이미 써 둠)
+매 실행의 끝에 출력 MP4 를 규격 검사(9개 항목)해 항목별 결과를 stderr 로 낸다.
 spec.json 예시:
 {"basis": "단리 적금 예시 · 일반과세 15.4% 기준",
  "scenes": [
@@ -21,6 +23,7 @@ try:
     from reelkit.render import render_reel
     from reelkit.browser import BrowserLaunchError, FontLoadError
     from reelkit.spec import SpecError
+    from reelkit.specprobe import format_report
 except ImportError:
     print(PLAYWRIGHT_MISSING, file=sys.stderr)
     sys.exit(2)
@@ -43,6 +46,10 @@ def main(argv=None):
         print(f"렌더 환경 오류: {e}", file=sys.stderr)
         return 2
     print(f"duration={r.total:.1f}s cover_ms={r.cover_ms}")
+    for line in format_report(r.out, r.spec_checks):
+        print(line, file=sys.stderr)
+    if any(c.status == "FAIL" for c in r.spec_checks):
+        return 4
     return 0
 
 
