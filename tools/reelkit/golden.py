@@ -18,7 +18,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import specprobe, timeline
+from .browser import BrowserLaunchError, FontLoadError
 from .constants import FPS, HOLD, LINE, REPO_ROOT, TOOLS_DIR
+from .encode import EncodeError
 from .spec import load_spec
 
 GOLDEN_STEMS = (
@@ -42,6 +44,24 @@ SCENE_THRESHOLD = 0.003  # 장면 경계 검출 임계값 (측정: 정상 최소
 
 VERDICT_PASS, VERDICT_FAIL, VERDICT_NONE = "PASS", "FAIL", "재현 불가"
 NOT_REPRODUCIBLE_REASON = "원고 없음 (D-06)"
+
+
+class GoldenEnvError(RuntimeError):
+    """렌더 환경 문제(playwright 없음, Chromium 실행, 폰트 로드, 인코딩). 릴스 FAIL 이 아니라 종료 코드 2 다."""
+
+
+def _render_env_errors():
+    """reel.py 가 종료 코드 2 로 분류하는 렌더 오류 형식 (Playwright 가 없으면 그 형식은 뺀다)."""
+    types = (BrowserLaunchError, FontLoadError, EncodeError, OSError, subprocess.SubprocessError)
+    try:
+        from playwright.sync_api import Error
+    except ImportError:
+        return types
+    return (*types, Error)
+
+
+def _is_playwright_missing(e):
+    return (getattr(e, "name", None) or "").split(".")[0] == "playwright"
 
 
 def sha256(path):
@@ -189,13 +209,25 @@ def check_reel(entry):
     except OSError as e:
         return ReelResult(stem, VERDICT_FAIL, details, [f"원고를 읽지 못함: {e.__class__.__name__}: {e}"])
 
-    from .render import render_reel  # playwright 는 렌더할 때만 필요하다
+    try:
+        from .render import render_reel  # playwright 는 렌더할 때만 필요하다
+    except ImportError as e:
+        if not _is_playwright_missing(e):
+            raise  # 이 패키지 자체의 결함은 숨기지 않는다
+        raise GoldenEnvError("playwright 미설치: python3 -m pip install --user -r tools/requirements.txt") from e
 
     work = tempfile.mkdtemp(prefix="golden-")
     try:
         try:
             r = render_reel(spec_path, Path(work) / "out.mp4", layout="legacy")
-        except Exception as e:  # noqa: BLE001 - 렌더 실패도 한 릴스의 FAIL 로 보고한다
+        except ImportError as e:
+            if not _is_playwright_missing(e):
+                raise
+            raise GoldenEnvError("playwright 미설치: python3 -m pip install --user -r tools/requirements.txt") from e
+        except _render_env_errors() as e:
+            # 환경이 깨진 것이다: 같은 원인의 FAIL 열 줄로 쪼개지 않고 한 번에 종료 코드 2 로 알린다
+            raise GoldenEnvError(f"{e.__class__.__name__}: {e}") from e
+        except Exception as e:  # noqa: BLE001 - 원고 오류 등 렌더 회귀는 한 릴스의 FAIL 로 보고한다
             return ReelResult(stem, VERDICT_FAIL, details, [f"렌더 실패: {e.__class__.__name__}: {e}"])
         new = r.out
 
@@ -240,6 +272,8 @@ def check_reel(entry):
         details["spec"] = _spec_verdict(r.spec_checks)
         if details["spec"] == "FAIL":
             reasons.append("업로드 규격 FAIL: " + ", ".join(c.item for c in r.spec_checks if c.status == "FAIL"))
+    except GoldenEnvError:
+        raise
     except Exception as e:  # noqa: BLE001 - ffprobe/ffmpeg 실패, 빈 출력 등도 이 릴스 하나의 FAIL 로 보고한다
         reasons.append(f"판정 중 오류: {e.__class__.__name__}: {e}")
     finally:
@@ -324,6 +358,9 @@ def main(argv=None):
         results, extras = run(only=args.only, jobs=args.jobs)
     except ValueError as e:
         print(f"golden 오류: {e}", file=sys.stderr)
+        return 2
+    except GoldenEnvError as e:
+        print(f"golden 환경 오류: {e}", file=sys.stderr)
         return 2
     except (OSError, subprocess.SubprocessError, concurrent.futures.BrokenExecutor) as e:
         # 환경 문제(ffmpeg 없음, 워커 프로세스 비정상 종료 등)는 릴스 FAIL(1)과 구분해 2 로 낸다

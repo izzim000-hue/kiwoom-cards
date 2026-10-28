@@ -43,6 +43,63 @@ class CheckReelErrors(unittest.TestCase):
         self.assertTrue(any("ValueError" in r for r in res.reasons), res.reasons)
 
 
+class RenderEnvironmentErrors(unittest.TestCase):
+    """렌더 환경 오류는 릴스 FAIL(1)이 아니라 종료 코드 2 이고, 진짜 렌더 회귀는 FAIL 로 남는다 (WR-07)."""
+
+    def env_errors(self):
+        from reelkit.browser import BrowserLaunchError, FontLoadError
+        from reelkit.encode import EncodeError
+        return [ImportError("No module named 'playwright'", name="playwright"),
+                ImportError("no sync_api", name="playwright.sync_api"),
+                BrowserLaunchError("chromium missing"), FontLoadError("font hash"),
+                EncodeError("ffmpeg failed"), FileNotFoundError("ffmpeg"),
+                subprocess.CalledProcessError(1, ["ffmpeg"])]
+
+    def test_check_reel_raises_environment_error_for_each(self):
+        for exc in self.env_errors():
+            with self.subTest(exc=repr(exc)), \
+                    mock.patch("reelkit.render.render_reel", side_effect=exc):
+                with self.assertRaises(golden.GoldenEnvError):
+                    golden.check_reel(first_reproducible())
+
+    def test_main_exits_2_once_not_ten_fails(self):
+        import concurrent.futures
+        from reelkit.browser import BrowserLaunchError
+        out, err = io.StringIO(), io.StringIO()
+        with mock.patch.object(golden.concurrent.futures, "ProcessPoolExecutor",
+                               concurrent.futures.ThreadPoolExecutor), \
+                mock.patch("reelkit.render.render_reel", side_effect=BrowserLaunchError("no chromium")), \
+                redirect_stdout(out), redirect_stderr(err):
+            code = golden.main([])
+        self.assertEqual(code, 2, out.getvalue())
+        self.assertEqual(out.getvalue(), "")
+        self.assertIn("golden 환경 오류", err.getvalue())
+        self.assertIn("BrowserLaunchError", err.getvalue())
+
+    def test_spec_error_from_render_is_reel_fail(self):
+        from reelkit.spec import SpecError
+        with mock.patch("reelkit.render.render_reel", side_effect=SpecError("bad markup")):
+            res = golden.check_reel(first_reproducible())
+        self.assertEqual(res.verdict, golden.VERDICT_FAIL)
+        self.assertTrue(any("SpecError" in r for r in res.reasons), res.reasons)
+
+    def test_unrelated_import_error_in_render_is_reel_fail(self):
+        with mock.patch("reelkit.render.render_reel",
+                        side_effect=ImportError("cannot import name x", name="reelkit.layout")):
+            res = golden.check_reel(first_reproducible())
+        self.assertEqual(res.verdict, golden.VERDICT_FAIL)
+        self.assertTrue(any("ImportError" in r for r in res.reasons), res.reasons)
+
+    def test_unrelated_import_error_on_module_import_stays_loud(self):
+        with mock.patch.dict(sys.modules, {"reelkit.render": None}):
+            with self.assertRaises(ImportError):
+                golden.check_reel(first_reproducible())
+
+    def test_judging_failure_stays_reel_fail(self):
+        res = CheckReelErrors().check_with_prefix(stream_durations=mock.Mock(side_effect=ValueError("x")))
+        self.assertEqual(res.verdict, golden.VERDICT_FAIL)
+
+
 class PreRenderReadErrors(unittest.TestCase):
     """렌더 전 파일 읽기 오류는 그 릴스의 FAIL 이고 다른 릴스의 보고를 막지 않는다 (WR-09)."""
 

@@ -63,6 +63,7 @@ python3 tools/golden.py [--only STEM] [--jobs N]
 마지막 줄은 `golden: PASS 10/10 (재현 불가 1)`. 원고가 없는 `2026-10-19-savings-interest` 는 재현 불가로 보고하고 규격만 본다 (D-06).
 기준 목록에 없는 MP4 는 `기준 목록 밖` 으로 알리기만 하고 판정하지 않는다.
 기준은 `tools/tests/golden/manifest.json` (게시된 MP4 에서 한 번 뽑은 값)이다. 렌더러 출력으로 다시 만들지 않고, SSIM 기준을 낮춰서 통과시키지도 않는다.
+종료 코드: **0** 모두 통과 / **1** 릴스가 하나라도 FAIL (판정 불일치) / **2** 사용·환경 오류 (playwright 미설치, Chromium 실행 실패, 폰트 로드 실패, ffmpeg 인코딩 실패 등 — 릴스 FAIL 열 줄로 나누지 않고 한 줄로 알림).
 실패하면 폰트 로드나 마크업부터 조사한다. 게시된 `2026/reels/*.mp4` 와 `specs/*.json` 은 고치지 않는다.
 
 ## 시험
