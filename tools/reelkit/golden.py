@@ -234,6 +234,8 @@ def check_reel(entry):
         details["spec"] = _spec_verdict(r.spec_checks)
         if details["spec"] == "FAIL":
             reasons.append("업로드 규격 FAIL: " + ", ".join(c.item for c in r.spec_checks if c.status == "FAIL"))
+    except Exception as e:  # noqa: BLE001 - ffprobe/ffmpeg 실패, 빈 출력 등도 이 릴스 하나의 FAIL 로 보고한다
+        reasons.append(f"판정 중 오류: {e.__class__.__name__}: {e}")
     finally:
         shutil.rmtree(work, ignore_errors=True)
     return ReelResult(stem, VERDICT_FAIL if reasons else VERDICT_PASS, details, reasons)
@@ -309,8 +311,12 @@ def main(argv=None):
         return 0
     try:
         results, extras = run(only=args.only, jobs=args.jobs)
-    except (ValueError, OSError) as e:
+    except ValueError as e:
         print(f"golden 오류: {e}", file=sys.stderr)
+        return 2
+    except (OSError, subprocess.SubprocessError, concurrent.futures.BrokenExecutor) as e:
+        # 환경 문제(ffmpeg 없음, 워커 프로세스 비정상 종료 등)는 릴스 FAIL(1)과 구분해 2 로 낸다
+        print(f"golden 환경 오류: {e.__class__.__name__}: {e}", file=sys.stderr)
         return 2
     lines = format_report(results, extras)
     print("\n".join(lines))
