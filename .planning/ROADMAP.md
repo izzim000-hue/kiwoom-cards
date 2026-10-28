@@ -29,7 +29,20 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. 새로 만든 릴스에서 근거 표기와 계정명(@kiwoom.mentor)은 인스타그램 하단 UI 영역 밖에 36px 이상 글씨로 보인다. 안전영역 오버레이 미리보기 이미지로 이를 눈으로 확인할 수 있다.
   4. 줄 넘침, 줄바꿈 깨짐, 안전영역 침범이 있는 원고를 렌더하면 해당 장면과 줄을 가리키는 경고가 출력된다.
   5. 렌더된 MP4를 ffprobe 검사에 넣으면 1080×1920, 30fps, H.264 yuv420p, AAC, faststart 충족 여부가 항목별로 확인된다.
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+**Wave 1**
+- [ ] 01-01-PLAN.md — 설치 확인·폰트 방식 결정 후, 고정 Playwright + 번들 폰트 + legacy 배치로 게시된 릴스 1편을 다시 만들어 기존 MP4와 대조 (tracer, wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 01-02-PLAN.md — 원고 검사(legacy 마크업 허용 목록, 오류 시 종료 코드 1), 폰트 출처 README, .gitignore (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 01-03-PLAN.md — 업로드 규격 검사(specprobe)와 새 안전영역 배치·줄 넘침 경고·오버레이 미리보기·--strict (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 01-04-PLAN.md — 사전 점검(doctor)과 SessionStart 훅 자동 설치(설치 없이 렌더하는 경로 포함), 10편 golden 회귀(재현 불가 표기), tools README (wave 4)
 **UI hint**: no
 **Owner input**: 안전영역 기준값(실기기 비공개 업로드로 보정), 기존 릴스 레이아웃 보존 여부(권장: 게시된 기록이므로 그대로 두고 개선은 신규 릴스에만), drafts/ 보존 방식(.gitignore 작성 전 결정. 권장: drafts 전체 gitignore, 자동 커밋 금지)
 **Research flag**: 표준 패턴. 프레임 비교 허용 오차(평균 차이 또는 SSIM 임계값)만 짧은 spike로 정한다.
