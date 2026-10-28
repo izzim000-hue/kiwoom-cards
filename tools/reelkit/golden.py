@@ -274,12 +274,17 @@ def _fmt_line(r):
     if r.verdict == VERDICT_NONE:
         return f"재현 불가  {r.stem}  (원고 없음, D-06)  규격 {d.get('spec', '?')}"
     parts = [f"{r.verdict:<4}  {r.stem}"]
+    # 판정 도중 예외로 끊긴 결과는 details 가 일부만 채워져 있다: 있는 항목만 보고한다
     if "frames" in d:
         parts.append(f"frames {d['frames'][0]}/{d['frames'][1]}")
+    if "boundaries" in d:
         mismatch = d.get("boundary_mismatch")
         parts.append(f"경계 {d['boundaries']} 일치" if mismatch is None else f"경계 {mismatch}번째 불일치")
+    if "cover_ms" in d:
         parts.append(f"cover_ms {d['cover_ms']}")
+    if "ssim_min" in d:
         parts.append(f"SSIM 최소 {d['ssim_min']:.4f}")
+    if "spec" in d:
         parts.append(f"규격 {d['spec']}")
     return "  ".join(parts)
 
