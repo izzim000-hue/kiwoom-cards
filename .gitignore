@@ -1,0 +1,5 @@
+2026/reels/drafts/
+__pycache__/
+*.pyc
+tools/tests/_out/
+.render-work/

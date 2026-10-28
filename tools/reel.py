@@ -1,5 +1,13 @@
 """키움멘토 자막형 릴스 생성기 (1080x1920, 목소리 없음, 무음 오디오 트랙 포함)
-사용: python3 tools/reel.py spec.json 출력.mp4
+사용: python3 tools/reel.py spec.json 출력.mp4 [--layout {legacy,new}] [--strict] [--overlay-all]
+  --layout legacy  게시된 릴스 10편과 같은 배치(기본). 레이아웃 측정 경고 없음(글꼴 대체만 검사)
+  --layout new     근거(36px, 본문 바로 아래)·계정명을 안전영역 안에 쌓는 새 배치. 줄바꿈·넘침·안전영역 침범을
+                   `scene N line M: KIND (값) "글자"` 로 stderr 에 내고, 안전영역 미리보기 `<출력>.safe-sNN.png` 를 쓴다
+                   (1장면 + 가장 높은 장면, --overlay-all 이면 모든 장면). 글자는 줄이거나 자르지 않고 원고 그대로 그린다
+  --strict         경고가 있으면 MP4 를 쓴 뒤 종료 코드 3
+종료 코드: 0 정상, 1 원고/입력 오류(파일 없음, JSON 오류, 허용되지 않은 마크업), 2 환경 오류(playwright 미설치, Chromium 실행 실패, 번들 폰트 로드 실패),
+          3 --strict 인데 레이아웃 경고가 있음, 4 출력 MP4 의 업로드 규격 FAIL (3 과 4 모두 MP4 는 이미 써 둠, 4 가 우선)
+매 실행의 끝에 출력 MP4 를 규격 검사(9개 항목)해 항목별 결과를 stderr 로 낸다.
 spec.json 예시:
 {"basis": "단리 적금 예시 · 일반과세 15.4% 기준",
  "scenes": [
@@ -8,32 +16,72 @@ spec.json 예시:
    {"top": "", "lines": ["저장해두고", "내 적금도 계산해 보세요", "<s>프로필 링크 · 1분 노후자금 계산기</s>"]}]}
 <g>..</g> = 금색 강조, <s>..</s> = 작은 회색 글씨. 한 줄 0.85초씩 나타나고 장면 끝에서 1.9초 멈춤.
 """
-import json, sys, subprocess, tempfile, os
-from playwright.sync_api import sync_playwright
-SAGE="#DEE9E0"; DG="#2F4F3E"; GOLD="#B08D46"; LINE=0.85; HOLD=1.9
-def frame(top,lines,k,prog,basis):
-    out=""
-    for i,l in enumerate(lines):
-        l=l.replace("<g>",f'<span style="color:{GOLD}">').replace("</g>","</span>").replace("<s>",'<span style="font-size:52px;font-weight:700;color:#5B6E62">').replace("</s>","</span>")
-        out+=f'<div style="opacity:{1 if i<k else 0}">{l}</div>'
-    return f'''<body style="margin:0"><div style="width:1080px;height:1920px;background:{SAGE};display:flex;flex-direction:column;justify-content:center;padding:0 96px;gap:40px;font-family:'Noto Sans CJK KR',sans-serif;box-sizing:border-box;position:relative">
-<div style="position:absolute;left:0;top:0;height:14px;width:{prog*100:.1f}%;background:{DG}"></div>
-<div style="font-size:50px;font-weight:700;color:{DG};min-height:60px">{top}</div>
-<div style="font-size:100px;font-weight:900;line-height:1.3;letter-spacing:-.03em;color:{DG};display:flex;flex-direction:column">{out}</div>
-<div style="position:absolute;left:96px;right:96px;bottom:150px;display:flex;justify-content:space-between;font-size:30px;color:#5B6E62"><span>{basis}</span><b>@kiwoom.mentor</b></div></div></body>'''
-def main(spec,out):
-    s=json.load(open(spec,encoding="utf-8")); seq=[]
-    for sc in s["scenes"]:
-        for k in range(1,len(sc["lines"])+1): seq.append((sc["top"],sc["lines"],k,LINE if k<len(sc["lines"]) else HOLD))
-    total=sum(x[3] for x in seq); t=0; d=tempfile.mkdtemp(); files=[]
-    with sync_playwright() as pw:
-        b=pw.chromium.launch(); pg=b.new_page(viewport={"width":1080,"height":1920})
-        for n,(top,lines,k,dur) in enumerate(seq):
-            t+=dur; pg.set_content(frame(top,lines,k,t/total,s.get("basis",""))); pg.wait_for_timeout(60)
-            f=f"{d}/v{n:03d}.png"; pg.screenshot(path=f); files.append((f,dur))
-        b.close()
-    open(f"{d}/seq.txt","w").write("".join(f"file '{f}'\nduration {du}\n" for f,du in files)+f"file '{files[-1][0]}'\n")
-    subprocess.run(["ffmpeg","-loglevel","error","-y","-f","concat","-safe","0","-i",f"{d}/seq.txt","-f","lavfi","-i","anullsrc=r=44100:cl=stereo",
-      "-vf","fps=30,format=yuv420p","-c:v","libx264","-crf","20","-c:a","aac","-shortest","-t",f"{total:.2f}","-movflags","+faststart",out],check=True)
-    first=len(s["scenes"][0]["lines"]); print(f"duration={total:.1f}s cover_ms={int((LINE*(first-1)+0.4)*1000)}")
-if __name__=="__main__": main(sys.argv[1],sys.argv[2])
+import argparse
+import os
+import subprocess
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+PLAYWRIGHT_MISSING = "playwright 미설치: python3 -m pip install --user -r tools/requirements.txt"
+
+from reelkit.browser import BrowserLaunchError, FontLoadError  # noqa: E402
+from reelkit.encode import EncodeError  # noqa: E402
+from reelkit.render import render_reel  # noqa: E402
+from reelkit.spec import SpecError  # noqa: E402
+from reelkit.specprobe import format_report  # noqa: E402
+
+
+def _playwright_error_types():
+    """렌더 중 Playwright 가 던지는 오류 형식. Playwright 가 없으면 빈 튜플(아무것도 잡지 않음)."""
+    try:
+        from playwright.sync_api import Error
+    except ImportError:
+        return ()
+    return (Error,)
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description="자막형 릴스 MP4 생성")
+    ap.add_argument("spec", help="원고 JSON 경로")
+    ap.add_argument("out", help="출력 MP4 경로")
+    ap.add_argument("--layout", choices=["legacy", "new"], default="legacy", help="프레임 배치 (기본 legacy)")
+    ap.add_argument("--strict", action="store_true", help="레이아웃 경고가 있으면 종료 코드 3")
+    ap.add_argument("--overlay-all", action="store_true", help="모든 장면의 안전영역 미리보기 PNG 를 쓴다 (new 배치)")
+    args = ap.parse_args(argv)
+    try:
+        r = render_reel(args.spec, args.out, layout=args.layout, overlay_all=args.overlay_all)
+    except SpecError as e:
+        print(f"원고 오류: {e}", file=sys.stderr)
+        return 1
+    except ImportError as e:
+        # 이 패키지 자체의 결함(잘못된 import 등)을 "playwright 미설치" 로 가리지 않는다
+        if (getattr(e, "name", None) or "").split(".")[0] != "playwright":
+            raise
+        print(PLAYWRIGHT_MISSING, file=sys.stderr)
+        return 2
+    except (FontLoadError, BrowserLaunchError, EncodeError) as e:
+        print(f"렌더 환경 오류: {e}", file=sys.stderr)
+        return 2
+    except (*_playwright_error_types(), OSError, subprocess.SubprocessError) as e:
+        # ffmpeg/ffprobe 실행, 파일 쓰기, Chromium 실행 중 오류는 원고 오류(1)가 아니라 환경 오류(2)
+        print(f"렌더 환경 오류: {e.__class__.__name__}: {e}", file=sys.stderr)
+        return 2
+    print(f"duration={r.total:.1f}s cover_ms={r.cover_ms}")
+    for w in r.warnings:
+        print(str(w), file=sys.stderr)
+    if r.warnings:
+        print(f"레이아웃 경고 {len(r.warnings)}건", file=sys.stderr)
+    for path in r.overlays:
+        print(f"안전영역 미리보기: {path}", file=sys.stderr)
+    for line in format_report(r.out, r.spec_checks):
+        print(line, file=sys.stderr)
+    if any(c.status == "FAIL" for c in r.spec_checks):
+        return 4
+    if args.strict and r.warnings:
+        return 3
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

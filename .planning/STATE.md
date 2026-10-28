@@ -2,17 +2,17 @@
 gsd_state_version: "1.0"
 current_phase: 1
 current_phase_name: 렌더 기반 고정 (Render Foundation)
-status: executing
-stopped_at: Phase 1 context gathered
-last_updated: "2026-10-28T20:32:35.465Z"
+status: verifying
+stopped_at: Completed 01-04-PLAN.md
+last_updated: "2026-10-28T21:23:08.765Z"
 last_activity: 2026-10-28
-last_activity_desc: Roadmap created (4 phases, 31/31 v1 requirements mapped)
-state_head: 0d6da0bfe2a648548f84f63b0b7c1ff161a9837a
+last_activity_desc: Phase 1 execution started
+state_head: 9efe3b83e4b5eda2b7362a966fb5343770de9de9
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 4
-  completed_plans: 0
+  completed_plans: 4
   percent: 0
 ---
 
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-10-28)
 
 ## Current Position
 
-Phase: 1 (렌더 기반 고정 (Render Foundation)) — READY TO EXECUTE
-Plan: 0 of TBD in current phase
-Status: Ready to execute
-Last activity: 2026-10-28 — Roadmap created (4 phases, 31/31 v1 requirements mapped)
+Phase: 1 (렌더 기반 고정 (Render Foundation)) — EXECUTING
+Plan: 4 of 4
+Status: Phase complete — ready for verification
+Last activity: 2026-10-28 — Phase 1 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -52,6 +52,14 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: -
 
 *Updated after each plan completion*
+**Per-Plan Metrics:**
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 1 P01 | 3 min | 3 tasks | 14 files |
+| Phase 1 P02 | 8 min | 2 tasks | 6 files |
+| Phase 1 P03 | 14 min | 2 tasks | 9 files |
+| Phase 1 P04 | 17 min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -64,6 +72,13 @@ Recent decisions affecting current work:
 - [Roadmap]: Playwright 1.63.0 고정과 Chromium 경로 폴백을 함께 쓴다. Noto Sans KR 서브셋은 벤더링하고, 템플릿은 goto(file://)로 열어 폰트 로드를 확인한다 (research SUMMARY)
 - [Roadmap]: 회귀 비교 기준. 길이·장면 경계·cover_ms는 정확히 일치해야 하고, 디코드 프레임은 허용 오차로 비교한다
 - [Roadmap]: 모든 산출물은 `2026/reels/drafts/`에서 시작한다. 정식 경로로는 승인 후 promote로만 옮긴다
+- [Phase 1]: Plan 01: 폰트 원본(무수정) 벤더링 FONT_VARIANT=original, 14,494,040 B; legacy 배치 <s>=display:block이 shim 기본; 폰트 로드 실패 시 exit 2로 중단
+- [Phase 1]: Plan 02: legacy 원문 삽입은 유지하고 <g></g><s></s> 네 태그 허용 목록을 렌더 전에 검사한다. reel.py 종료 코드는 0 정상 / 1 원고 오류 / 2 환경 오류
+- [Phase 1]: [01-03] reel.py exit codes: 3 = --strict with layout warnings, 4 = upload-spec FAIL (4 wins); MP4 is always written first
+- [Phase 1]: [01-03] Legacy layout skips position measurement (only FONT_FALLBACK runs); new layout measured in-browser, warnings reported never auto-fixed
+- [Phase 1]: ENV-02 accepted routes: pinned (hook installs playwright 1.63.0 into the user site) and no-install (system Playwright 1.64.1 + preinstalled Chromium via executable_path); doctor names the version and launch path
+- [Phase 1]: Golden SSIM threshold stays 0.98 (lowest measured 0.9923); manifest built only from committed MP4s and specs, never from renderer output
+- [Phase 1]: Golden treats a not-reproducible reel with an upload-spec FAIL as a failure (exit 1)
 
 ### Pending Todos
 
@@ -89,6 +104,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-28T12:41:04.864Z
-Stopped at: Phase 1 context gathered
-Resume file: .planning/phases/01-render-foundation/01-CONTEXT.md
+Last session: 2026-10-28T21:23:08.725Z
+Stopped at: Completed 01-04-PLAN.md
+Resume file: None
