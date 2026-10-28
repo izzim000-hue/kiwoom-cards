@@ -9,7 +9,7 @@
 
 - [ ] **ENV-01**: 사용자는 새 클라우드 세션에서 사전 점검 명령 하나로 Chromium 실행·한글 폰트 로드·ffmpeg 사용 가능 여부를 확인하고, 실패 시 원인 메시지를 받는다
 - [ ] **ENV-02**: 사용자는 새 세션에서 추가 설치 없이(고정된 Playwright 버전, 저장소에 포함된 OFL 한글 폰트) 릴스를 렌더할 수 있다
-- [ ] **ENV-03**: 사용자는 기존 릴스 원고 10편을 새 렌더러로 다시 만들었을 때 길이·장면 경계·표지 시점이 기존과 같고 화면이 허용 오차 안에서 일치함을 회귀 시험으로 확인할 수 있다 (원고 없는 MP4 2편은 "재현 불가"로 표기)
+- [ ] **ENV-03**: 사용자는 기존 릴스 원고 10편을 새 렌더러로 다시 만들었을 때 길이·장면 경계·표지 시점이 기존과 같고 화면이 허용 오차 안에서 일치함을 회귀 시험으로 확인할 수 있다 (원고 없는 MP4 1편 `2026-10-19-savings-interest`는 "재현 불가"로 표기)
 - [ ] **ENV-04**: 새로 만드는 릴스에서 근거 표기와 계정명은 인스타그램 하단 UI 영역 밖에, 휴대폰에서 읽을 수 있는 크기(36px 이상)로 표시된다
 - [ ] **ENV-05**: 사용자는 줄 넘침·줄바꿈 깨짐·안전영역 침범이 있으면 렌더 시 경고를 받고, 안전영역 오버레이 미리보기로 확인할 수 있다
 - [ ] **ENV-06**: 렌더 결과 MP4는 Instagram 업로드 규격(1080×1920, 30fps, H.264 yuv420p, AAC, faststart)을 만족하고 ffprobe 검사로 확인된다
@@ -90,13 +90,43 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (roadmap 작성 시 채움) | | |
+| ENV-01 | Phase 1 | Pending |
+| ENV-02 | Phase 1 | Pending |
+| ENV-03 | Phase 1 | Pending |
+| ENV-04 | Phase 1 | Pending |
+| ENV-05 | Phase 1 | Pending |
+| ENV-06 | Phase 1 | Pending |
+| DRAFT-01 | Phase 2 | Pending |
+| DRAFT-02 | Phase 2 | Pending |
+| DRAFT-03 | Phase 2 | Pending |
+| DRAFT-04 | Phase 2 | Pending |
+| DRAFT-05 | Phase 2 | Pending |
+| DRAFT-06 | Phase 2 | Pending |
+| COMP-01 | Phase 3 | Pending |
+| COMP-02 | Phase 3 | Pending |
+| COMP-03 | Phase 3 | Pending |
+| COMP-04 | Phase 3 | Pending |
+| COMP-05 | Phase 3 | Pending |
+| COMP-06 | Phase 3 | Pending |
+| BNDL-01 | Phase 3 | Pending |
+| BNDL-02 | Phase 3 | Pending |
+| BNDL-03 | Phase 3 | Pending |
+| BNDL-04 | Phase 3 | Pending |
+| BNDL-05 | Phase 3 | Pending |
+| BNDL-06 | Phase 3 | Pending |
+| BNDL-07 | Phase 3 | Pending |
+| MOTN-01 | Phase 4 | Pending |
+| MOTN-02 | Phase 4 | Pending |
+| MOTN-03 | Phase 4 | Pending |
+| MOTN-04 | Phase 4 | Pending |
+| MOTN-05 | Phase 4 | Pending |
+| MOTN-06 | Phase 4 | Pending |
 
 **Coverage:**
 - v1 requirements: 31 total
-- Mapped to phases: 0
-- Unmapped: 31 ⚠️
+- Mapped to phases: 31
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-10-28*
-*Last updated: 2026-10-28 after initial definition*
+*Last updated: 2026-10-28 after roadmap creation (traceability filled)*
