@@ -12,12 +12,15 @@ v2 원고: `python3 tools/draft.py expand` 가 쓰는 초안. v1 필드에 아�
   figures      [{where, text, ref, sources[...]...}] 숫자마다 출처를 적은 장부
   basis_items  [{fig, ...}] 쓰인 등록부 항목
   motion       문자열 또는 객체 (의미는 4단계에서 정의)
+  layout       "note" (노트 형식). 있으면 note 블록(note.validate_note 규칙)이 필요하고, note 가 있으면 layout 도 있어야 한다
 확장되지 않은 소스(`{{` 또는 `}}` 가 남은 원고)는 렌더하지 않도록 거부한다.
 legacy 배치는 원고 문자열을 HTML 에 그대로 끼워 넣으므로(게시된 영상과 출력을 같게 유지하려는 선택),
 렌더 전에 `<` 로 시작하는 모든 곳이 허용된 네 태그인지 검사한다 (research Pitfall 8).
 """
 import json
 from pathlib import Path
+
+from . import note as note_mod
 
 ALLOWED_TAGS = ("<g>", "</g>", "<s>", "</s>")
 
@@ -119,6 +122,15 @@ def _check_optional(spec):
                 raise SpecError(f"basis_items[{i}].fig: 문자열이 있는 객체여야 함")
     if "motion" in spec and not isinstance(spec["motion"], (str, dict)):
         raise SpecError("motion: 문자열 또는 객체여야 함")
+    if "layout" in spec and spec["layout"] != note_mod.LAYOUT_NAME:
+        raise SpecError(f"layout: '{note_mod.LAYOUT_NAME}' 만 쓸 수 있음 — {spec['layout']!r}")
+    if ("note" in spec) != ("layout" in spec):
+        raise SpecError(f"layout '{note_mod.LAYOUT_NAME}' 과 note 블록은 함께 있어야 함")
+    if "note" in spec:
+        try:
+            note_mod.validate_note(spec["note"])
+        except note_mod.NoteError as e:
+            raise SpecError(str(e)) from None
 
 
 def _check_unexpanded(spec):
@@ -132,6 +144,10 @@ def _check_unexpanded(spec):
     basis = spec.get("basis", "")
     if "{{" in basis or "}}" in basis:
         raise SpecError(f"basis: {hint}")
+    if isinstance(spec.get("note"), dict):
+        for text in note_mod.strings(spec["note"]):
+            if "{{" in text or "}}" in text:
+                raise SpecError(f"note: {hint}")
 
 
 def _check_text(text, where):

@@ -133,6 +133,8 @@ def _motion_line(ctx):
     if ctx.get("motion") == "basic":
         return (f"- 모션: basic — 줄 진입·장면 전환 {motion.CROSS:g}초 · 카운트업 {ctx.get('countups') or 0}곳 "
                 "(중간 숫자는 연출, 최종값만 장부 값)")
+    if ctx.get("motion") == "note":
+        return "- 배치: 노트 형식(스프링 노트 + 손글씨 필기 연출) — 화면 마지막은 노트 완성본, 장면 표의 CTA 장면은 점검용이라 화면에 없음"
     return "- 모션: none (기존 형식)"
 
 

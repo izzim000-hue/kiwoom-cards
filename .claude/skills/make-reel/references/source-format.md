@@ -5,7 +5,7 @@
 
 ## spec.src.json
 
-최상위 키는 `series`, `basis`, `inputs`, `derive`, `scenes`, `motion` 여섯 개뿐이다 (그 밖의 키는 오류). `scenes` 만 필수.
+최상위 키는 `series`, `basis`, `inputs`, `derive`, `scenes`, `motion`, `layout`, `note` 여덟 개뿐이다 (그 밖의 키는 오류). 기본 형식은 `scenes` 만 필수이고, `"layout": "note"` 인 노트 형식은 `scenes` 대신 `note` 가 필수다 (아래 "노트 형식").
 
 ```json
 {
@@ -111,6 +111,44 @@ derive 결과 단위: `add`/`sub` 는 같은 단위끼리(나이 − 나이 = �
   어떤 서식도 줄바꿈 문제가 없다고 보장하지 않는다: 숫자 상자 안에서는 줄이 나뉘지 않으므로 공백이 든 서식(`man_won`, `eok_man_won`)이나
   줄바꿈이 있는 긴 줄은 정적 배치와 줄바꿈이 달라질 수 있고, 줄 수나 줄바꿈 위치가 달라지면 `COUNTUP_WRAP` 경고가 난다.
 
+### 노트 형식 (`"layout": "note"` + `note` 블록)
+
+사용자가 **"노트 형식으로 만들어 줘"** 처럼 노트 형식(스프링 노트 위 손글씨 필기 영상)을 요청했을 때만 쓴다. 요청이 없으면 쓰지 않는다 (기본은 일반 `scenes` 형식).
+`scenes` 와 `motion` 은 쓰지 않는다 (`note` 에서 장면이 만들어지고 필기 연출이 항상 적용된다). `series`, `basis`, `inputs`, `derive` 는 그대로 쓴다.
+
+```json
+{
+ "layout": "note",
+ "basis": "주요 항목 예시 · 요건·한도 별도 확인",
+ "note": {
+  "title": ["연말정산 공제,", "어디에 들어갈까?"],
+  "highlight": 1,
+  "boxes": [
+   {"head": "소득공제", "sub": "가격표 깎기", "color": "green", "items": ["카드 사용액", "국민연금 보험료", "주택청약 납입액", "전세대출 원리금 상환"]},
+   {"head": "세액공제", "sub": "계산대 쿠폰", "color": "gold", "items": ["연금저축 · IRP", "보장성 보험료", "의료비 · 교육비", "월세 · 기부금"]}
+  ],
+  "footer": "※ 세무 판단은 세무사 확인!"
+ }
+}
+```
+
+| 키 | 규칙 |
+|----|------|
+| `title` | 제목 글줄 1~2개. 줄은 직접 나눈다 (한 줄이 노트 폭을 넘으면 `RIGHT` 경고). |
+| `highlight` | 선택. 노란 형광펜을 칠할 제목 줄의 **0부터** 번호 (`title` 줄 수 안). |
+| `boxes` | 상자 1~2개. 위에서 아래로 차례로 쓰인다. |
+| `boxes[].head` | 머리띠의 큰 글자 (필수). |
+| `boxes[].sub` | 머리띠의 작은 보조 라벨 (선택). 도구가 장면 `top` 에 `머리글 · 보조 라벨` 로 함께 실어 표현 점검을 받는다. |
+| `boxes[].color` | `green` 또는 `gold` (생략하면 첫 상자 green, 둘째 gold). |
+| `boxes[].items` | 체크 항목 1~5개 (필수). 항목마다 한 줄에 들어가야 한다 (줄바꿈되면 `WRAP` 경고). |
+| `footer` | 선택. 붉은 손글씨 한 줄 (`단, 꼭 알아둘 것` 장면). 세무·법률 판단은 "세무사 확인" 같은 표기를 여기에 둔다. |
+
+- 알 수 없는 키, 위 범위를 벗어난 개수, `<` `>` 줄바꿈이 든 글자는 확장 오류(종료 코드 1)다. `<g>`·`<s>` 마크업은 노트에서 쓰지 않는다 (강조는 `highlight` 와 상자 색).
+- 노트 글자 안에서도 숫자는 `{{fig.<id>|서식}}` 자리표시자로만 쓴다 (글자로 적은 숫자는 `UNREGISTERED`). 카운트업 `|up` 은 쓸 수 없다. 장부·표현 점검·게시글은 일반 형식과 똑같이 동작한다.
+- 표준 장면 유도: 제목 장면, 상자마다 한 장면, `footer` 가 있으면 `단, 꼭 알아둘 것` 장면, 표준 CTA 장면(점검용, 화면에는 안 나옴). `spec.json` 은 손으로 고치지 않는다.
+- 길이는 글자·항목 수로 정해지고 18~27초 밖이면 `DURATION` 경고다 (4+4항목 약 18.7초; 항목이 적은 노트는 짧아지니 상자 두 개와 `footer` 를 권장).
+- 예시: `tools/tests/fixtures/draft-note.src.json` 과 `draft-note.caption.src.json`. `caption.src.json` 은 일반 형식과 같다.
+
 ## caption.src.json
 
 ```json
@@ -132,5 +170,6 @@ derive 결과 단위: `add`/`sub` 는 같은 단위끼리(나이 − 나이 = �
 
 - 세액공제 vs 소득공제 (입력 가정 + derive): `tools/tests/fixtures/draft-tax.src.json`
 - 연금계좌 세액공제 한도 (등록부 수치만, 시리즈 ②): `tools/tests/fixtures/draft-pension.src.json` 과 `draft-pension.caption.src.json`
+- 노트 형식 (소득공제 vs 세액공제 항목, 숫자 없음): `tools/tests/fixtures/draft-note.src.json` 과 `draft-note.caption.src.json`
 
 `발의` 상태 수치는 줄이나 `basis` 에 "발의안" 또는 "정부안" 표현을 함께 적는다.

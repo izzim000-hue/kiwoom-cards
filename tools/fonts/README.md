@@ -38,3 +38,17 @@ SIL Open Font License 1.1 (SIL Open Font License). 전문은 같은 폴더의 `O
 - 400/700/900 세 굵기만 벤더링한다. `tools/cards.py`가 쓰는 Medium(500)은 이번 범위 밖이다.
 - 렌더러는 `tools/reelkit/templates/frame.html`의 `@font-face`로 이 파일들을 `file://`에서 읽는다. 로드에 실패하면 시스템 폰트로 대체하지 않고 중단한다(종료 코드 2).
 - 폰트를 바꾸면 `constants.FONT_VARIANT`·`FONT_SHA256`과 이 표를 함께 갱신하고 golden 회귀 시험을 다시 돌린다.
+
+## 노트 배치 손글씨 폰트: Gaegu Bold
+
+`layout: "note"` (노트 형식 릴스, `tools/reelkit/note.py`)에서만 쓰는 손글씨 폰트다. 위 Noto Sans KR 세트와 따로 두며 `constants.FONT_FILES`에는 넣지 않는다 (`browser.font_problems`가 기본 틀의 `@font-face` 3개를 기대하기 때문). 노트 페이지가 `@font-face`로 직접 불러온다.
+
+- 출처: <https://raw.githubusercontent.com/google/fonts/main/ofl/gaegu/Gaegu-Bold.ttf> (Google Fonts, Gaegu Project Authors)
+- 라이선스 원문: <https://raw.githubusercontent.com/google/fonts/main/ofl/gaegu/OFL.txt> (`OFL-Gaegu.txt`로 저장). SIL Open Font License 1.1, 재배포와 저장소 포함 허용
+- 받은 날짜: 2026-10-29, 업스트림 파일을 수정하지 않음 (`main` 브랜치는 움직이므로 아래 sha256으로 고정)
+- `tools/reelkit/constants.py`의 `NOTE_FONT_SHA256`과 같은 값이며 `python3 tools/doctor.py`의 `font-files` 줄이 이 파일을 함께 본다 (없거나 바뀌면 경고, 기존 Noto 점검은 그대로)
+
+| file | bytes | sha256 | CSS weight |
+|------|------:|--------|-----------:|
+| Gaegu-Bold.ttf | 2962664 | `cc38a4af9506a45254d1ce07c589ec473d9e5f0be319e5a77b17c214903f8c1c` | 700 |
+| OFL-Gaegu.txt | 4344 | `53a9ce47085d9fef613c7ecb3730dc80d25962510bbea231b89564f58240f251` | - |

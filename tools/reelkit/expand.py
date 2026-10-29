@@ -4,6 +4,9 @@
 `{{이름|서식}}` 으로 쓴다. 이름은 등록부 id (`fig.<id>`), 이 릴스 한정 시나리오 가정 (`inputs.<name>`),
 또는 앞서 정의한 `derive` 이름이다. 값 계산은 calc.FUNCTIONS, 표시는 calc.FORMATS 만 쓴다 (eval/exec 없음).
 
+`layout: "note"` 이면 `scenes` 대신 `note` 블록(제목·상자·꼭 알아둘 것)을 쓴다. note 블록에서 표준 `scenes` 를 만들어(note.derive_scenes)
+같은 흐름으로 확장하므로 장부·표현 점검·하우스 패턴 점검이 그대로 동작하고, 결과에는 자리표시자를 푼 `note` 블록이 `layout` 과 함께 남는다.
+
 결과에는 숫자마다 한 줄씩 `figures` 장부(어느 장면·줄의 어느 글자가 어떤 등록부/입력에서 왔는지)와
 쓰인 등록부 항목의 `basis_items`, 그리고 소스의 `derive` 가 그대로 들어간다 (check 가 장부를 믿지 않고 다시 계산하는 데
 쓴다). 렌더러는 완성된 평문 문자열만 본다.
@@ -17,9 +20,10 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 from . import calc, constants, figures
+from . import note as note_mod
 from .motion import MODES as MOTION_MODES
 
-ALLOWED_KEYS = ("basis", "inputs", "derive", "series", "scenes", "motion")
+ALLOWED_KEYS = ("basis", "inputs", "derive", "series", "scenes", "motion", "layout", "note")
 SERIES_KEYS = ("name", "episode", "next")
 # 원문자는 ⑩ 까지만 쓴다 (⑪ 이상은 번들 폰트에서 확인되지 않음, research 가정 A3)
 CIRCLED = "①②③④⑤⑥⑦⑧⑨⑩"
@@ -292,6 +296,67 @@ def _check_scenes(scenes):
                 raise ExpandError(f"scene {n} line {m}: 문자열이어야 함")
 
 
+_UP_RE = re.compile(r"\|\s*up\s*\}\}")
+
+
+def _prepare_note(src):
+    """layout/note 필드를 검사하고 note 블록에서 표준 장면을 만들어 src["scenes"] 에 넣는다 (note 소스일 때만 True).
+
+    layout 이 note 가 아니면 note 블록도 scenes 대신 쓸 수 없다. 노트 글자에는 카운트업(|up)을 쓸 수 없다 (노트는 필기 연출만).
+    """
+    has_layout, has_note = "layout" in src, "note" in src
+    if has_layout and src["layout"] != note_mod.LAYOUT_NAME:
+        raise ExpandError(f"layout: '{note_mod.LAYOUT_NAME}' 만 쓸 수 있음 (기본 배치는 layout 을 쓰지 않음) — {src['layout']!r}")
+    if has_note and not has_layout:
+        raise ExpandError(f"note 블록은 \"layout\": \"{note_mod.LAYOUT_NAME}\" 와 함께 써야 함")
+    if not has_layout:
+        return False
+    if not has_note:
+        raise ExpandError(f"layout '{note_mod.LAYOUT_NAME}' 에는 note 블록이 필요함")
+    if "scenes" in src:
+        raise ExpandError("layout 'note' 는 scenes 를 직접 쓰지 않음 — note 블록에서 장면이 만들어짐")
+    if "motion" in src:
+        raise ExpandError("layout 'note' 는 motion 필드를 쓰지 않음 (노트 필기 연출은 항상 적용)")
+    try:
+        note_mod.validate_note(src["note"])
+    except note_mod.NoteError as e:
+        raise ExpandError(str(e)) from None
+    for text in note_mod.strings(src["note"]):
+        if _UP_RE.search(text):
+            raise ExpandError("note: 카운트업 표시(|up)는 노트 글자에 쓸 수 없음")
+    src["scenes"] = note_mod.derive_scenes(src["note"])
+    return True
+
+
+def _expand_note(note, scenes, vals):
+    """확장된 장면에서 자리표시자를 푼 note 블록을 만든다 (렌더러가 읽는 값; 장부는 장면 쪽에 이미 있다).
+
+    머리글·보조 라벨은 장면 top 에 합쳐 실렸으므로 각각 따로 풀어(장부에 남기지 않음) 합친 top 과 같은지 확인한다.
+    """
+    plain = lambda text, where: _expand_field(text, where, None, vals, [])  # noqa: E731
+    out = {"title": list(scenes[0]["lines"])}
+    if "highlight" in note:
+        out["highlight"] = note["highlight"]
+    boxes = []
+    for b, box in enumerate(note["boxes"]):
+        sc = scenes[1 + b]
+        head = plain(box["head"], f"note.boxes[{b + 1}].head")
+        item = {"head": head}
+        want = head
+        if "sub" in box:
+            item["sub"] = plain(box["sub"], f"note.boxes[{b + 1}].sub")
+            want += note_mod.SEP + item["sub"]
+        if sc["top"] != want:   # 코드 결함 방지용 확인: 장면 top 과 note 블록이 어긋나면 안 된다
+            raise ExpandError(f"note.boxes[{b + 1}]: 장면 top 과 머리글이 어긋남 — {sc['top']!r} != {want!r}")
+        item["color"] = note_mod.box_color(note, b)
+        item["items"] = list(sc["lines"])
+        boxes.append(item)
+    out["boxes"] = boxes
+    if "footer" in note:
+        out["footer"] = scenes[1 + len(boxes)]["lines"][0]
+    return out
+
+
 def expand_source(src, registry):
     """소스 dict 를 확장한 새 원고 dict 를 돌려준다. 입력 dict 는 바꾸지 않는다."""
     if not isinstance(src, dict):
@@ -300,6 +365,8 @@ def expand_source(src, registry):
     unknown = [k for k in src if k not in ALLOWED_KEYS]
     if unknown:
         raise ExpandError(f"알 수 없는 최상위 키: {', '.join(map(str, unknown))} (허용: {', '.join(ALLOWED_KEYS)})")
+    note_src = src.get("note")
+    is_note = _prepare_note(src)
     if "basis" in src and not isinstance(src["basis"], str):
         raise ExpandError("basis: 문자열이어야 함")
     if "motion" in src and (isinstance(src["motion"], bool) or not isinstance(src["motion"], str)
@@ -318,6 +385,8 @@ def expand_source(src, registry):
 
     ledger = []
     out = {"version": SPEC_VERSION}
+    if is_note:
+        out["layout"] = note_mod.LAYOUT_NAME
     if series is not None:
         out["series"] = dict(series)
     if "motion" in src:
@@ -330,6 +399,8 @@ def expand_source(src, registry):
         sc["lines"] = [_expand_field(line, f"scene {n} line {m}", n, vals, ledger)
                        for m, line in enumerate(sc["lines"], 1)]
     out["scenes"] = scenes
+    if is_note:
+        out["note"] = _expand_note(note_src, scenes, vals)
     if inputs_raw:
         out["inputs"] = inputs_raw
     if derive_raw:

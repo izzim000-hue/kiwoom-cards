@@ -1,7 +1,7 @@
 # tools
 
 - `cards.py`: 카드뉴스 6장(1080x1350) PNG 생성. 세이지 그린 바탕, 마지막 장 딥그린.
-- `reel.py`: 자막형 릴스(1080x1920) MP4 생성. 목소리 없음. 출력 끝에 표지용 시점(cover_ms)을 알려 줌.
+- `reel.py`: 자막형 릴스(1080x1920) MP4 생성. 목소리 없음. 출력 끝에 표지용 시점(cover_ms)을 알려 줌. 원고에 `"layout": "note"` 가 있으면 노트 형식(아래 "노트 형식 릴스")으로 그린다.
 - `doctor.py`: 릴스를 그릴 수 있는 환경인지 점검 (세션 시작 때 자동으로도 실행됨).
 - `specprobe.py`: MP4가 Instagram 업로드 규격을 지키는지 항목별 검사.
 - `draft.py`: 릴스 초안 도구 (게시일·슬러그, 수치 등록부, 원고 확장·점검, 게시글 문구, 검수 묶음 `bundle`, 표현 점검 `compliance`·`redteam`, 사람 승인 `approve`, 옮기기 `promote`). 스킬 `make-reel` 이 사용.
@@ -192,6 +192,43 @@ python3 tools/draft.py bundle 폴더 --bgm 음원파일 --bgm-license "이용 �
   폴더 목록에 글자 그대로 있는 `bgm.json`·`bgm.<확장자>` 만 지우므로 대소문자를 가리지 않는 파일 시스템에서도 `BGM.MP3` 같은 사용자 파일은 남고, 이번 실행의 원본도 지우지 않는다.
 - 커밋 방지: `.gitignore` 가 mp3, m4a, wav, aac, ogg, opus, flac 을 대소문자와 관계없이(`*.[mM][pP]3` 꼴) 무시하고 `2026/reels/drafts/` 도 무시한다. 시험은 ffmpeg 사인파만 임시 폴더에서 만들어 쓴다.
 
+## 노트 형식 릴스: `"layout": "note"`
+
+스프링 노트 위에 손글씨로 한 줄씩 쓰는 릴스다 (짙은 초록 바탕, 크림색 줄 노트와 스프링, 형광펜 제목, 머리띠 상자 두 개의 체크 목록, 붉은 꼭 알아둘 것).
+사용자가 **"노트 형식으로"** 라고 요청했을 때만 쓴다. 원고 소스(`spec.src.json`)에 장면 대신 `note` 블록을 쓰고 `draft.py bundle` 한 번이면 된다 (`bundle` 에 새 옵션은 없다).
+
+```json
+{
+ "layout": "note",
+ "basis": "주요 항목 예시 · 요건·한도 별도 확인",
+ "note": {
+  "title": ["연말정산 공제,", "어디에 들어갈까?"],
+  "highlight": 1,
+  "boxes": [
+   {"head": "소득공제", "sub": "가격표 깎기", "color": "green", "items": ["카드 사용액", "국민연금 보험료"]},
+   {"head": "세액공제", "sub": "계산대 쿠폰", "color": "gold", "items": ["연금저축 · IRP", "보장성 보험료"]}
+  ],
+  "footer": "※ 세무 판단은 세무사 확인!"
+ }
+}
+```
+
+- 규칙: `title` 1~2줄, `highlight` (선택) 는 형광펜을 칠할 제목 줄의 0부터 번호, `boxes` 1~2개, 상자마다 `head`·`items` 1~5개 필수, `sub`·`color`(`green` 또는 `gold`, 생략하면 순서대로 green·gold) 선택, `footer` 선택.
+  알 수 없는 키, `<`·`>`·줄바꿈이 든 글자, `scenes`·`motion` 과 함께 쓰기는 오류 (`expand` 종료 코드 1). 글자는 안에 `{{fig.<id>|서식}}` 자리표시자를 써도 되고 장부·점검을 똑같이 받는다 (`|up` 카운트업만 불가).
+- 확장: `expand` 가 `note` 에서 표준 `scenes` 를 만든다 (`reelkit/note.py`): 제목 장면(top 은 시리즈가 채움), 상자마다 한 장면(`top` = `머리글 · 보조 라벨`, `lines` = 항목),
+  `footer` 가 있으면 `단, 꼭 알아둘 것` 장면, 끝에 표준 CTA 장면. 그래서 수치 장부, 표현 점검, 게시글, 하우스 패턴 점검이 그대로 돈다.
+  **CTA 장면은 점검용이라 화면에는 그려지지 않는다** (영상의 끝은 노트 완성본과 `@kiwoom.mentor`). 보조 라벨(`sub`)도 표현 점검을 받도록 장면 `top` 에 함께 실린다.
+  `spec.json` 에는 자리표시자를 푼 `layout`·`note` 가 남고 `check` 가 `spec.src.json` 을 다시 확장한 결과와 대조한다 (손으로 고치면 `SOURCE_MISMATCH`).
+- 렌더: 모션 basic 과 같은 방식(프레임마다 시각을 맞춰 찍고 PNG 를 ffmpeg 로 흘림)이며 `reel.py` 의 `--layout`·`--motion` 은 노트 원고에서 무시된다. 쓰기 연출은 왼쪽에서 오른쪽으로 드러내기(글줄), 상자는 팝, 근거·계정명은 페이드, 체크는 항목이 시작될 때 나타난다.
+  시간표는 글자 수·항목 수로 정한다 (시안과 같은 값: 시작 0.3초, 제목 줄 `0.6 + 0.05 × 글자 수`초, 항목 0.75초 간격). 끝 정지는 6.8초이며 18초에 못 미치는 짧은 노트는 최대 9초까지 늘린다.
+  길이가 18~27초 밖이면 `check` 가 `DURATION` 경고를 낸다 (노트 기준, 기존 21~27초 기준은 쓰지 않음). 4+4항목 노트는 18.7초, 렌더 포함 묶음 한 번이 이 환경에서 약 75초.
+- 경고(`LayoutWarning`, `bundle` 은 종료 코드 3): `TOP`(글자 y < 270), `RIGHT`(오른쪽 150px), `UI_ZONE`(y > 1470), `OVERFLOW`(글자가 상자 밖으로, 또는 본문이 근거·계정명을 침범), `WRAP`(상자 항목·머리글·제목이 줄바꿈), `BASIS_LINES`, `FONT_FALLBACK`.
+  글자는 줄이거나 자르지 않는다. 노트는 시안대로 근거·계정명을 y 1250~1470 에 두므로 기존 새 배치의 `WARN_Y`(1250) 경고는 쓰지 않는다.
+  표지 크롭 경고(`COVER_CROP`)는 배경이 단색이 아니라(종이와 스프링이 크롭 밖까지 이어짐) 표지 PNG 픽셀이 아니라 글자 위치로 판단한다. 표지와 장면 모음은 모든 글이 써진 최종 프레임 한 장이다.
+- 폰트: Gaegu Bold (`tools/fonts/Gaegu-Bold.ttf`, SIL OFL) 를 노트 페이지가 직접 불러오고, Gaegu 에 없는 글자(`·`, `※`, `→`, `①`)는 번들 Noto Sans KR Bold 로 채운다 (시스템 폰트로 대체하지 않음, 로드 실패는 종료 코드 2).
+  체크 표시는 폰트 글자가 아니라 SVG 다. `doctor.py` 의 `font-files` 줄이 이 폰트도 함께 본다 (없거나 바뀌면 경고, 다른 점검은 그대로).
+- 시험: `tools/tests/test_note.py` (예시 `tools/tests/fixtures/draft-note.src.json`, 번들 end-to-end 가 약 75초).
+
 ## 수치 등록부
 
 `tools/data/figures.json` 은 릴스에 쓰는 세법·요율·통계 수치의 단일 출처다. 항목마다 `label`, `kind`, `value`, `unit`,
@@ -249,11 +286,12 @@ python3 tools/golden.py [--only STEM] [--jobs N]
 python3 -m unittest discover -s tools/tests -v
 ```
 
-전체 시험 679개 (게시된 릴스를 다시 그리고 모션·배경음 릴스를 여러 번 렌더하므로 이 환경에서 측정한 시간이 약 13분 — 793초). 일부만: `python3 -m unittest discover -s tools/tests -p 'test_doctor.py' -v`.
-모션은 `test_motion.py` (60개, 약 6분), 배경음은 `test_bgm.py` (32개, 약 1.5분), 승인에 든 오디오는 `test_approve.py` 의 `ApproveBgm`.
+전체 시험 748개 (게시된 릴스를 다시 그리고 모션·배경음·노트 릴스를 여러 번 렌더하므로 이 환경에서 측정한 시간이 약 18분 — 1086초). 일부만: `python3 -m unittest discover -s tools/tests -p 'test_doctor.py' -v`.
+모션은 `test_motion.py` (60개, 약 6분), 노트 형식은 `test_note.py` (번들 end-to-end 약 75초 포함), 배경음은 `test_bgm.py` (32개, 약 1.5분), 승인에 든 오디오는 `test_approve.py` 의 `ApproveBgm`.
 
 ## 폰트와 고정 버전
 
 - `tools/fonts/`: 번들 Noto Sans KR 400/700/900 (SIL OFL, 출처와 sha256 은 `tools/fonts/README.md`). 시스템에 한글 폰트가 없어도 같은 글자 모양으로 그리기 위한 것이다.
   **폰트를 바꾸면** `reelkit/constants.py` 의 `FONT_SHA256` 과 `tools/fonts/README.md` 를 함께 고치고 `golden.py` 를 다시 돌린다.
+- 노트 형식 전용 폰트 `tools/fonts/Gaegu-Bold.ttf` (SIL OFL, 출처·sha256 은 같은 README): `reelkit/constants.py` 의 `NOTE_FONT_SHA256` 과 함께 고친다. `FONT_FILES` 에는 넣지 않는다.
 - `tools/requirements.txt`: `playwright==1.63.0` 고정. 미리 깔린 Chromium 과 맞는 버전이다.
