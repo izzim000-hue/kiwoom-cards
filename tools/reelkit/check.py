@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from datetime import date
 
 from . import figures as figreg
-from . import numscan, timeline
+from . import convert, numscan, timeline
 from .spec import ALLOWED_TAGS
 
 # 하우스 패턴 수치 (research "하우스 패턴 수치": 게시된 10편 실측 — 7장면, 21.8~26.05초, 줄 20~22자, top 최대 21자, 장면당 2~4줄).
@@ -64,14 +64,19 @@ class CheckReport:
     figures_used: list = field(default_factory=list)
     checked_on: str = ""
     legacy_count: int = 0
+    card: object = None   # dict | None — `--card` 대조 결과 {path, new_numbers, dropped_notes}
 
     def summary(self):
         if self.mode == "legacy":
-            return f"등록부 없음 {self.legacy_count}개 — 게시된 v1 원고는 고치지 않음"
+            text = f"등록부 없음 {self.legacy_count}개 — 게시된 v1 원고는 고치지 않음"
+            if self.card is not None:
+                text += (f" · 카드 대조: 카드에 없는 숫자 {len(self.card['new_numbers'])}개"
+                         f" · 옮기지 않은 note {len(self.card['dropped_notes'])}개")
+            return text
         return f"오류 {len(self.errors)}건 · 경고 {len(self.warnings)}건 · 확인 필요 {len(self.needs_check)}줄"
 
     def to_json(self, spec_path, registry_path):
-        return {
+        out = {
             "spec": str(spec_path), "mode": self.mode, "checked_on": self.checked_on,
             "registry": {"path": None if registry_path is None else str(registry_path), "schema": SCHEMA},
             "summary": self.summary(),
@@ -80,6 +85,9 @@ class CheckReport:
             "needs_check": list(self.needs_check),
             "figures_used": list(self.figures_used),
         }
+        if self.card is not None:
+            out["card"] = self.card
+        return out
 
 
 def _fields(spec):
@@ -254,6 +262,27 @@ def _house_pattern(spec, warn):
         warn(CheckIssue("scenes", None, "NO_CAUTION", "주의 장면(top 에 '단,' '주의' '알아둘') 없음", ""))
     if not any("<g>" in t for sc in scenes for t in [sc["top"], *sc["lines"]]):
         warn(CheckIssue("scenes", None, "NO_EMPH", "<g> 강조가 한 곳도 없음", ""))
+
+
+def card_warnings(card, spec):
+    """카드 원고와 릴스 원고 대조 경고: 카드에 없던 숫자(NOT_IN_CARD), 릴스에 옮겨지지 않은 카드 note(CARD_NOTE_DROPPED)."""
+    issues = [CheckIssue(w["where"], w["scene"], "NOT_IN_CARD", w["raw"], w["text"])
+              for w in convert.new_number_warnings(card, spec)]
+    issues += [CheckIssue(f"card {d['card']} note", None, "CARD_NOTE_DROPPED", d["note"], "")
+               for d in convert.dropped_notes(card, spec)]
+    return issues
+
+
+def apply_card(report, card, spec, card_path):
+    """card_warnings 를 report.warnings 에 더하고 check.json 의 `card` 블록을 채운다."""
+    issues = card_warnings(card, spec)
+    report.warnings.extend(issues)
+    report.card = {
+        "path": str(card_path),
+        "new_numbers": [i.to_dict() for i in issues if i.kind == "NOT_IN_CARD"],
+        "dropped_notes": [i.to_dict() for i in issues if i.kind == "CARD_NOTE_DROPPED"],
+    }
+    return issues
 
 
 def legacy_report(spec):
