@@ -174,18 +174,23 @@ def _check_hashtags(src, config):
         raise CaptionError(f"해시태그 {total}개 — 브랜드 태그 포함 최대 {config['max_hashtags']}개 (D-12)")
 
 
-def _as_of_phrase(spec):
-    best = None
+def _as_of_phrase(spec, basis):
+    """쓰인 등록부 수치의 기준 시점이 모두 같을 때만 ' (YYYY년 M월 기준)' (WR-02).
+
+    기준 시점이 서로 다르거나 하나라도 없으면(as_of null) 한 날짜로 묶어 말할 수 없으므로 붙이지 않는다.
+    basis 에 이미 '기준' 이 있으면 겹쳐 쓰지 않는다.
+    """
+    if "기준" in basis:
+        return ""
+    keys = set()
     for item in spec.get("basis_items") or []:
         m = _AS_OF_RE.match(item.get("as_of") or "") if isinstance(item, dict) else None
         if not m:
-            continue
-        key = (int(m.group(1)), int(m.group(2) or 0))
-        if best is None or key > best:
-            best = key
-    if best is None:
+            return ""
+        keys.add((int(m.group(1)), int(m.group(2) or 0)))
+    if len(keys) != 1:
         return ""
-    year, month = best
+    year, month = keys.pop()
     return f" ({year}년 {month}월 기준)" if month else f" ({year}년 기준)"
 
 
@@ -203,7 +208,7 @@ def build_caption(spec, src, config, registry=None):
     basis = _plain(spec["basis"]).strip() if isinstance(spec.get("basis"), str) else ""
     lines = [first, ""]
     lines += [f"• {s}" for s in src["summary"]]
-    lines += ["", f"근거 · 기준: {basis}{_as_of_phrase(spec)}" if basis else "근거 · 기준: (원고 basis 없음)",
+    lines += ["", f"근거 · 기준: {basis}{_as_of_phrase(spec, basis)}" if basis else "근거 · 기준: (원고 basis 없음)",
               config["disclaimer"], "", config["cta"]]
     if series and "next" in series:
         lines.append(f"다음 편: {series['next']}")

@@ -138,6 +138,22 @@ class BuildCaption(Base):
                                            "다음 편: IRP 세액공제 개정안", lines[-1])]
         self.assertEqual(order, sorted(order))
 
+    def basis_line(self, spec):
+        return next(ln for ln in self.build(spec=spec)[0].splitlines() if ln.startswith("근거 · 기준:"))
+
+    def test_mixed_or_missing_as_of_gets_no_single_date(self):
+        # WR-02 회귀: 기준 시점이 다른 수치를 섞으면 '(2026년 10월 기준)' 하나로 묶지 않는다
+        spec = copy.deepcopy(self.spec)
+        spec["basis_items"][0]["as_of"] = "2024"
+        self.assertEqual(self.basis_line(spec), "근거 · 기준: 900만 원 납입 예시 · 지방소득세 포함")
+        spec["basis_items"][0]["as_of"] = None
+        self.assertEqual(self.basis_line(spec), "근거 · 기준: 900만 원 납입 예시 · 지방소득세 포함")
+
+    def test_basis_already_saying_gijun_is_not_repeated(self):
+        spec = copy.deepcopy(self.spec)
+        spec["basis"] = "2026년 세법 기준 · 지방소득세 포함"
+        self.assertEqual(self.basis_line(spec), "근거 · 기준: 2026년 세법 기준 · 지방소득세 포함")
+
     def test_config_defaults(self):
         self.assertEqual(self.config["brand_hashtags"], [])
         self.assertEqual(self.config["max_hashtags"], 5)
