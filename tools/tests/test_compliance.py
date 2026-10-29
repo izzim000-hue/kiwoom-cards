@@ -249,6 +249,19 @@ class CompactAndDedupe(unittest.TestCase):
         self.assertIn("X-compact", found[0]["rule"])
         self.assertEqual(found[0]["severity"], "수정 필요")
 
+    def test_unrelated_finding_in_same_field_does_not_hide_compact(self):
+        # WR-06: 같은 줄의 다른 발견·예외가 쪼갠 보장 표현을 가리지 않는다
+        for line in ("반드시 확인! 원금 보 장 상품", "가장 유리한 원금 보 장"):
+            with self.subTest(line=line):
+                res = compliance.run(mk([line]), None, RULES)
+                self.assertIn("X-compact", ids(res.findings))
+                self.assertGreater(res.counts["수정 필요"], 0)
+
+    def test_negated_compact_term_is_suppressed(self):
+        found, sup = scan_reel(mk(["원 금 보 장 아님"]))
+        self.assertEqual(found, [])
+        self.assertEqual((sup[0]["rule"], sup[0]["by"]), (["X-compact"], "negator"))
+
     def test_negated_term_not_reflagged(self):
         found, sup = scan_reel(mk(["원금 보장 아님"]))
         self.assertEqual(found, [])
