@@ -1,6 +1,6 @@
 """키움멘토 릴스 초안 도구 (원고 소스 확장, 수치 등록부)
 사용: python3 tools/draft.py expand SRC OUT [--registry PATH]
-      python3 tools/draft.py check SPEC [--out JSON] [--registry PATH] [--strict]
+      python3 tools/draft.py check SPEC [--out JSON] [--registry PATH] [--date YYYY-MM-DD] [--strict] [--legacy]
       python3 tools/draft.py figures {list [--grep 글자] | show ID | add ... | confirm ID --by 이름 [--date YYYY-MM-DD]}
   expand  자리표시자 `{{이름|서식}}` 가 든 원고 소스(SRC)를 등록부·계산 모듈로 채워 v1 호환 원고(OUT)로 쓴다.
           OUT 에는 숫자마다 출처를 적은 `figures` 장부와 쓰인 등록부 항목 `basis_items` 가 함께 들어간다.
@@ -8,6 +8,8 @@
   check   확장된 원고(SPEC)의 숫자가 모두 등록부·입력·계산에서 왔는지 따라가 점검한다 (D-07).
           등록부 밖 숫자는 오류(종료 1), 미확인 수치를 쓴 줄은 `확인 필요` 로 적을 뿐 막지 않는다 (D-03).
           --out 을 주면 오류가 있어도 check.json 을 쓴다. --strict 는 경고가 있으면 종료 3.
+          --date 는 게시 예정일(기본 오늘): 등록부 valid_until 이 이보다 이르면 EXPIRED 경고.
+          --legacy 는 게시된 v1 원고(장부 없음)용 보고 전용: 등록부 없는 수치 숫자 개수만 알리고 종료 0, 원고는 고치지 않는다.
   figures 수치 등록부(tools/data/figures.json) 조회·추가·확인.
           add      새 수치를 추가한다. 확인 상태는 항상 `미확인` 이고 지정하는 옵션이 없다 (D-02).
           confirm  사람 확인자 전용이다 (D-02). 1차 출처(law.go.kr 등)를 직접 열어 값을 맞춰 본 사람이 확인자 이름으로
@@ -17,6 +19,7 @@
 import argparse
 import json
 import os
+import re
 import sys
 from datetime import date
 from pathlib import Path
@@ -40,6 +43,8 @@ def build_parser():
     p.add_argument("spec", help="확장된 원고 JSON 경로")
     p.add_argument("--out", help="check.json 을 쓸 경로 (오류가 있어도 씀)")
     p.add_argument("--strict", action="store_true", help="경고가 있으면 종료 코드 3")
+    p.add_argument("--date", help="게시 예정일 YYYY-MM-DD (기본 오늘) — valid_until 만료 경고 기준")
+    p.add_argument("--legacy", action="store_true", help="게시된 v1 원고: 수치 숫자 개수만 보고하고 종료 0")
     _registry_arg(p)
 
     fp = sub.add_parser("figures", help="수치 등록부 조회·추가·확인")
@@ -111,32 +116,53 @@ def cmd_expand(args):
     return 0
 
 
+def _write_check_json(args, report, registry_path):
+    try:
+        Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.out).write_text(
+            json.dumps(report.to_json(args.spec, registry_path), ensure_ascii=False, indent=1) + "\n",
+            encoding="utf-8")
+    except OSError as e:
+        print(f"환경 오류: {e.__class__.__name__}: {e}", file=sys.stderr)
+        return 2
+    return 0
+
+
 def cmd_check(args):
+    publish_date = None
+    if args.date:
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", args.date):
+            print(f"원고 오류: --date 는 YYYY-MM-DD 형식이어야 함: {args.date}", file=sys.stderr)
+            return 1
+        try:
+            publish_date = date.fromisoformat(args.date)
+        except ValueError:
+            print(f"원고 오류: --date 가 없는 날짜임: {args.date}", file=sys.stderr)
+            return 1
     try:
         spec = load_spec(args.spec)
-        registry = figures.load_registry(args.registry)
+        registry = None if args.legacy else figures.load_registry(args.registry)
     except SpecError as e:
         print(f"원고 오류: {e}", file=sys.stderr)
         return 1
     except figures.RegistryError as e:
         print(f"등록부 오류: {e}", file=sys.stderr)
         return 1
-    report = check.check_spec(spec, registry)
+    if args.legacy:
+        report = check.legacy_report(spec)
+        if args.out and _write_check_json(args, report, None):
+            return 2
+        print(f"check(legacy): {report.summary()}")
+        return 0
+    report = check.check_spec(spec, registry, publish_date=publish_date)
     for issue in report.errors + report.warnings:
         print(str(issue), file=sys.stderr)
         if issue.kind in check.HINTS and issue.kind != "NOT_EXPANDED":
             print(f"  -> {check.HINTS[issue.kind]}", file=sys.stderr)
     for item in report.needs_check:
         print(f'확인 필요: {item["where"]} [{", ".join(item["ids"])}] "{item["text"]}"')
-    if args.out:
-        try:
-            Path(args.out).parent.mkdir(parents=True, exist_ok=True)
-            Path(args.out).write_text(
-                json.dumps(report.to_json(args.spec, args.registry), ensure_ascii=False, indent=1) + "\n",
-                encoding="utf-8")
-        except OSError as e:
-            print(f"환경 오류: {e.__class__.__name__}: {e}", file=sys.stderr)
-            return 2
+    if args.out and _write_check_json(args, report, args.registry):
+        return 2
     print(f"check: {report.summary()}")
     if report.errors:
         return 1
