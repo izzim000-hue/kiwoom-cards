@@ -104,6 +104,14 @@ class Schedule(unittest.TestCase):
         self.assertAlmostEqual(s.scenes[0].settle, 1 * motion.STAGGER + motion.COUNT)
         self.assertEqual(s.scenes[1].countup_lines, ())
 
+    def test_only_true_countup_changes_timing(self):
+        # IN-04: countup_entries 가 거부하는 값(1, "yes")은 시간표에도 카운트업으로 세지 않는다
+        for bad in (1, "yes", [1]):
+            with self.subTest(bad=bad):
+                s = motion.schedule(two_scene_spec(figures=[{"where": "scene 1 line 2", "countup": bad}]))
+                self.assertEqual(s.scenes[0].countup_lines, ())
+                self.assertAlmostEqual(s.scenes[0].settle, motion.STAGGER + motion.ENTER)
+
     def test_final_frame_between_settle_and_fade(self):
         for sc in motion.schedule(two_scene_spec()).scenes:
             self.assertGreater(sc.final_t, sc.start + sc.settle)

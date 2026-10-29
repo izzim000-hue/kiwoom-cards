@@ -66,10 +66,13 @@ def _visible(text):
 
 
 def _countup_lines(spec, i, n):
-    """장면 i(0부터)에서 장부에 countup 표시가 있는 줄의 0부터 인덱스."""
+    """장면 i(0부터)에서 장부에 countup 표시가 있는 줄의 0부터 인덱스.
+
+    countup_entries 와 같은 기준(값이 정확히 true)으로 센다: "countup": 1 같은 손 수정은 시간표를 바꾸지 않고 렌더 전에 거부된다 (IN-04).
+    """
     found = set()
     for entry in spec.get("figures") or []:
-        if not isinstance(entry, dict) or not entry.get("countup"):
+        if not isinstance(entry, dict) or entry.get("countup") is not True:
             continue
         where = entry.get("where")
         for j in range(n):
