@@ -145,6 +145,91 @@ def fv_monthly(pmt, annual_rate_pct, months):
     return pmt * ((1 + r) ** n - 1) / r
 
 
+class UnitError(CalcError):
+    """계산 인자의 단위 조합이나 표시 서식과 단위가 맞지 않을 때 (CR-03)."""
+
+
+PCT, WON, AGE, YEAR, MONTH, NONE = "%", "원", "세", "년", "개월", ""
+_PERIODS = (YEAR, MONTH)
+
+
+def _want(fn, name, unit, *allowed):
+    if unit not in allowed:
+        shown = ", ".join(repr(u) for u in allowed)
+        raise UnitError(f"{fn}: {name} 의 단위는 {shown} 이어야 함 (받은 단위 {unit!r})")
+
+
+def _unit_add_sub(fn, a, b):
+    if a == b:
+        return YEAR if (fn == "sub" and a == AGE) else a   # 나이 − 나이 = 햇수 (53세 − 28세 = 25년)
+    if a == AGE and b == YEAR:
+        return AGE                                         # 나이 ± 햇수 = 나이
+    if fn == "add" and a == YEAR and b == AGE:
+        return AGE
+    raise UnitError(f"{fn}: 단위가 다른 값끼리 더하거나 뺄 수 없음 ({a!r}, {b!r})")
+
+
+def _unit_mul(a, b):
+    if a == NONE:
+        return b
+    if b == NONE:
+        return a
+    pair = {a, b}
+    if WON in pair and pair - {WON} <= set(_PERIODS):
+        return WON                                         # 월 금액 × 개월 = 금액
+    if PCT in pair and pair - {PCT} <= set(_PERIODS):
+        return PCT                                         # 해마다 6% × 5년 = 30%
+    raise UnitError(f"mul: 곱할 수 없는 단위 조합 ({a!r}, {b!r})")
+
+
+def _unit_div(a, b):
+    if a == b:
+        return NONE
+    if b == NONE:
+        return a
+    if a == WON and b in _PERIODS:
+        return WON                                         # 금액 ÷ 개월 = 월 금액
+    if a == NONE and b == PCT:
+        return YEAR                                        # 72의 법칙: 72 ÷ 연이율 = 년
+    raise UnitError(f"div: 나눌 수 없는 단위 조합 ({a!r}, {b!r})")
+
+
+def result_unit(fn, units):
+    """계산 함수 fn 에 단위 units(인자 순서)를 넣었을 때 결과의 단위. 맞지 않는 조합은 UnitError."""
+    if fn in ("add", "sub"):
+        return _unit_add_sub(fn, *units)
+    if fn == "mul":
+        return _unit_mul(*units)
+    if fn == "div":
+        return _unit_div(*units)
+    if fn == "neg":
+        return units[0]
+    if fn == "pct_of":
+        _want(fn, "rate_pct", units[1], PCT)
+        return units[0]
+    if fn == "with_local":
+        _want(fn, "rate_pct", units[0], PCT)
+        _want(fn, "local_ratio_pct", units[1], PCT)
+        return PCT
+    if fn == "after_tax":
+        _want(fn, "tax_pct", units[1], PCT)
+        return units[0]
+    if fn in ("installment_simple_interest", "annuity_pmt", "fv_monthly"):
+        _want(fn, "금액", units[0], WON)
+        _want(fn, "annual_rate_pct", units[1], PCT)
+        _want(fn, "months", units[2], MONTH)
+        return WON
+    if fn == "yield_pct":
+        if units[0] != units[1] or units[0] == PCT:
+            raise UnitError(f"yield_pct: gain 과 principal 은 같은 단위(비율 제외)여야 함 ({units[0]!r}, {units[1]!r})")
+        return PCT
+    if fn == "months_between_ages":
+        _want(fn, "from_age", units[0], AGE)
+        _want(fn, "to_age", units[1], AGE)
+        return MONTH
+    raise UnitError(f"{fn}: 단위 규칙이 없는 함수")
+
+
 FUNCTIONS = {
     "add": (add, 2),
     "sub": (sub, 2),
@@ -223,3 +308,21 @@ FORMATS = {
     "gaewol": _make_format(1, "1", "개월"),
     "dal": _make_format(1, "0.1", "달"),
 }
+
+# 서식마다 받을 수 있는 값의 단위 (CR-03). `num` 은 단위 없는 값만 받는다 — 금액을 num 으로 찍고
+# 뒤에 "만 원" 을 글자로 붙이는 식의 자릿수 오류를 막는다. `dal` 은 개월 수와, 게시된 편의
+# "1달 일해 2.2달 산다" 처럼 개월÷개월 비율(단위 없음)을 받는다.
+FORMAT_UNITS = {
+    "pct": {PCT}, "pct0": {PCT}, "pct1": {PCT}, "signed_pct": {PCT},
+    "man": {WON}, "man1": {WON}, "man_won": {WON}, "eok_man_won": {WON}, "won": {WON},
+    "num": {NONE}, "se": {AGE}, "nyeon": {YEAR}, "gaewol": {MONTH}, "dal": {MONTH, NONE},
+}
+
+
+def check_format_unit(fmt, unit):
+    """서식 fmt 가 단위 unit 의 값을 찍을 수 있는지. 아니면 UnitError."""
+    allowed = FORMAT_UNITS[fmt]
+    if unit not in allowed:
+        fits = sorted(f for f, us in FORMAT_UNITS.items() if unit in us)
+        raise UnitError(f"서식 {fmt} 는 단위 {', '.join(repr(u) for u in sorted(allowed))} 값만 찍을 수 있음 "
+                        f"(이 값의 단위 {unit!r} — 쓸 수 있는 서식: {', '.join(fits) or '없음'})")

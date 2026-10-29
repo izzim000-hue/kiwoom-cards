@@ -143,6 +143,63 @@ class NegativeCases(unittest.TestCase):
         self.expect_error(src, "inputs.amt")
 
 
+class UnitsAndFormats(unittest.TestCase):
+    """CR-03 회귀: 서식과 단위가 안 맞거나 단위를 글자로 붙이면 확장이 거부한다."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.registry = figures.load_registry()
+
+    def expand_lines(self, lines, derive=None):
+        src = {"scenes": [{"top": "t", "lines": lines}]}
+        if derive:
+            src["derive"] = derive
+        return expand_source(src, self.registry)
+
+    def expect_unit_error(self, lines, *needles, derive=None):
+        with self.assertRaises(ExpandError) as cm:
+            self.expand_lines(lines, derive)
+        self.assertEqual(cm.exception.kind, "UNIT", str(cm.exception))
+        for n in needles:
+            self.assertIn(n, str(cm.exception))
+
+    def test_money_with_num_and_literal_unit_is_rejected(self):
+        # 리뷰 재현: "한도 9,000,000만 원" (900만 원이 900억 원으로 보임)
+        self.expect_unit_error(["한도 {{fig.pension_credit_limit_total|num}}만 원"], "num", "man_won")
+
+    def test_rate_with_money_format_is_rejected(self):
+        # 리뷰 재현: "세율 0만 원"
+        self.expect_unit_error(["세율 {{fig.income_tax_rate_b1|man_won}}"], "man_won", "pct")
+
+    def test_literal_unit_after_placeholder_is_rejected(self):
+        for line in ("{{fig.pension_credit_limit_total|man}}원", "{{fig.pension_credit_limit_total|man}} 원",
+                     "<g>{{fig.pension_credit_limit_total|man}}</g> 원", "{{fig.rule_of_72|num}}%",
+                     "{{fig.rule_of_72|num}}만"):
+            with self.subTest(line=line):
+                self.expect_unit_error([line], "단위")
+
+    def test_particles_after_units_are_fine(self):
+        out = self.expand_lines(["연 {{fig.pension_credit_limit_savings|man_won}}까지", "{{fig.rule_of_72|num}}의 법칙",
+                                 "{{y|nyeon}} 만에 두 배 예시"],
+                                derive={"y": {"fn": "div", "args": ["fig.rule_of_72", "fig.cpi_yoy_2026_09"]}})
+        self.assertEqual(out["scenes"][0]["lines"], ["연 600만 원까지", "72의 법칙", "25년 만에 두 배 예시"])
+
+    def test_derive_unit_rules(self):
+        self.expect_unit_error(["{{x|man_won}}"], "add",
+                               derive={"x": {"fn": "add", "args": ["fig.income_tax_rate_b1", "fig.pension_credit_limit_total"]}})
+        self.expect_unit_error(["{{x|man_won}}"], "rate_pct",
+                               derive={"x": {"fn": "pct_of", "args": ["fig.income_tax_rate_b1", "fig.pension_credit_limit_total"]}})
+        # 결과 단위가 서식을 고른다: 세율 × 지방소득세 = %, 금액의 % = 원
+        out = self.expand_lines(["{{r|pct}} → {{e|man1}}"], derive={
+            "r": {"fn": "with_local", "args": ["fig.income_tax_rate_b1", "fig.local_income_tax_ratio"]},
+            "e": {"fn": "pct_of", "args": ["fig.pension_credit_limit_total", "r"]}})
+        self.assertEqual(out["scenes"][0]["lines"], ["6.6% → 59.4만"])
+
+    def test_every_format_has_a_unit_rule(self):
+        from reelkit import calc
+        self.assertEqual(set(calc.FORMAT_UNITS), set(calc.FORMATS))
+
+
 class Cli(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="test-expand-"))

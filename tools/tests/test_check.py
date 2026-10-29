@@ -108,6 +108,13 @@ class Failures(TracerBase):
         rep = check.check_spec(bad, self.registry)
         self.assertIn(("UNKNOWN_FIG", "no_such_figure"), [(e.kind, e.detail) for e in rep.errors])
 
+    def test_literal_unit_after_ledger_span_is_error(self):
+        # CR-03 회귀: 장부 구간("900만") 뒤에 손으로 "원" 을 붙여도 check 가 잡는다
+        spec = expand_lines(self.registry, ["{{fig.pension_credit_limit_total|man}}까지"])
+        spec["scenes"][0]["lines"][0] = "900만 원까지"
+        rep = check.check_spec(spec, self.registry)
+        self.assertIn("UNIT_AFTER", kinds(rep.errors))
+
     def test_ledger_pointing_nowhere_is_mismatch(self):
         bad = copy.deepcopy(self.spec)
         bad["figures"][0]["where"] = "scene 99 line 1"
