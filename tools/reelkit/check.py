@@ -7,6 +7,8 @@
   (ref 가 없으면 LEDGER_FORGED, 값이 바뀌었으면 STALE_FIGURE), basis_items 도 다시 만들어 맞춰 보며,
 - 장부 구간을 가린 나머지에서 수치 숫자를 찾아 (있으면 UNREGISTERED 오류, D-07),
 - 장부의 등록부 id 가 미확인이면 그 줄을 `needs_check`(확인 필요)에 적는다 (D-03: 막지 않고 표시).
+- inputs(시나리오 가정)를 쓴 줄은 `assumptions`(가정 수치)에 적고, 같은 줄이나 basis 에 예시·가정·가상 표기가
+  없으면 ASSUMPTION_UNMARKED 오류다 (CR-02). 비율(%)은 inputs 로 쓸 수 없다 (expand 가 거부).
 오류는 종료 코드 1, 경고는 `--strict` 일 때만 종료 코드 3 이다. 요약 문구에는 "통과" 를 쓰지 않는다.
 """
 import re
@@ -43,6 +45,7 @@ HINTS = {
     "LEDGER_REF": "장부의 참조를 원고의 inputs·derive 로 풀 수 없음 — expand 를 다시 실행",
     "BASIS_ITEMS": "basis_items 를 손으로 고치지 말고 expand 를 다시 실행",
     "SOURCE_MISMATCH": "spec.json 을 손으로 고치지 말고 spec.src.json 을 고쳐 expand 를 다시 실행",
+    "ASSUMPTION_UNMARKED": "inputs(시나리오 가정) 숫자는 화면에 보여야 한다 — 같은 줄이나 basis 에 예시·가정·가상 표기",
     "UNIT_AFTER": "서식이 단위를 찍는다 — 자리표시자 뒤에 만/원/% 같은 단위를 글자로 쓰지 말고 man_won, pct 같은 서식을 쓰세요",
 }
 
@@ -70,6 +73,7 @@ class CheckReport:
     errors: list = field(default_factory=list)
     warnings: list = field(default_factory=list)
     needs_check: list = field(default_factory=list)
+    assumptions: list = field(default_factory=list)   # inputs(시나리오 가정)를 쓴 줄 (CR-02)
     figures_used: list = field(default_factory=list)
     checked_on: str = ""
     legacy_count: int = 0
@@ -83,7 +87,8 @@ class CheckReport:
                 text += (f" · 카드 대조: 카드에 없는 숫자 {len(self.card['new_numbers'])}개"
                          f" · 옮기지 않은 note {len(self.card['dropped_notes'])}개")
             return text
-        return f"오류 {len(self.errors)}건 · 경고 {len(self.warnings)}건 · 확인 필요 {len(self.needs_check)}줄"
+        return (f"오류 {len(self.errors)}건 · 경고 {len(self.warnings)}건 · 확인 필요 {len(self.needs_check)}줄"
+                f" · 가정 수치 {len(self.assumptions)}줄")
 
     def to_json(self, spec_path, registry_path):
         out = {
@@ -94,6 +99,7 @@ class CheckReport:
             "errors": [i.to_dict() for i in self.errors],
             "warnings": [i.to_dict() for i in self.warnings],
             "needs_check": list(self.needs_check),
+            "assumptions": list(self.assumptions),
             "figures_used": list(self.figures_used),
         }
         if self.card is not None:
@@ -237,6 +243,15 @@ def check_spec(spec, registry, *, publish_date=None):
                                 f"{entry['text']} — 정확값이 아님, 앞에 '약' 표기 권장", text))
         for tok in numscan.figure_tokens("".join(masked)):
             err(CheckIssue(where, scene, "UNREGISTERED", tok.raw, text))
+
+        input_leaves = sorted({leaf for leaves in field_leaves for leaf in leaves if leaf.startswith("inputs.")})
+        if input_leaves:
+            inputs = spec.get("inputs") if isinstance(spec.get("inputs"), dict) else {}
+            report.assumptions.append({
+                "where": where, "scene": scene, "text": text, "inputs": input_leaves,
+                "labels": [str((inputs.get(leaf[7:]) or {}).get("label", "")) for leaf in input_leaves]})
+            if not (expand.LABEL_MARK_RE.search(text) or expand.LABEL_MARK_RE.search(basis_text)):
+                err(CheckIssue(where, scene, "ASSUMPTION_UNMARKED", ", ".join(input_leaves), text))
 
         seen, local_hit = set(), False
         for leaves in field_leaves:

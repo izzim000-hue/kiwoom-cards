@@ -12,6 +12,7 @@
           원고 속 장부를 믿지 않고 장부의 참조·서식을 지금 등록부와 원고의 inputs·derive 로 다시 계산해 맞춰 본다.
           SPEC 옆에 원고 소스(<이름>.src.json, 또는 --src)가 있으면 다시 확장한 결과와도 대조한다.
           등록부 밖 숫자는 오류(종료 1), 미확인 수치를 쓴 줄은 `확인 필요` 로 적을 뿐 막지 않는다 (D-03).
+          inputs(가정)를 쓴 줄은 `가정 수치` 로 적고, 그 줄이나 basis 에 예시·가정·가상 표기가 없으면 오류다.
           --out 을 주면 오류가 있어도 check.json 을 쓴다. --strict 는 경고가 있으면 종료 3.
           --date 는 게시 예정일(기본 오늘): 등록부 valid_until 이 이보다 이르면 EXPIRED 경고.
           --legacy 는 게시된 v1 원고(장부 없음)용 보고 전용: 등록부 없는 수치 숫자 개수만 알리고 종료 0, 원고는 고치지 않는다.
@@ -210,6 +211,8 @@ def cmd_check(args):
             print(f"  -> {check.HINTS[issue.kind]}", file=sys.stderr)
     for item in report.needs_check:
         print(f'확인 필요: {item["where"]} [{", ".join(item["ids"])}] "{item["text"]}"')
+    for item in report.assumptions:
+        print(f'가정 수치: {item["where"]} [{", ".join(item["inputs"])}] "{item["text"]}" — 화면에 예시·가정 표기 확인')
     if args.out and _write_check_json(args, report, args.registry):
         return 2
     print(f"check: {report.summary()}")

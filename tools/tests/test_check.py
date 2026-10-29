@@ -13,7 +13,7 @@ TOOLS = Path(__file__).resolve().parents[1]
 REPO = TOOLS.parent
 sys.path.insert(0, str(TOOLS))
 
-from reelkit import check, figures  # noqa: E402
+from reelkit import check, expand, figures  # noqa: E402
 from reelkit.expand import expand_source  # noqa: E402
 
 FIXTURE = TOOLS / "tests" / "fixtures" / "draft-tax.src.json"
@@ -77,7 +77,7 @@ class CleanDraft(TracerBase):
 
     def test_summary_never_says_tonggwa(self):
         rep = check.check_spec(self.spec, self.registry)
-        self.assertEqual(rep.summary(), "오류 0건 · 경고 0건 · 확인 필요 4줄")
+        self.assertEqual(rep.summary(), "오류 0건 · 경고 0건 · 확인 필요 4줄 · 가정 수치 7줄")
         self.assertNotIn("통과", rep.summary())
 
 
@@ -229,6 +229,65 @@ class ForgedLedger(TracerBase):
         self.assertEqual(doc["source"], str(self.tmp / "spec.src.json"))
         self.write("spec.json", self.spec)
         self.assertEqual(self.run_cli(spec).returncode, 0)
+
+
+class Assumptions(TracerBase):
+    """CR-02 회귀: inputs 는 화면에 예시·가정으로 보여야 하고, check.json 에 따로 적히며, 비율은 inputs 로 못 쓴다."""
+
+    def test_hand_typed_rate_as_input_is_refused(self):
+        # 리뷰 재현: "rate": 16.5 % 세율 예시 -> 예전에는 오류·경고 0건, 확인 필요에도 없음
+        src = {"inputs": {"rate": {"value": "16.5", "unit": "%", "label": "세율 예시"}},
+               "scenes": [{"top": "t", "lines": ["세액공제율 <g>{{inputs.rate|pct}}</g>"]}]}
+        with self.assertRaises(expand.ExpandError) as cm:
+            expand_source(src, self.registry)
+        self.assertIn("비율(%)", str(cm.exception))
+
+    def test_rate_made_only_from_inputs_is_refused(self):
+        src = {"inputs": {"g": {"value": "165", "unit": "원", "label": "예시"},
+                          "p": {"value": "1000", "unit": "원", "label": "예시"}},
+               "derive": {"r": {"fn": "yield_pct", "args": ["inputs.g", "inputs.p"]}},
+               "scenes": [{"top": "t", "lines": ["세율 예시 {{r|pct}}"]}]}
+        with self.assertRaises(expand.ExpandError) as cm:
+            expand_source(src, self.registry)
+        self.assertIn("fig.", str(cm.exception))
+
+    def test_input_rate_smuggled_into_spec_fails_check(self):
+        bad = copy.deepcopy(self.spec)
+        bad["inputs"]["rate"] = {"value": "16.5", "unit": "%", "label": "세율 예시"}
+        self.assertIn("DERIVE", kinds(check.check_spec(bad, self.registry).errors))
+
+    def test_unmarked_input_line_is_error(self):
+        spec = expand_lines(self.registry, ["세액공제 {{inputs.amt|man_won}}"],
+                            inputs={"amt": {"value": "1000000", "unit": "원", "label": "공제 예시"}})
+        rep = check.check_spec(spec, self.registry)
+        self.assertEqual([(e.kind, e.detail) for e in rep.errors], [("ASSUMPTION_UNMARKED", "inputs.amt")])
+        self.assertEqual([a["where"] for a in rep.assumptions], ["scene 1 line 1"])
+
+    def test_marked_on_line_or_basis_is_listed_not_blocked(self):
+        inputs = {"amt": {"value": "1000000", "unit": "원", "label": "공제 예시"}}
+        for lines, basis in ((["예시: 공제 {{inputs.amt|man_won}}"], None),
+                             (["공제 {{inputs.amt|man_won}}"], "가정 · 지방소득세 포함")):
+            spec = expand_lines(self.registry, lines, basis=basis, inputs=inputs)
+            rep = check.check_spec(spec, self.registry)
+            self.assertEqual(rep.errors, [], lines)
+            self.assertEqual(rep.assumptions[0]["inputs"], ["inputs.amt"])
+            self.assertEqual(rep.assumptions[0]["labels"], ["공제 예시"])
+
+    def test_derived_from_input_counts_as_assumption(self):
+        rep = check.check_spec(self.spec, self.registry)
+        by = {a["where"]: a for a in rep.assumptions}
+        self.assertEqual(by["scene 4 line 2"]["inputs"], ["inputs.amt"])
+        self.assertEqual(by["scene 6 line 2"]["inputs"], ["inputs.no_tax"])
+        self.assertNotIn("scene 4 line 3", by)   # 등록부 수치만 쓴 줄
+
+    def test_cli_prints_and_writes_assumptions(self):
+        spec = self.write("spec.json", self.spec)
+        out = self.tmp / "check.json"
+        r = self.run_cli(spec, "--out", out)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("가정 수치: scene 6 line 2 [inputs.no_tax]", r.stdout)
+        doc = json.loads(out.read_text(encoding="utf-8"))
+        self.assertEqual(len(doc["assumptions"]), 7)
 
 
 class Cli(TracerBase):

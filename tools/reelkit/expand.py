@@ -26,6 +26,7 @@ NEXT_PREFIX = "<s>다음 편:"
 PLACEHOLDER = re.compile(r"\{\{\s*([A-Za-z0-9_.]+)\s*\|\s*([a-z0-9_]+)\s*\}\}")
 NAME_RE = re.compile(r"^[a-z0-9_]+$")
 LABEL_MARKS = ("예시", "가정", "가상")
+LABEL_MARK_RE = re.compile("|".join(LABEL_MARKS))
 SPEC_VERSION = 2
 
 
@@ -104,6 +105,9 @@ def _check_inputs(raw):
             raise ExpandError(f"{where}: value 는 유한한 숫자여야 함 {item['value']!r}")
         if item["unit"] not in figures.UNITS:
             raise ExpandError(f"{where}: unit {item['unit']!r} — 허용: {', '.join(repr(u) for u in figures.UNITS)}")
+        if item["unit"] == calc.PCT:
+            raise ExpandError(f"{where}: 비율(%)은 inputs 로 쓸 수 없음 — 세율·요율·수익률은 등록부(fig.)에서 가져온다 "
+                              f"(시나리오 수익률이면 사용자 승인 뒤 figures add 로 market/constant 항목 추가)", kind="UNIT")
         label = item["label"]
         if not isinstance(label, str) or not any(m in label for m in LABEL_MARKS):
             raise ExpandError(f"{where}: label 에 예시/가정/가상 표기가 필요함")
@@ -167,6 +171,9 @@ def render_ref(vals, ref, fmt, where):
     if not isinstance(ref, str) or not ref:
         raise ExpandError(f"{where}: 참조 이름이 없음", kind="UNKNOWN_REF")
     value, leaves, unit = vals.lookup(ref, where)
+    if unit == calc.PCT and not any(leaf.startswith("fig.") for leaf in leaves):
+        raise ExpandError(f"{where}: {ref} — 비율(%) 값은 등록부 수치(fig.)에서 와야 함 (inputs 만으로 만든 비율은 쓸 수 없음)",
+                          kind="UNIT")
     try:
         calc.check_format_unit(fmt, unit)
     except calc.UnitError as e:
