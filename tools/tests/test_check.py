@@ -89,6 +89,14 @@ class Failures(TracerBase):
         self.assertEqual((err.where, err.scene, err.detail), ("scene 6 line 2", 6, "7원"))
         self.assertTrue(str(err).startswith("scene 6 line 2: UNREGISTERED (7원) "))
 
+    def test_hangul_number_words_are_unregistered(self):
+        # CR-04 회귀: 숫자 없이 쓴 금액·배수·전망 연도도 등록부 밖 숫자다
+        for line in ("천만 원 모으기", "세금이 두 배", "절반으로 줄어요", "2055년 기금 고갈", "300 대비 늘어"):
+            spec = plain()
+            spec["scenes"][4]["lines"][2] = line
+            with self.subTest(line=line):
+                self.assertEqual(kinds(check.check_spec(spec, self.registry).errors), ["UNREGISTERED"])
+
     def test_changed_text_with_ledger_kept_is_mismatch(self):
         bad = copy.deepcopy(self.spec)
         bad["scenes"][2]["lines"][1] = "6.7% → 6.6만"

@@ -197,6 +197,15 @@ class BuildCaption(Base):
         with self.assertRaisesRegex(caption.CaptionError, "'200만 원' 는 원고에 없음"):
             self.build(cap_src=self.cap(summary=s))
 
+    def test_hangul_number_not_in_spec(self):
+        # CR-04 회귀: 게시글의 '두 배', '천만 원' 도 원고에 없는 숫자다
+        for text in ("세액공제가 두 배", "천만 원 모으기"):
+            s = self.cap()["summary"]
+            s[0] = text
+            with self.subTest(text=text):
+                with self.assertRaisesRegex(caption.CaptionError, "원고에 없음"):
+                    self.build(cap_src=self.cap(summary=s))
+
     def test_spec_top_altered(self):
         spec = copy.deepcopy(self.spec)
         spec["scenes"][0]["top"] = "다른 제목"
