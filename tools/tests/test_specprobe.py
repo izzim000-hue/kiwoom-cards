@@ -11,7 +11,13 @@ TOOLS = Path(__file__).resolve().parents[1]
 REPO = TOOLS.parent
 sys.path.insert(0, str(TOOLS))
 
-from reelkit import specprobe  # noqa: E402
+from reelkit import golden, specprobe  # noqa: E402
+
+
+def golden_mp4s():
+    """게시된 11편의 MP4: 골든 기준표의 모든 항목."""
+    return sorted(REPO / e["mp4"] for e in golden.load_manifest()["entries"])
+
 
 ITEMS = ["video_stream", "codec", "size", "fps", "pix_fmt", "profile", "audio", "faststart", "duration"]
 
@@ -78,7 +84,7 @@ class ProbeCommitted(Samples):
         self.assertEqual({c.status for c in checks}, {"PASS"})
 
     def test_no_committed_mp4_has_a_fail_item(self):
-        files = sorted((REPO / "2026" / "reels").glob("*.mp4"))
+        files = golden_mp4s()
         self.assertEqual(len(files), 11)
         for f in files:
             with self.subTest(mp4=f.name):

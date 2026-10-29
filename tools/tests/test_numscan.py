@@ -9,9 +9,15 @@ TOOLS = Path(__file__).resolve().parents[1]
 REPO = TOOLS.parent
 sys.path.insert(0, str(TOOLS))
 
-from reelkit import numscan  # noqa: E402
+from reelkit import golden, numscan  # noqa: E402
 
-SPECS = sorted((REPO / "2026" / "reels" / "specs").glob("*.json"))
+
+def golden_specs():
+    """게시된 10편의 원고: 골든 기준표의 재현 가능 항목 (폴더를 훑으면 새로 옮긴 릴스에 시험이 깨진다)."""
+    return sorted(REPO / e["spec"] for e in golden.load_manifest()["entries"] if e["status"] == "reproducible")
+
+
+SPECS = golden_specs()
 
 
 def raws(text):

@@ -11,7 +11,14 @@ TOOLS = Path(__file__).resolve().parents[1]
 REPO = TOOLS.parent
 sys.path.insert(0, str(TOOLS))
 
+from reelkit import golden  # noqa: E402
 from reelkit.spec import ALLOWED_TAGS, SpecError, check_legacy_markup, load_spec  # noqa: E402
+
+
+def golden_specs():
+    """게시된 10편의 원고: 골든 기준표의 재현 가능 항목 (폴더를 훑으면 새로 옮긴 릴스에 시험이 깨진다)."""
+    return sorted(REPO / e["spec"] for e in golden.load_manifest()["entries"] if e["status"] == "reproducible")
+
 
 LT, GT = chr(60), chr(62)
 
@@ -37,7 +44,7 @@ def spec_of(top="t", lines=("x",), basis="b"):
 
 class CommittedSpecs(unittest.TestCase):
     def test_all_ten_committed_specs_load_untouched_and_pass_allowlist(self):
-        files = sorted((REPO / "2026" / "reels" / "specs").glob("*.json"))
+        files = golden_specs()
         self.assertEqual(len(files), 10)
         for f in files:
             with self.subTest(spec=f.name):
