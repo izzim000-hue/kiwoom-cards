@@ -27,7 +27,9 @@
   figures 수치 등록부(tools/data/figures.json) 조회·추가·확인.
           add      새 수치를 추가한다. 확인 상태는 항상 `미확인` 이고 지정하는 옵션이 없다 (D-02).
           confirm  사람 확인자 전용이다 (D-02). 1차 출처(law.go.kr 등)를 직접 열어 값을 맞춰 본 사람이 확인자 이름으로
-                   실행한다. Claude 는 이 명령을 실행하면 안 된다. 빈 이름과 Claude/AI 이름은 거부된다.
+                   실행한다. Claude 는 이 명령을 실행하면 안 된다. 대화형 터미널에서만 실행되고 id 를 다시 입력해야 한다.
+                   확인일은 발견일 이후·오늘 이전이어야 한다. 빈 이름과 Claude/AI 이름도 거부되지만 이 이름 검사는
+                   실수 방지일 뿐이다. figures.json 을 직접 고친 `확인` 의 기록 문제는 check 와 figures list 가 오류로 알린다.
 종료 코드: 0 정상, 1 원고·등록부 입력 오류(파일 없음, JSON 오류, 규칙 위반, check 의 오류), 2 환경 오류(파일 쓰기 실패 등)
 """
 import argparse
@@ -310,7 +312,10 @@ def cmd_figures_list(args):
             continue
         value = f"{e['value']} {e['unit']}".strip()
         print(f"{fid}  {value}  {e['legal_status']}  {e['verified']}  {e['label']}")
-    return 0
+    problems = figures.confirmation_problems(reg)
+    for fid, problem in problems:
+        print(f"등록부 오류: {fid}: {problem}", file=sys.stderr)
+    return 1 if problems else 0
 
 
 @_registry_command
@@ -338,8 +343,23 @@ def cmd_figures_add(args):
 
 @_registry_command
 def cmd_figures_confirm(args):
+    # D-02 / CR-05: 사람만 확인한다. Claude Code 의 Bash 처럼 터미널이 아닌 곳에서는 실행되지 않고,
+    # 사람이 화면의 값을 보고 id 를 다시 입력해야 한다. (pty 를 흉내 내는 우회는 막지 못한다 — REVIEW-FIX 참고)
+    if not sys.stdin.isatty():
+        print("등록부 오류: figures confirm 은 사람이 대화형 터미널에서만 실행할 수 있음 (Claude 실행 금지)", file=sys.stderr)
+        return 1
     reg = figures.load_registry(args.registry)
     on = args.date or date.today().isoformat()
+    entry = figures.get_figure(reg, args.id)
+    print(f"{args.id}: {entry['label']} = {entry['value']} {entry['unit']}".rstrip(), file=sys.stderr)
+    print(f"  출처: {entry['source']['name']} {entry['source']['url'] or ''}".rstrip(), file=sys.stderr)
+    try:
+        typed = input("1차 출처에서 이 값을 직접 확인했으면 id 를 다시 입력하세요: ")
+    except EOFError:
+        typed = ""
+    if typed.strip() != args.id:
+        print("등록부 오류: 입력한 id 가 다름 — 확인하지 않음", file=sys.stderr)
+        return 1
     figures.confirm_figure(reg, args.id, args.by, on)
     figures.save_registry(reg, args.registry)
     print(f"figures confirm: {args.id} 확인 ({on}, {args.by.strip()})")

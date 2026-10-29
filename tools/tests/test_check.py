@@ -239,6 +239,32 @@ class ForgedLedger(TracerBase):
         self.assertEqual(self.run_cli(spec).returncode, 0)
 
 
+class RegistryConfirmations(TracerBase):
+    """CR-05 회귀: 등록부를 직접 고쳐 만든 잘못된 `확인` 은 check 가 오류로 알린다."""
+
+    def test_future_confirmation_in_registry_is_error(self):
+        reg = copy.deepcopy(self.registry)
+        reg["figures"]["rule_of_72"].update(verified="확인", checked_by="팀장", checked_on="2099-01-01")
+        rep = check.check_spec(self.spec, reg)
+        self.assertEqual([(e.kind, e.detail[:10]) for e in rep.errors], [("REGISTRY_CONFIRM", "rule_of_72")])
+
+    def test_confirmation_without_checker_is_error(self):
+        reg = copy.deepcopy(self.registry)
+        reg["figures"]["rule_of_72"].update(verified="확인", checked_by=None, checked_on="2026-10-29")
+        self.assertIn("REGISTRY_CONFIRM", kinds(check.check_spec(self.spec, reg).errors))
+
+    def test_cli_exit_1_for_hand_edited_registry(self):
+        reg = copy.deepcopy(self.registry)
+        reg["figures"]["rule_of_72"].update(verified="확인", checked_by="팀장", checked_on="2099-01-01")
+        r = self.run_cli(self.write("spec.json", self.spec), "--registry", self.write("reg.json", reg))
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("REGISTRY_CONFIRM", r.stderr)
+        reg["figures"]["rule_of_72"]["checked_by"] = None   # 로드 단계에서 거부
+        r = self.run_cli(self.write("spec.json", self.spec), "--registry", self.write("reg.json", reg))
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("등록부 오류", r.stderr)
+
+
 class Assumptions(TracerBase):
     """CR-02 회귀: inputs 는 화면에 예시·가정으로 보여야 하고, check.json 에 따로 적히며, 비율은 inputs 로 못 쓴다."""
 

@@ -1,5 +1,7 @@
 """수치 등록부 시험: 30개 id 시드, 검증 규칙, add/confirm, CLI (stdlib unittest 전용). 커밋된 등록부는 읽기만 한다."""
+import contextlib
 import copy
+import io
 import json
 import shutil
 import subprocess
@@ -7,6 +9,7 @@ import sys
 import tempfile
 import unittest
 from datetime import date
+from unittest import mock
 from pathlib import Path
 
 TOOLS = Path(__file__).resolve().parents[1]
@@ -270,20 +273,70 @@ class Cli(unittest.TestCase):
         self.assertEqual(r.returncode, 2)
         self.assertNotIn("x1", self.reg.read_text(encoding="utf-8"))
 
-    def test_confirm_by_human_works_and_ai_name_refused(self):
-        r = self.run_cli("figures", "confirm", "rule_of_72", "--by", "Claude", "--registry", self.reg)
+    def test_confirm_refused_without_a_terminal(self):
+        # CR-05 회귀: Claude 의 Bash 처럼 터미널이 아닌 곳에서는 사람 이름으로도 확인할 수 없다
+        before = self.reg.read_bytes()
+        for who in ("홍길동", "Claude"):
+            r = subprocess.run([sys.executable, str(TOOLS / "draft.py"), "figures", "confirm", "rule_of_72",
+                                "--by", who, "--registry", str(self.reg)],
+                               capture_output=True, text=True, encoding="utf-8", stdin=subprocess.DEVNULL)
+            self.assertEqual(r.returncode, 1, r.stdout)
+            self.assertIn("대화형 터미널", r.stderr)
+        r = subprocess.run([sys.executable, str(TOOLS / "draft.py"), "figures", "confirm", "rule_of_72",
+                            "--by", "홍길동", "--registry", str(self.reg)],
+                           capture_output=True, text=True, encoding="utf-8", input="rule_of_72\n")
         self.assertEqual(r.returncode, 1)
-        self.assertIn("등록부 오류", r.stderr)
-        r = self.run_cli("figures", "confirm", "rule_of_72", "--by", "", "--registry", self.reg)
-        self.assertEqual(r.returncode, 1)
-        r = self.run_cli("figures", "confirm", "rule_of_72", "--by", "홍길동", "--date", "2099-01-01", "--registry", self.reg)
-        self.assertEqual(r.returncode, 1)
-        self.assertIn("미래", r.stderr)
+        self.assertEqual(self.reg.read_bytes(), before)
+
+    def confirm_in_terminal(self, typed, *extra):
+        class FakeTty(io.StringIO):
+            def isatty(self):
+                return True
+        argv = ["figures", "confirm", "rule_of_72", "--by", "홍길동", "--registry", str(self.reg), *extra]
+        with mock.patch.object(draft.sys, "stdin", FakeTty()), mock.patch("builtins.input", return_value=typed), \
+                contextlib.redirect_stderr(io.StringIO()) as err:
+            code = draft.main(argv)
+        return code, err.getvalue()
+
+    def test_confirm_in_terminal_needs_the_id_retyped(self):
+        before = self.reg.read_bytes()
+        code, err = self.confirm_in_terminal("rule_of_7")
+        self.assertEqual(code, 1)
+        self.assertIn("id 가 다름", err)
+        self.assertEqual(self.reg.read_bytes(), before)
+        code, err = self.confirm_in_terminal("rule_of_72", "--date", "2099-01-01")
+        self.assertEqual((code, "미래" in err), (1, True), err)
         today = date.today().isoformat()
-        r = self.run_cli("figures", "confirm", "rule_of_72", "--by", "홍길동", "--date", today, "--registry", self.reg)
-        self.assertEqual(r.returncode, 0, r.stderr)
+        code, err = self.confirm_in_terminal("rule_of_72")
+        self.assertEqual(code, 0, err)
         e = json.loads(self.reg.read_text(encoding="utf-8"))["figures"]["rule_of_72"]
         self.assertEqual((e["verified"], e["checked_on"], e["checked_by"]), ("확인", today, "홍길동"))
+
+    def hand_edit(self, **fields):
+        data = json.loads(self.reg.read_text(encoding="utf-8"))
+        data["figures"]["rule_of_72"].update(fields)
+        self.reg.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+
+    def test_hand_edited_future_confirmation_is_reported_by_list(self):
+        # CR-05 회귀: figures.json 을 직접 고친 미래 확인일은 list 가 오류로 알린다
+        self.hand_edit(verified="확인", checked_by="팀장", checked_on="2099-01-01")
+        r = self.run_cli("figures", "list", "--registry", self.reg)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("rule_of_72", r.stderr)
+        self.assertIn("2099-01-01", r.stderr)
+
+    def test_hand_edited_confirmation_without_checker_fails_to_load(self):
+        self.hand_edit(verified="확인", checked_on=date.today().isoformat())
+        r = self.run_cli("figures", "list", "--registry", self.reg)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("checked_by", r.stderr)
+
+    def test_confirmation_problems(self):
+        data = registry_with(verified="확인", checked_on="2026-10-30", checked_by="홍길동")
+        self.assertEqual(figures.confirmation_problems(data, date(2026, 10, 30)), [])
+        self.assertEqual([fid for fid, _ in figures.confirmation_problems(data, date(2026, 10, 29))], ["sample_x"])
+        data["figures"]["sample_x"]["checked_by"] = None
+        self.assertTrue(figures.confirmation_problems(data, date(2026, 10, 30)))
 
     def test_confirm_help_marks_it_human_only(self):
         r = self.run_cli("figures", "--help")

@@ -45,6 +45,7 @@ HINTS = {
     "LEDGER_REF": "장부의 참조를 원고의 inputs·derive 로 풀 수 없음 — expand 를 다시 실행",
     "BASIS_ITEMS": "basis_items 를 손으로 고치지 말고 expand 를 다시 실행",
     "SOURCE_MISMATCH": "spec.json 을 손으로 고치지 말고 spec.src.json 을 고쳐 expand 를 다시 실행",
+    "REGISTRY_CONFIRM": "등록부의 확인 상태 기록이 잘못됨 — 확인은 사람이 터미널에서 figures confirm 으로만 (Claude 금지)",
     "ASSUMPTION_UNMARKED": "inputs(시나리오 가정) 숫자는 화면에 보여야 한다 — 같은 줄이나 basis 에 예시·가정·가상 표기",
     "UNIT_AFTER": "서식이 단위를 찍는다 — 자리표시자 뒤에 만/원/% 같은 단위를 글자로 쓰지 말고 man_won, pct 같은 서식을 쓰세요",
 }
@@ -189,6 +190,9 @@ def check_spec(spec, registry, *, publish_date=None):
     publish_date = publish_date or date.today()
     basis_text = spec.get("basis") if isinstance(spec.get("basis"), str) else ""
     err = report.errors.append
+
+    for fid, problem in figreg.confirmation_problems(registry):
+        err(CheckIssue("registry", None, "REGISTRY_CONFIRM", f"{fid}: {problem}", ""))
 
     vals, derive_error = _rederive(spec, registry)
     if derive_error:

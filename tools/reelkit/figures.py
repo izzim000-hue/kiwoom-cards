@@ -3,6 +3,8 @@
 등록부는 `tools/data/figures.json` (커밋되는 데이터 파일, schema 1) 이다. 항목 필드 이름은 원고가 id 로
 참조하므로 바꾸지 않는다 (D-01). 값은 Decimal 로 읽히는 문자열이며 돈은 원, 비율은 퍼센트 단위다.
 확인 상태 `확인` 은 사람이 확인일과 확인자를 적었을 때만 허용한다 (D-02). Claude 나 AI 이름은 확인자가 될 수 없다.
+이름 검사는 실수 방지일 뿐이다. 실제 장치는 draft.py 의 대화형 터미널 확인(id 다시 입력)과, check·figures list 가
+`확인` 항목의 기록 문제를 오류로 드러내는 confirmation_problems 이다 (CR-05).
 """
 import difflib
 import json
@@ -241,6 +243,32 @@ def confirm_figure(data, fid, by, on, today=None):
     validate_entry(fid, new)
     data["figures"][fid] = new
     return new
+
+
+def confirmation_problems(data, today=None):
+    """`확인` 상태 항목의 기록 문제 목록 [(id, 문구)]. check 와 figures list 가 오류로 알린다 (CR-05).
+
+    figures confirm 은 대화형 터미널에서만 쓰이지만 figures.json 을 직접 고치는 길은 막을 수 없으므로,
+    확인자·확인일이 없거나, 날짜가 잘못됐거나, 미래이거나, 발견일보다 이르거나, AI 이름인 `확인` 을 드러낸다.
+    """
+    today = (today or date.today()).isoformat()
+    problems = []
+    for fid, entry in data.get("figures", {}).items():
+        if not isinstance(entry, dict) or entry.get("verified") != "확인":
+            continue
+        on, by = entry.get("checked_on"), entry.get("checked_by")
+        if not isinstance(by, str) or not by.strip():
+            problems.append((fid, "확인 상태인데 확인자(checked_by)가 없음"))
+        elif is_ai_name(by):
+            problems.append((fid, f"확인자 {by!r} 는 사람이 아님"))
+        if not _valid_date(on):
+            problems.append((fid, f"확인 상태인데 확인일(checked_on)이 없거나 날짜가 아님 ({on!r})"))
+            continue
+        if on > today:
+            problems.append((fid, f"확인일 {on} 이 오늘({today})보다 늦음"))
+        if isinstance(entry.get("found_on"), str) and on < entry["found_on"]:
+            problems.append((fid, f"확인일 {on} 이 발견일 {entry['found_on']} 보다 이름"))
+    return problems
 
 
 def save_registry(data, path=REGISTRY_PATH):
