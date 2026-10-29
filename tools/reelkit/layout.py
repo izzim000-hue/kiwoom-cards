@@ -145,7 +145,8 @@ class LayoutWarning:
     text: str
 
     def __str__(self):
-        return f'scene {self.scene} line {self.line}: {self.kind} ({self.value}) "{self.text}"'
+        where = f"scene {self.scene} line {self.line}" if self.line != "" else f"scene {self.scene}"   # 장면 단위 경고는 line 이 빈 문자열
+        return f'{where}: {self.kind} ({self.value}) "{self.text}"'
 
 
 def evaluate_layout(measure, scene):

@@ -99,6 +99,18 @@ def schedule(spec):
     return Schedule(scenes=tuple(scenes), raw_total=t, nframes=nframes, total=nframes / FPS)
 
 
+def dwell_warnings(spec, sched):
+    """장면 길이가 DWELL_MIN 보다 짧거나 DWELL_MAX 보다 길면 장면 단위 경고 (line 은 ""). 값은 자르지 않는다 (D-06)."""
+    out = []
+    for sc, scene in zip(sched.scenes, spec["scenes"]):
+        text = TAG_RE.sub("", scene["lines"][0])[:30] if scene["lines"] else ""
+        if sc.dur < DWELL_MIN:
+            out.append(layout.LayoutWarning(sc.index + 1, "", "DWELL_SHORT", f"{sc.dur:.2f}초 < {DWELL_MIN:g}초", text))
+        elif sc.dur > DWELL_MAX:
+            out.append(layout.LayoutWarning(sc.index + 1, "", "DWELL_LONG", f"{sc.dur:.2f}초 > {DWELL_MAX:g}초", text))
+    return out
+
+
 def windows(sched):
     """레이어별 표시 시간창 [시작, 끝]: 앞 장면과 겹치는 크로스페이드 구간부터 자기 끝까지."""
     return [[0.0 if sc.index == 0 else sc.start - CROSS, sc.end] for sc in sched.scenes]

@@ -16,8 +16,8 @@ from dataclasses import dataclass, field
 from datetime import date
 
 from . import figures as figreg
-from . import convert, expand, numscan, timeline
-from .spec import ALLOWED_TAGS
+from . import convert, expand, motion, numscan, timeline
+from .spec import ALLOWED_TAGS, SpecError
 
 # 하우스 패턴 수치 (research "하우스 패턴 수치": 게시된 10편 실측 — 7장면, 21.8~26.05초, 줄 20~22자, top 최대 21자, 장면당 2~4줄).
 # 경고 기준이며 오류가 아니다. 줄 길이는 렌더 전의 거친 신호일 뿐이고 줄바꿈 판정은 reel.py --layout new --strict 의
@@ -301,7 +301,7 @@ def check_spec(spec, registry, *, publish_date=None):
                        "basis_items 가 장부·지금 등록부로 다시 만든 목록과 다름", ""))
 
     _input_shadows(spec, registry, warn)
-    _house_pattern(spec, warn)
+    _house_pattern(spec, warn, err)
 
     report.needs_check = [needs[w] for w, _, _ in fields if w in needs]
     report.figures_used = sorted(used)
@@ -342,14 +342,21 @@ def _input_shadows(spec, registry, warn):
                             f"등록부 id {', '.join(same)} 와 같은 값 — fig 참조 권장", str(item.get("label", ""))))
 
 
-def _house_pattern(spec, warn):
+def _house_pattern(spec, warn, err):
     scenes = spec["scenes"]
     n = len(scenes)
     if not SCENES_MIN <= n <= SCENES_MAX:
         warn(CheckIssue("scenes", None, "SCENES", f"{n}장면 — 하우스 패턴 {SCENES_MIN}~{SCENES_MAX}장면", ""))
-    total = timeline.total_duration(timeline.build_states(spec))
-    if not DUR_MIN <= total <= DUR_MAX:
-        warn(CheckIssue("scenes", None, "DURATION", f"{total:.1f}초 — 하우스 패턴 {DUR_MIN:g}~{DUR_MAX:g}초", ""))
+    try:
+        mode = motion.resolve(spec)
+    except SpecError as e:
+        err(CheckIssue("motion", None, "MOTION", str(e), ""))
+        mode = None
+    if mode is not None:
+        # basic 은 글자 수로 정한 장면 시간표의 길이, none 은 기존 타임라인의 길이로 잰다 (MOTN-05)
+        total = motion.schedule(spec).total if mode == "basic" else timeline.total_duration(timeline.build_states(spec))
+        if not DUR_MIN <= total <= DUR_MAX:
+            warn(CheckIssue("scenes", None, "DURATION", f"{total:.1f}초 — 하우스 패턴 {DUR_MIN:g}~{DUR_MAX:g}초", ""))
     for i, sc in enumerate(scenes, 1):
         if _visible(sc["top"]) > TOP_MAX:
             warn(CheckIssue(f"scene {i} top", i, "TOP_LONG", f"{_visible(sc['top'])}자 > {TOP_MAX}", sc["top"]))

@@ -17,7 +17,7 @@ sys.path.insert(0, str(TOOLS))
 sys.path.insert(0, str(TESTS))
 
 import none_guard  # noqa: E402
-from reelkit import browser, calc, check, figures, layout, motion, render, stills  # noqa: E402
+from reelkit import browser, calc, check, figures, golden, layout, motion, render, stills, timeline  # noqa: E402
 from reelkit.expand import ExpandError, expand_source  # noqa: E402
 from reelkit.spec import SpecError  # noqa: E402
 
@@ -666,6 +666,113 @@ class CountUpRender(unittest.TestCase):
         r = run_reel(p, out, "--layout", "new")
         self.assertEqual(r.returncode, 1, r.stderr)
         self.assertFalse(out.exists())
+
+
+REPO = TOOLS.parent
+
+
+def published_specs():
+    """게시된 10편 원고: 골든 기준표의 재현 가능 항목 (test_check.py 와 같은 방식)."""
+    return sorted(REPO / e["spec"] for e in golden.load_manifest()["entries"] if e["status"] == "reproducible")
+
+
+def uniform_spec(scenes, n_lines, chars):
+    return {"scenes": [{"top": "t", "lines": ["가" * chars] * n_lines} for _ in range(scenes)]}
+
+
+class Dwell(unittest.TestCase):
+    def test_published_ten_land_in_house_range_without_warnings(self):
+        specs = published_specs()
+        self.assertEqual(len(specs), 10)
+        for path in specs:
+            spec = json.loads(path.read_text(encoding="utf-8"))
+            spec["motion"] = "basic"
+            sched = motion.schedule(spec)
+            self.assertTrue(21.0 <= sched.total <= 27.0, f"{path.name}: {sched.total:.2f}초")
+            self.assertEqual(motion.dwell_warnings(spec, sched), [], path.name)
+
+    def test_short_middle_scene_warns(self):
+        spec = {"scenes": [{"top": "", "lines": ["가나다라마바사아", "자차카타파하가나"]},
+                           {"top": "", "lines": ["<g>ab</g>"]},
+                           {"top": "", "lines": ["가나다라마바사아", "자차카타파하가나"]}]}
+        sched = motion.schedule(spec)
+        ws = motion.dwell_warnings(spec, sched)
+        self.assertEqual([(w.scene, w.kind) for w in ws], [(2, "DWELL_SHORT")])
+        w = ws[0]
+        self.assertEqual(w.line, "")
+        self.assertRegex(w.value, r"^1\.3\d초 < 1\.5초$")
+        self.assertEqual(str(w), f'scene 2: DWELL_SHORT ({w.value}) "ab"')
+
+    def test_long_scene_warns(self):
+        spec = {"scenes": [{"top": "t", "lines": ["가" * 15] * 6}, {"top": "", "lines": ["가" * 12] * 2}]}
+        ws = motion.dwell_warnings(spec, motion.schedule(spec))
+        self.assertEqual([(w.scene, w.kind) for w in ws], [(1, "DWELL_LONG")])
+        self.assertRegex(ws[0].value, r"^\d\.\d\d초 > 6초$")
+        self.assertTrue(str(ws[0]).startswith("scene 1: DWELL_LONG ("))
+        self.assertTrue(str(ws[0]).endswith('"' + "가" * 15 + '"'))
+
+    def test_text_is_first_line_cut_to_30(self):
+        spec = {"scenes": [{"top": "", "lines": ["<g>" + "가" * 40 + "</g>"] * 3}]}
+        ws = motion.dwell_warnings(spec, motion.schedule(spec))
+        self.assertEqual(ws[0].text, "가" * 30)
+
+    def test_layout_warning_with_line_keeps_old_string(self):
+        w = layout.LayoutWarning(3, "2", "WRAP", "2 lines", "abc")
+        self.assertEqual(str(w), 'scene 3 line 2: WRAP (2 lines) "abc"')
+
+    def test_constants_are_single_source(self):
+        self.assertEqual((motion.DWELL_MIN, motion.DWELL_MAX, motion.READ_BASE, motion.READ_CPS), (1.5, 6.0, 0.6, 16))
+
+    def test_basic_render_returns_dwell_warning_and_strict_exits_3(self):
+        tmp = Path(tempfile.mkdtemp(prefix="test-motion-dwell-"))
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
+        short = tmp / "short.json"
+        short.write_text(json.dumps({**TINY, "motion": "basic"}, ensure_ascii=False), encoding="utf-8")
+        res = render.render_reel(short, tmp / "short.mp4", layout="new")
+        self.assertEqual([w.kind for w in res.warnings], ["DWELL_SHORT"])
+        r = run_reel(short, tmp / "strict.mp4", "--layout", "new", "--strict")
+        self.assertEqual(r.returncode, 3, r.stderr)
+        self.assertIn("DWELL_SHORT", r.stderr)
+        # none 은 시간 경고를 계산하지 않는다
+        none = tmp / "none.json"
+        none.write_text(json.dumps(TINY, ensure_ascii=False), encoding="utf-8")
+        res = render.render_reel(none, tmp / "none.mp4", layout="new")
+        self.assertEqual(res.warnings, [])
+
+
+class CheckDuration(unittest.TestCase):
+    @staticmethod
+    def house(spec):
+        warns, errs = [], []
+        check._house_pattern(spec, warns.append, errs.append)
+        return [w.kind for w in warns], [e.kind for e in errs]
+
+    def test_basic_uses_schedule_total(self):
+        spec = uniform_spec(7, 3, 2)   # none 25.2초(범위 안), basic 12.8초(범위 밖)
+        self.assertTrue(21.0 <= timeline.total_duration(timeline.build_states(spec)) <= 27.0)
+        self.assertNotIn("DURATION", self.house(spec)[0])
+        spec["motion"] = "basic"
+        self.assertIn("DURATION", self.house(spec)[0])
+
+    def test_basic_in_range_while_none_total_is_not(self):
+        spec = uniform_spec(7, 2, 14)  # none 19.25초(범위 밖), basic 21.6초(범위 안)
+        self.assertIn("DURATION", self.house(spec)[0])
+        spec["motion"] = "basic"
+        self.assertNotIn("DURATION", self.house(spec)[0])
+
+    def test_unknown_motion_is_an_error_not_a_crash(self):
+        spec = uniform_spec(7, 3, 2)
+        spec["motion"] = "calm"
+        warns, errs = self.house(spec)
+        self.assertEqual(errs, ["MOTION"])
+        self.assertNotIn("DURATION", warns)
+
+    def test_check_spec_reports_motion_error(self):
+        spec = pension_countup_spec()
+        spec["motion"] = "calm"
+        rep = check.check_spec(spec, figures.load_registry())
+        motion_errs = [e for e in rep.errors if e.kind == "MOTION"]
+        self.assertEqual([e.where for e in motion_errs], ["motion"])
 
 
 if __name__ == "__main__":

@@ -173,6 +173,7 @@ def _render_motion(spec, out_path, *, keep_work, overlay_all, frame_sink):
                         text = motion_mod.TAG_RE.sub("", spec["scenes"][c["s"]]["lines"][c["j"]])[:30]
                         warnings.append(LayoutWarning(c["s"] + 1, str(c["j"] + 1), "COUNTUP_WRAP",
                                                       f"{want['n']}줄 -> {c['n']}줄", text))
+                warnings.extend(motion_mod.dwell_warnings(spec, sched))
                 with PipeEncoder(out_path) as enc:
                     for f in range(sched.nframes):
                         motion_mod.seek(page, sched, f / FPS, motion_mod.countup_texts(sched, cu_items, f / FPS))
