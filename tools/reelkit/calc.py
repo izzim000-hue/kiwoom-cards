@@ -14,6 +14,7 @@ from decimal import ROUND_HALF_UP, Decimal, DivisionByZero, InvalidOperation, Ov
 
 MINUS = "−"
 PREC = 34
+MAX_MONTHS = 1200
 
 
 class CalcError(ValueError):
@@ -51,6 +52,40 @@ def _calc(fn):
     return wrapper
 
 
+def _months(m, name):
+    """개월 수는 1..1200 의 정수여야 한다 (거듭제곱 계산량 제한, T-02-04)."""
+    if m != m.to_integral_value() or not 1 <= m <= MAX_MONTHS:
+        raise CalcError(f"{name}: 개월 수는 1~{MAX_MONTHS} 의 정수여야 함 (받은 값 {m})")
+    return m
+
+
+@_calc
+def add(a, b):
+    return a + b
+
+
+@_calc
+def sub(a, b):
+    return a - b
+
+
+@_calc
+def mul(a, b):
+    return a * b
+
+
+@_calc
+def div(a, b):
+    if b == 0:
+        raise CalcError("div: 0 으로 나눌 수 없음")
+    return a / b
+
+
+@_calc
+def neg(a):
+    return -a
+
+
 @_calc
 def pct_of(amount, rate_pct):
     """amount 의 rate_pct 퍼센트."""
@@ -63,9 +98,67 @@ def with_local(rate_pct, local_ratio_pct):
     return rate_pct * (1 + local_ratio_pct / 100)
 
 
+@_calc
+def after_tax(value, tax_pct):
+    """세금을 뗀 값: value × (1 − tax/100)."""
+    return value * (1 - tax_pct / 100)
+
+
+@_calc
+def installment_simple_interest(monthly, annual_rate_pct, months):
+    """월 납입 적금의 단리 이자 합계: 월 납입액 × 연이율/12 × (1+2+…+개월). 나눗셈은 마지막에 한 번."""
+    n = _months(months, "installment_simple_interest")
+    return monthly * annual_rate_pct * n * (n + 1) / (100 * 12 * 2)
+
+
+@_calc
+def yield_pct(gain, principal):
+    """수익률(%): gain / principal × 100."""
+    return gain / principal * 100
+
+
+@_calc
+def months_between_ages(from_age, to_age):
+    """나이 구간의 개월 수: (to − from) × 12. to 가 from 보다 커야 한다."""
+    if to_age <= from_age:
+        raise CalcError("months_between_ages: 끝 나이가 시작 나이보다 커야 함")
+    return (to_age - from_age) * 12
+
+
+@_calc
+def annuity_pmt(target, annual_rate_pct, months):
+    """목표 금액을 월 납입(월말, 월복리)으로 모으는 데 필요한 월 납입액. 연이율 0 이면 target / 개월."""
+    n = _months(months, "annuity_pmt")
+    if annual_rate_pct == 0:
+        return target / n
+    r = annual_rate_pct / 100 / 12
+    return target * r / ((1 + r) ** n - 1)
+
+
+@_calc
+def fv_monthly(pmt, annual_rate_pct, months):
+    """월 납입(월말, 월복리)의 만기 금액. 연이율 0 이면 pmt × 개월."""
+    n = _months(months, "fv_monthly")
+    if annual_rate_pct == 0:
+        return pmt * n
+    r = annual_rate_pct / 100 / 12
+    return pmt * ((1 + r) ** n - 1) / r
+
+
 FUNCTIONS = {
+    "add": (add, 2),
+    "sub": (sub, 2),
+    "mul": (mul, 2),
+    "div": (div, 2),
+    "neg": (neg, 1),
     "pct_of": (pct_of, 2),
     "with_local": (with_local, 2),
+    "after_tax": (after_tax, 2),
+    "installment_simple_interest": (installment_simple_interest, 3),
+    "yield_pct": (yield_pct, 2),
+    "months_between_ages": (months_between_ages, 2),
+    "annuity_pmt": (annuity_pmt, 3),
+    "fv_monthly": (fv_monthly, 3),
 }
 
 
@@ -101,9 +194,32 @@ def _make_format(scale, places, suffix, *, group=False, plus=False, keep_decimal
     return fmt
 
 
+def eok_man_won(value):
+    """1억 이상은 '3억 7,200만 원' (만 부분이 0 이면 '3억 원'), 미만은 man_won 과 같다."""
+    with localcontext() as ctx:
+        ctx.prec = PREC
+        man = (_d(value) / 10000).quantize(Decimal(1), rounding=ROUND_HALF_UP)
+        eok, rest = divmod(abs(man), 10000)
+        if eok:
+            body = f"{int(eok):,}억" + (f" {int(rest):,}만" if rest else "") + " 원"
+        else:
+            body = f"{int(rest):,}만 원"
+        return (MINUS + body if man < 0 else body), man * 10000
+
+
 FORMATS = {
     "pct": _make_format(1, "0.1", "%"),
+    "pct0": _make_format(1, "1", "%"),
+    "pct1": _make_format(1, "0.1", "%", keep_decimals=True),
+    "signed_pct": _make_format(1, "0.1", "%", plus=True),
+    "man": _make_format(10000, "1", "만", group=True),
     "man1": _make_format(10000, "0.1", "만", group=True),
     "man_won": _make_format(10000, "1", "만 원", group=True),
+    "eok_man_won": eok_man_won,
     "won": _make_format(1, "1", "원", group=True),
+    "num": _make_format(1, "0.1", "", group=True),
+    "se": _make_format(1, "0.1", "세"),
+    "nyeon": _make_format(1, "1", "년"),
+    "gaewol": _make_format(1, "1", "개월"),
+    "dal": _make_format(1, "0.1", "달"),
 }
