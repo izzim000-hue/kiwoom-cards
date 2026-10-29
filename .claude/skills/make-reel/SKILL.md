@@ -41,7 +41,7 @@ description: 키움멘토 릴스 초안을 만든다. "이 주제로 릴스 만�
    - `발의` 상태 수치는 줄이나 근거에 "발의안" 또는 "정부안" 표현을 함께 쓴다.
    - 시리즈 정보는 `series` 에만 쓴다 (장면 1 top, 다음 편 줄은 도구가 채움).
 6. **확장.** `python3 tools/draft.py expand <dir>/spec.src.json <dir>/spec.json`
-7. **점검.** `python3 tools/draft.py check <dir>/spec.json --out <dir>/check.json --strict` (카드 입력이면 `--card <카드 spec.json>` 추가). 오류와 경고는 `spec.src.json` 에서 고치고 다시 확장·점검한다. 최대 2번까지 고치고 그래도 안 되면 사용자에게 묻는다.
+7. **점검.** `python3 tools/draft.py check <dir>/spec.json --out <dir>/check.json --strict` (카드 입력이면 `--card <카드 spec.json>` 추가). 점검은 옆의 `spec.src.json` 을 지금 등록부로 다시 확장해 `spec.json` 과 대조하고, 장부도 다시 계산한다. `spec.json` 은 손으로 고치지 않는다. 오류와 경고는 `spec.src.json` 에서 고치고 다시 확장·점검한다. 최대 2번까지 고치고 그래도 안 되면 사용자에게 묻는다.
 8. **게시글 문구.** `<dir>/caption.src.json` 을 쓰고 `python3 tools/draft.py caption <dir>/spec.json <dir>/caption.src.json --out <dir>/caption.txt` 를 실행한다.
 9. **렌더.** `python3 tools/reel.py <dir>/spec.json <dir>/<게시일>-<슬러그>.mp4 --layout new --strict` (D-16). 줄바꿈(WRAP)이나 넘침 경고는 문구를 줄여서 고친다. 최대 2번까지 고치고 그래도 안 되면 사용자에게 묻는다.
 10. **보고.** 사용자에게 다음을 알린다.

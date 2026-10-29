@@ -5,7 +5,8 @@
 또는 앞서 정의한 `derive` 이름이다. 값 계산은 calc.FUNCTIONS, 표시는 calc.FORMATS 만 쓴다 (eval/exec 없음).
 
 결과에는 숫자마다 한 줄씩 `figures` 장부(어느 장면·줄의 어느 글자가 어떤 등록부/입력에서 왔는지)와
-쓰인 등록부 항목의 `basis_items` 가 들어간다. 렌더러는 완성된 평문 문자열만 본다.
+쓰인 등록부 항목의 `basis_items`, 그리고 소스의 `derive` 가 그대로 들어간다 (check 가 장부를 믿지 않고 다시 계산하는 데
+쓴다). 렌더러는 완성된 평문 문자열만 본다.
 """
 import copy
 import json
@@ -39,7 +40,7 @@ class ExpandError(ValueError):
         self.kind = kind
 
 
-def _norm(d):
+def norm(d):
     """Decimal 을 지수 표기 없는 정규화 문자열로."""
     if d == 0:
         return "0"
@@ -191,7 +192,7 @@ def _expand_field(text, where, scene, vals, ledger):
                               f"— 단위가 든 서식(man_won, pct, se ...)을 쓰세요", kind="UNIT")
         ledger.append({
             "where": where, "scene": scene, "start": cur, "end": cur + len(rendered), "text": rendered,
-            "ref": ref, "fmt": fmt, "value": _norm(value), "exact": shown == value, "sources": sorted(leaves),
+            "ref": ref, "fmt": fmt, "value": norm(value), "exact": shown == value, "sources": sorted(leaves),
         })
         parts.append(rendered)
         cur += len(rendered)
@@ -295,8 +296,8 @@ def expand_source(src, registry):
         _apply_series(src["scenes"], series)
 
     inputs_raw = src.get("inputs", {})
-    vals = _Values(registry, _check_inputs(inputs_raw))
-    _eval_derive(src.get("derive", {}), vals)
+    derive_raw = src.get("derive", {})
+    vals = build_values(inputs_raw, derive_raw, registry)
 
     ledger = []
     out = {"version": SPEC_VERSION}
@@ -312,15 +313,25 @@ def expand_source(src, registry):
     out["scenes"] = scenes
     if inputs_raw:
         out["inputs"] = inputs_raw
+    if derive_raw:
+        out["derive"] = derive_raw   # check 가 장부를 믿지 않고 다시 계산할 수 있게 남긴다 (CR-01)
     out["figures"] = ledger
-    out["basis_items"] = _basis_items(ledger, registry)
+    out["basis_items"] = basis_items([e["sources"] for e in ledger], registry)
     return out
 
 
-def _basis_items(ledger, registry):
+def build_values(inputs_raw, derive_raw, registry):
+    """inputs 와 derive 를 검사·계산한 값 표. expand 와 check(다시 계산)가 함께 쓴다."""
+    vals = _Values(registry, _check_inputs(inputs_raw))
+    _eval_derive(derive_raw, vals)
+    return vals
+
+
+def basis_items(leaf_lists, registry):
+    """장부 순서대로 쓰인 등록부 항목 목록 (id 마다 한 번). leaf_lists 는 장부 항목마다의 근거 리프 목록."""
     seen, items = set(), []
-    for entry in ledger:
-        for leaf in entry["sources"]:
+    for leaves in leaf_lists:
+        for leaf in leaves:
             if not leaf.startswith("fig.") or leaf in seen:
                 continue
             seen.add(leaf)

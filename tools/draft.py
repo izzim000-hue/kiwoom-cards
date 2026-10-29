@@ -1,6 +1,6 @@
 """키움멘토 릴스 초안 도구 (원고 소스 확장, 수치 등록부)
 사용: python3 tools/draft.py expand SRC OUT [--registry PATH]
-      python3 tools/draft.py check SPEC [--out JSON] [--registry PATH] [--date YYYY-MM-DD] [--strict] [--legacy] [--card CARD]
+      python3 tools/draft.py check SPEC [--out JSON] [--src SRC] [--registry PATH] [--date YYYY-MM-DD] [--strict] [--legacy] [--card CARD]
       python3 tools/draft.py convert CARD [--out JSON]
       python3 tools/draft.py caption SPEC SRC --out TXT [--config PATH]
       python3 tools/draft.py slot [--date YYYY-MM-DD] [--slug 영문-슬러그] [--reels-dir DIR] [--create]
@@ -9,6 +9,8 @@
           OUT 에는 숫자마다 출처를 적은 `figures` 장부와 쓰인 등록부 항목 `basis_items` 가 함께 들어간다.
           OUT 은 `python3 tools/reel.py OUT out.mp4 --layout new` 로 그대로 렌더할 수 있다.
   check   확장된 원고(SPEC)의 숫자가 모두 등록부·입력·계산에서 왔는지 따라가 점검한다 (D-07).
+          원고 속 장부를 믿지 않고 장부의 참조·서식을 지금 등록부와 원고의 inputs·derive 로 다시 계산해 맞춰 본다.
+          SPEC 옆에 원고 소스(<이름>.src.json, 또는 --src)가 있으면 다시 확장한 결과와도 대조한다.
           등록부 밖 숫자는 오류(종료 1), 미확인 수치를 쓴 줄은 `확인 필요` 로 적을 뿐 막지 않는다 (D-03).
           --out 을 주면 오류가 있어도 check.json 을 쓴다. --strict 는 경고가 있으면 종료 3.
           --date 는 게시 예정일(기본 오늘): 등록부 valid_until 이 이보다 이르면 EXPIRED 경고.
@@ -57,6 +59,7 @@ def build_parser():
     p.add_argument("--date", help="게시 예정일 YYYY-MM-DD (기본 오늘) — valid_until 만료 경고 기준")
     p.add_argument("--legacy", action="store_true", help="게시된 v1 원고: 수치 숫자 개수만 보고하고 종료 0")
     p.add_argument("--card", help="대조할 카드뉴스 원고 JSON (NOT_IN_CARD, CARD_NOTE_DROPPED 경고)")
+    p.add_argument("--src", help="원고 소스 JSON (기본: SPEC 옆의 <이름>.src.json 이 있으면 그것). 다시 확장해 대조한다")
     _registry_arg(p)
 
     p = sub.add_parser("caption", help="원고와 문구 원본으로 게시글 caption.txt 를 쓴다")
@@ -115,16 +118,16 @@ def _registry_arg(p):
     p.add_argument("--registry", default=str(figures.REGISTRY_PATH), help="수치 등록부 경로 (기본 tools/data/figures.json)")
 
 
-def _read_json(path):
+def _read_json(path, label="원고 소스"):
     try:
         text = Path(path).read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError) as e:
         reason = getattr(e, "strerror", None) or str(e)
-        raise ValueError(f"원고 소스를 열 수 없음: {path} ({reason})") from e
+        raise ValueError(f"{label}를 열 수 없음: {path} ({reason})") from e
     try:
         return json.loads(text)
     except json.JSONDecodeError as e:
-        raise ValueError(f"원고 소스 JSON 형식 오류: {path} 줄 {e.lineno} 열 {e.colno}") from e
+        raise ValueError(f"{label} JSON 형식 오류: {path} 줄 {e.lineno} 열 {e.colno}") from e
 
 
 def cmd_expand(args):
@@ -190,6 +193,15 @@ def cmd_check(args):
         print(f"check(legacy): {report.summary()}")
         return 3 if args.strict and report.warnings else 0
     report = check.check_spec(spec, registry, publish_date=publish_date)
+    src_path = Path(args.src) if args.src else Path(args.spec).with_name(Path(args.spec).stem + ".src.json")
+    if args.src or src_path.is_file():
+        try:
+            src = _read_json(src_path, "원고 소스")
+        except ValueError as e:
+            print(f"원고 오류: {e}", file=sys.stderr)
+            return 1
+        report.source = str(src_path)
+        report.errors.extend(check.compare_source(spec, src, registry))
     if card is not None:
         check.apply_card(report, card, spec, args.card)
     for issue in report.errors + report.warnings:

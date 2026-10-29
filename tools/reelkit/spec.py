@@ -8,6 +8,7 @@ v2 원고: `python3 tools/draft.py expand` 가 쓰는 초안. v1 필드에 아�
   version      정수 2
   series       {name(비어 있지 않은 문자열), episode(정수 1..10, 선택), next(비어 있지 않은 문자열, 선택)}
   inputs       {이름: {value, unit, label}} 모두 문자열 (이 릴스 한정 시나리오 가정)
+  derive       {이름: {fn, args}} 원고 소스의 계산식 그대로 (check 가 장부를 다시 계산할 때 씀, 형식 검사는 check)
   figures      [{where, text, ref, sources[...]...}] 숫자마다 출처를 적은 장부
   basis_items  [{fig, ...}] 쓰인 등록부 항목
   motion       문자열 또는 객체 (의미는 4단계에서 정의)

@@ -104,9 +104,15 @@ class Failures(TracerBase):
 
     def test_unknown_registry_id_in_ledger(self):
         bad = copy.deepcopy(self.spec)
-        bad["figures"][2]["sources"] = ["fig.no_such_figure"]
+        entry = next(e for e in bad["figures"] if e["where"] == "scene 4 line 3")
+        entry["ref"] = "fig.no_such_figure"
         rep = check.check_spec(bad, self.registry)
         self.assertIn(("UNKNOWN_FIG", "no_such_figure"), [(e.kind, e.detail) for e in rep.errors])
+
+    def test_edited_ledger_sources_are_not_trusted(self):
+        bad = copy.deepcopy(self.spec)
+        bad["figures"][2]["sources"] = ["fig.no_such_figure"]
+        self.assertIn("LEDGER_MISMATCH", kinds(check.check_spec(bad, self.registry).errors))
 
     def test_literal_unit_after_ledger_span_is_error(self):
         # CR-03 회귀: 장부 구간("900만") 뒤에 손으로 "원" 을 붙여도 check 가 잡는다
@@ -120,6 +126,109 @@ class Failures(TracerBase):
         bad["figures"][0]["where"] = "scene 99 line 1"
         rep = check.check_spec(bad, self.registry)
         self.assertIn("LEDGER_MISMATCH", kinds(rep.errors))
+
+
+class ForgedLedger(TracerBase):
+    """CR-01 회귀: check 는 원고 속 장부를 믿지 않고 ref·fmt 를 지금 등록부로 다시 계산한다."""
+
+    def errors_of(self, spec, registry=None):
+        return check.check_spec(spec, registry or self.registry).errors
+
+    def test_forged_entry_with_empty_sources_does_not_hide_a_number(self):
+        # 리뷰 재현 1: 손으로 쓴 "500만 원" 옆에 sources [] 장부를 붙이면 예전에는 오류 0건
+        bad = copy.deepcopy(self.spec)
+        bad["scenes"][4]["lines"][2] = "500만 원 차이"
+        bad["figures"].append({"where": "scene 5 line 3", "start": 0, "end": 6, "text": "500만 원", "sources": []})
+        got = kinds(self.errors_of(bad))
+        self.assertIn("LEDGER_FORGED", got)
+        self.assertIn("UNREGISTERED", got)
+
+    def test_forged_entry_with_a_real_ref_but_other_text(self):
+        bad = copy.deepcopy(self.spec)
+        bad["scenes"][4]["lines"][2] = "500만 원 차이"
+        bad["figures"].append({"where": "scene 5 line 3", "scene": 5, "start": 0, "end": 6, "text": "500만 원",
+                               "ref": "inputs.amt", "fmt": "man_won", "value": "5000000", "exact": True,
+                               "sources": ["inputs.amt"]})
+        self.assertIn("STALE_FIGURE", kinds(self.errors_of(bad)))
+
+    def test_text_and_ledger_edited_together(self):
+        # 리뷰 재현 2: 줄의 16.5만 과 장부 text 를 함께 99.9만 으로 고침
+        bad = copy.deepcopy(self.spec)
+        line = bad["scenes"][3]["lines"][1]
+        self.assertIn("16.5만", line)
+        bad["scenes"][3]["lines"][1] = line.replace("16.5만", "99.9만")
+        entry = next(e for e in bad["figures"] if e["where"] == "scene 4 line 2" and e["text"] == "16.5만")
+        entry["text"] = "99.9만"
+        errs = self.errors_of(bad)
+        self.assertIn(("STALE_FIGURE", "scene 4 line 2"), [(e.kind, e.where) for e in errs])
+
+    def test_registry_value_change_makes_old_spec_fail(self):
+        # 리뷰 재현 3: 등록부 값이 바뀌면 예전 spec.json 은 통과하면 안 된다
+        reg = copy.deepcopy(self.registry)
+        reg["figures"]["pension_credit_wage_threshold"]["value"] = "56000000"
+        errs = self.errors_of(self.spec, reg)
+        self.assertIn(("STALE_FIGURE", "scene 4 line 3"), [(e.kind, e.where) for e in errs])
+        spec = expand_lines(self.registry, ["평균 {{fig.nps_avg_old_age_all|man_won}}"])
+        reg = copy.deepcopy(self.registry)
+        reg["figures"]["nps_avg_old_age_all"]["value"] = "698000"
+        # 화면 글자는 여전히 "70만 원" 이지만 장부 value(700000)가 다시 계산한 값과 달라 오류
+        self.assertIn("LEDGER_MISMATCH", kinds(self.errors_of(spec, reg)))
+
+    def test_ledger_value_field_edited(self):
+        bad = copy.deepcopy(self.spec)
+        bad["figures"][0]["value"] = "2000000"
+        self.assertIn("LEDGER_MISMATCH", kinds(self.errors_of(bad)))
+
+    def test_input_ref_not_declared_in_spec_inputs(self):
+        bad = copy.deepcopy(self.spec)
+        del bad["inputs"]["no_tax"]
+        got = kinds(self.errors_of(bad))
+        self.assertIn("LEDGER_REF", got)
+        self.assertIn("UNREGISTERED", got)
+
+    def test_edited_input_value_is_recomputed(self):
+        bad = copy.deepcopy(self.spec)
+        bad["inputs"]["amt"]["value"] = "2000000"
+        self.assertIn("STALE_FIGURE", kinds(self.errors_of(bad)))
+
+    def test_basis_items_edited_or_stale(self):
+        bad = copy.deepcopy(self.spec)
+        bad["basis_items"][0]["verified"] = "확인"
+        self.assertIn("BASIS_ITEMS", kinds(self.errors_of(bad)))
+        reg = copy.deepcopy(self.registry)
+        reg["figures"]["income_tax_rate_b1"]["as_of"] = "2026-11"
+        self.assertIn("BASIS_ITEMS", kinds(self.errors_of(self.spec, reg)))
+
+    def test_missing_derive_cannot_be_recomputed(self):
+        bad = copy.deepcopy(self.spec)
+        del bad["derive"]
+        self.assertIn("LEDGER_REF", kinds(self.errors_of(bad)))
+
+    def test_clean_spec_still_clean(self):
+        self.assertEqual(self.errors_of(self.spec), [])
+
+    def test_source_comparison(self):
+        self.assertEqual(check.compare_source(self.spec, self.src, self.registry), [])
+        bad = copy.deepcopy(self.spec)
+        bad["scenes"][1]["lines"][0] = "소득공제는 손으로 고침"
+        self.assertEqual(kinds(check.compare_source(bad, self.src, self.registry)), ["SOURCE_MISMATCH"])
+        reg = copy.deepcopy(self.registry)
+        reg["figures"]["income_tax_rate_b1"]["value"] = "7"
+        self.assertEqual(kinds(check.compare_source(self.spec, self.src, reg)), ["SOURCE_MISMATCH"])
+
+    def test_cli_uses_sibling_source(self):
+        (self.tmp / "spec.src.json").write_text(json.dumps(self.src, ensure_ascii=False), encoding="utf-8")
+        bad = copy.deepcopy(self.spec)
+        bad["scenes"][1]["lines"][0] = "소득공제는 손으로 고침"
+        spec = self.write("spec.json", bad)
+        out = self.tmp / "check.json"
+        r = self.run_cli(spec, "--out", out)
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("SOURCE_MISMATCH", r.stderr)
+        doc = json.loads(out.read_text(encoding="utf-8"))
+        self.assertEqual(doc["source"], str(self.tmp / "spec.src.json"))
+        self.write("spec.json", self.spec)
+        self.assertEqual(self.run_cli(spec).returncode, 0)
 
 
 class Cli(TracerBase):

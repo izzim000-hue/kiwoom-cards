@@ -39,7 +39,7 @@ python3 tools/draft.py slot [--date YYYY-MM-DD] [--slug 영문-슬러그] [--cre
 python3 tools/draft.py convert 2026/NN-이름/spec.json --out 폴더/skeleton.json
 python3 tools/draft.py figures list [--grep 글자] | show ID | add ... | confirm ID --by 이름
 python3 tools/draft.py expand 폴더/spec.src.json 폴더/spec.json
-python3 tools/draft.py check 폴더/spec.json --out 폴더/check.json --strict [--card 카드 spec.json]
+python3 tools/draft.py check 폴더/spec.json --out 폴더/check.json --strict [--src 폴더/spec.src.json] [--card 카드 spec.json]
 python3 tools/draft.py caption 폴더/spec.json 폴더/caption.src.json --out 폴더/caption.txt
 python3 tools/reel.py 폴더/spec.json 폴더/<게시일>-<슬러그>.mp4 --layout new --strict
 ```
@@ -48,7 +48,7 @@ python3 tools/reel.py 폴더/spec.json 폴더/<게시일>-<슬러그>.mp4 --layo
 - `convert`: 카드뉴스 원고를 릴스 골격(시리즈, 장면 역할, 카드 재료, note, 카드 숫자)으로 바꾼다.
 - `figures`: 수치 등록부 조회·추가·확인 (아래 "수치 등록부").
 - `expand`: 자리표시자 `{{이름|서식}}` 가 든 원고 소스를 등록부·계산 모듈로 채워 `reel.py` 가 읽는 원고로 쓴다. 숫자마다 출처 장부가 붙는다.
-- `check`: 숫자가 모두 등록부·입력·계산에서 왔는지 따라가 본다. 등록부 밖 숫자는 오류, 미확인 수치를 쓴 줄은 `확인 필요` 로 알린다. `--card` 는 카드 원고와 대조한다.
+- `check`: 숫자가 모두 등록부·입력·계산에서 왔는지 따라가 본다. 원고 속 장부를 믿지 않고 지금 등록부로 다시 계산하며, 옆에 `spec.src.json`(또는 `--src`)이 있으면 다시 확장한 결과와 대조한다. 등록부 밖 숫자는 오류, 미확인 수치를 쓴 줄은 `확인 필요` 로 알린다. `--card` 는 카드 원고와 대조한다.
 - `caption`: 게시글 문구(첫 줄, 요약 3줄, 다음 편, 면책, CTA, 해시태그)를 조립한다. 면책·CTA 문구는 준법 검토 전 초안이다.
 
 초안 폴더 `2026/reels/drafts/<게시일>-<슬러그>/` 에 들어가는 파일: `skeleton.json`(카드 입력일 때), `spec.src.json`, `spec.json`, `check.json`,

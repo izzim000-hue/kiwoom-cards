@@ -59,7 +59,8 @@ class TaxDeductionReproduction(unittest.TestCase):
         self.assertEqual(self.out["scenes"], self.published["scenes"])
         self.assertEqual(self.out["basis"], self.published["basis"])
         self.assertEqual(self.out["version"], 2)
-        self.assertEqual(list(self.out), ["version", "basis", "scenes", "inputs", "figures", "basis_items"])
+        self.assertEqual(list(self.out), ["version", "basis", "scenes", "inputs", "derive", "figures", "basis_items"])
+        self.assertEqual(self.out["derive"], self.src["derive"])   # check 가 다시 계산할 수 있게 남김 (CR-01)
 
     def test_ledger_offsets_point_at_the_rendered_text(self):
         ledger = self.out["figures"]

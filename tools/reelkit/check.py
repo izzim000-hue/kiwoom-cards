@@ -1,7 +1,10 @@
 """초안 점검기: 숫자가 등록부·입력·계산에서 온 것인지 따라가고 결과를 check.json 으로 남긴다 (표준 라이브러리만 사용).
 
-`draft.py expand` 가 쓴 v2 원고에는 숫자마다 출처를 적은 `figures` 장부가 있다. 점검기는
+`draft.py expand` 가 쓴 v2 원고에는 숫자마다 출처를 적은 `figures` 장부가 있다. 장부는 점검 대상과 같은 파일에
+있으므로 믿지 않는다 (CR-01). 점검기는
 - 장부가 가리키는 글자 구간이 실제 글자와 같은지 확인하고 (다르면 LEDGER_MISMATCH),
+- 장부의 ref·fmt 를 지금 등록부와 원고의 inputs·derive 로 다시 계산해 글자·value·sources·exact 가 같은지 보고
+  (ref 가 없으면 LEDGER_FORGED, 값이 바뀌었으면 STALE_FIGURE), basis_items 도 다시 만들어 맞춰 보며,
 - 장부 구간을 가린 나머지에서 수치 숫자를 찾아 (있으면 UNREGISTERED 오류, D-07),
 - 장부의 등록부 id 가 미확인이면 그 줄을 `needs_check`(확인 필요)에 적는다 (D-03: 막지 않고 표시).
 오류는 종료 코드 1, 경고는 `--strict` 일 때만 종료 코드 3 이다. 요약 문구에는 "통과" 를 쓰지 않는다.
@@ -35,6 +38,11 @@ MASK = numscan.MASK
 HINTS = {
     "NOT_EXPANDED": "expand 로 만든 원고가 아님 — python3 tools/draft.py expand 를 먼저 실행",
     "UNREGISTERED": "등록부·inputs·derive 자리표시자가 아닌 숫자 — 필요한 수치면 먼저 사용자에게 물으세요 (D-06)",
+    "STALE_FIGURE": "등록부 값이나 계산이 장부와 달라짐 — python3 tools/draft.py expand 를 다시 실행",
+    "LEDGER_FORGED": "expand 가 만든 장부가 아님 — 숫자는 원고 소스의 자리표시자로만 쓰고 expand 를 다시 실행",
+    "LEDGER_REF": "장부의 참조를 원고의 inputs·derive 로 풀 수 없음 — expand 를 다시 실행",
+    "BASIS_ITEMS": "basis_items 를 손으로 고치지 말고 expand 를 다시 실행",
+    "SOURCE_MISMATCH": "spec.json 을 손으로 고치지 말고 spec.src.json 을 고쳐 expand 를 다시 실행",
     "UNIT_AFTER": "서식이 단위를 찍는다 — 자리표시자 뒤에 만/원/% 같은 단위를 글자로 쓰지 말고 man_won, pct 같은 서식을 쓰세요",
 }
 
@@ -66,6 +74,7 @@ class CheckReport:
     checked_on: str = ""
     legacy_count: int = 0
     card: object = None   # dict | None — `--card` 대조 결과 {path, new_numbers, dropped_notes}
+    source: object = None  # str | None — 다시 확장해 대조한 원고 소스 경로
 
     def summary(self):
         if self.mode == "legacy":
@@ -80,6 +89,7 @@ class CheckReport:
         out = {
             "spec": str(spec_path), "mode": self.mode, "checked_on": self.checked_on,
             "registry": {"path": None if registry_path is None else str(registry_path), "schema": SCHEMA},
+            "source": self.source,
             "summary": self.summary(),
             "errors": [i.to_dict() for i in self.errors],
             "warnings": [i.to_dict() for i in self.warnings],
@@ -121,6 +131,49 @@ def _parse_date(text):
         return None
 
 
+def _rederive(spec, registry):
+    """원고의 inputs·derive 를 지금 등록부로 다시 계산한 값 표. 계산할 수 없으면 (None, 오류 문구)."""
+    try:
+        return expand.build_values(spec.get("inputs", {}), spec.get("derive", {}), registry), None
+    except expand.ExpandError as e:
+        return None, str(e)
+
+
+_REF_ERROR_KINDS = {"UNKNOWN_FIG": "UNKNOWN_FIG", "UNKNOWN_REF": "LEDGER_REF", "UNIT": "UNIT_FORMAT",
+                    "FORMAT": "LEDGER_FORGED", "CALC": "LEDGER_REF"}
+
+
+def _verify_entry(entry, vals, where, scene, text, err):
+    """장부 항목을 믿지 않고 ref·fmt 로 다시 계산해 맞춰 본다 (CR-01).
+
+    돌려주는 값: (근거 리프, 정확값 여부) — 글자 구간을 가려도 되는 항목. 다시 계산할 수 없는 항목(ref 없음,
+    모르는 id, 서식·단위 불일치)은 None 이라 구간이 가려지지 않고 그 숫자는 UNREGISTERED 로도 잡힌다.
+    값이 바뀐 항목(STALE_FIGURE)과 value/sources/exact 를 고친 항목은 오류를 남기고 다시 계산한 리프를 돌려준다.
+    """
+    ref, fmt = entry.get("ref"), entry.get("fmt")
+    if vals is None:
+        return None
+    if not isinstance(ref, str) or not ref or not isinstance(fmt, str):
+        err(CheckIssue(where, scene, "LEDGER_FORGED",
+                       f"장부 {entry.get('text')!r} 에 ref·fmt 가 없음 — expand 가 만든 장부가 아님", text))
+        return None
+    try:
+        rendered, shown, value, leaves, _unit = expand.render_ref(vals, ref, fmt, where)
+    except expand.ExpandError as e:
+        kind = _REF_ERROR_KINDS.get(e.kind, "LEDGER_FORGED")
+        err(CheckIssue(where, scene, kind, ref[4:] if kind == "UNKNOWN_FIG" else str(e), text))
+        return None
+    exact = shown == value
+    if rendered != entry["text"]:
+        err(CheckIssue(where, scene, "STALE_FIGURE",
+                       f"장부 {entry['text']!r} 를 지금 등록부·계산으로 찍으면 {rendered!r} ({ref}|{fmt})", text))
+    elif (entry.get("value") != expand.norm(value) or entry.get("sources") != sorted(leaves)
+          or entry.get("exact") is not exact):
+        err(CheckIssue(where, scene, "LEDGER_MISMATCH",
+                       f"장부 {entry['text']!r} 의 value·sources·exact 가 다시 계산한 값과 다름 ({ref})", text))
+    return leaves, exact
+
+
 def check_spec(spec, registry, *, publish_date=None):
     report = CheckReport(mode="draft", checked_on=date.today().isoformat())
     version = spec.get("version")
@@ -129,6 +182,11 @@ def check_spec(spec, registry, *, publish_date=None):
         return report
     publish_date = publish_date or date.today()
     basis_text = spec.get("basis") if isinstance(spec.get("basis"), str) else ""
+    err = report.errors.append
+
+    vals, derive_error = _rederive(spec, registry)
+    if derive_error:
+        err(CheckIssue("inputs/derive", None, "DERIVE", derive_error, ""))
 
     ledger = spec.get("figures")
     if not isinstance(ledger, list):
@@ -139,6 +197,7 @@ def check_spec(spec, registry, *, publish_date=None):
         by_where.setdefault(where, []).append(entry)
 
     used, needs = set(), {}
+    fresh = {}   # id(장부 항목) -> 다시 계산한 근거 리프 (basis_items 대조용)
     fields = _fields(spec)
     known_wheres = {w for w, _, _ in fields}
     warn = report.warnings.append
@@ -148,45 +207,44 @@ def check_spec(spec, registry, *, publish_date=None):
         for i in (m.start() for m in re.finditer("<", text)):
             if not text.startswith(ALLOWED_TAGS, i):
                 snippet = BAD_TAG_RE.match(text, i).group(0)
-                report.errors.append(CheckIssue(where, scene, "MARKUP", snippet, text))
+                err(CheckIssue(where, scene, "MARKUP", snippet, text))
         if "{{" in text or "}}" in text:
-            report.errors.append(CheckIssue(where, scene, "PLACEHOLDER", "{{ }}", text))
+            err(CheckIssue(where, scene, "PLACEHOLDER", "{{ }}", text))
 
         masked = list(text)
         last_end = 0
+        field_leaves = []
         for entry in sorted((e for e in entries if isinstance(e, dict)),
                             key=lambda e: e["start"] if isinstance(e.get("start"), int) else 0):
             if not _entry_ok(entry, text) or entry["start"] < last_end:
-                report.errors.append(CheckIssue(
-                    where, scene, "LEDGER_MISMATCH", f"장부 {entry.get('text')!r} 자리의 글자가 다름", text))
+                err(CheckIssue(where, scene, "LEDGER_MISMATCH", f"장부 {entry.get('text')!r} 자리의 글자가 다름", text))
                 continue
+            verified = _verify_entry(entry, vals, where, scene, text, err)
+            if verified is None:
+                continue
+            leaves, exact = verified
+            fresh[id(entry)] = sorted(leaves)
+            field_leaves.append(leaves)
             for i in range(entry["start"], entry["end"]):
                 masked[i] = MASK
             last_end = entry["end"]
             unit = expand.unit_after_problem(entry["text"], text[entry["end"]:])
             if unit:
-                report.errors.append(CheckIssue(
-                    where, scene, "UNIT_AFTER", f"{entry['text']} 뒤에 단위 {unit!r} 를 글자로 붙임 — 단위가 든 서식 필요", text))
-            if entry.get("exact") is False and not APPROX_BEFORE_RE.search(text[:entry["start"]]):
+                err(CheckIssue(where, scene, "UNIT_AFTER",
+                               f"{entry['text']} 뒤에 단위 {unit!r} 를 글자로 붙임 — 단위가 든 서식 필요", text))
+            if not exact and not APPROX_BEFORE_RE.search(text[:entry["start"]]):
                 warn(CheckIssue(where, scene, "APPROX",
                                 f"{entry['text']} — 정확값이 아님, 앞에 '약' 표기 권장", text))
         for tok in numscan.figure_tokens("".join(masked)):
-            report.errors.append(CheckIssue(where, scene, "UNREGISTERED", tok.raw, text))
+            err(CheckIssue(where, scene, "UNREGISTERED", tok.raw, text))
 
         seen, local_hit = set(), False
-        for entry in entries:
-            sources = entry.get("sources") if isinstance(entry, dict) else None
-            for src in sources if isinstance(sources, list) else []:
-                if not (isinstance(src, str) and src.startswith("fig.")):
+        for leaves in field_leaves:
+            for src in sorted(leaves):
+                if not src.startswith("fig."):
                     continue
                 fid = src[4:]
-                try:
-                    fig = figreg.get_figure(registry, fid)
-                except figreg.RegistryError:
-                    if ("unknown", fid) not in seen:
-                        seen.add(("unknown", fid))
-                        report.errors.append(CheckIssue(where, scene, "UNKNOWN_FIG", fid, text))
-                    continue
+                fig = figreg.get_figure(registry, fid)   # render_ref 가 이미 찾은 id
                 used.add(fid)
                 if fid in seen:
                     continue
@@ -199,10 +257,10 @@ def check_spec(spec, registry, *, publish_date=None):
                     if fig["verified"] == "미확인":
                         slot["reason"] = "미확인 수치"
                 if fig["legal_status"] == "폐지":
-                    report.errors.append(CheckIssue(where, scene, "REPEALED", fid, text))
+                    err(CheckIssue(where, scene, "REPEALED", fid, text))
                 if fig["legal_status"] == "발의" and not (
                         PROPOSAL_MARK_RE.search(text) or PROPOSAL_MARK_RE.search(basis_text)):
-                    report.errors.append(CheckIssue(where, scene, "PROPOSED_AS_FACT", fid, text))
+                    err(CheckIssue(where, scene, "PROPOSED_AS_FACT", fid, text))
                 vu = _parse_date(fig.get("valid_until"))
                 if vu is not None and vu < publish_date:
                     warn(CheckIssue(where, scene, "EXPIRED",
@@ -215,8 +273,13 @@ def check_spec(spec, registry, *, publish_date=None):
 
     for where in by_where:
         if where not in known_wheres:
-            report.errors.append(CheckIssue(
-                str(where), None, "LEDGER_MISMATCH", "장부가 가리키는 위치가 원고에 없음", ""))
+            err(CheckIssue(str(where), None, "LEDGER_MISMATCH", "장부가 가리키는 위치가 원고에 없음", ""))
+
+    # basis_items(게시글 기준일·근거에 쓰임)도 장부를 다시 계산한 리프와 지금 등록부로 다시 만들어 맞춰 본다
+    expected = expand.basis_items([fresh[id(e)] for e in ledger if id(e) in fresh], registry)
+    if spec.get("basis_items", []) != expected:
+        err(CheckIssue("basis_items", None, "BASIS_ITEMS",
+                       "basis_items 가 장부·지금 등록부로 다시 만든 목록과 다름", ""))
 
     _input_shadows(spec, registry, warn)
     _house_pattern(spec, warn)
@@ -224,6 +287,22 @@ def check_spec(spec, registry, *, publish_date=None):
     report.needs_check = [needs[w] for w, _, _ in fields if w in needs]
     report.figures_used = sorted(used)
     return report
+
+
+SOURCE_KEYS = ("version", "series", "basis", "scenes", "inputs", "derive", "figures", "basis_items")
+
+
+def compare_source(spec, src, registry):
+    """원고 소스(spec.src.json)를 지금 등록부로 다시 확장한 결과와 원고가 다르면 SOURCE_MISMATCH 오류 목록 (CR-01)."""
+    try:
+        again = expand.expand_source(src, registry)
+    except expand.ExpandError as e:
+        return [CheckIssue("source", None, "SOURCE_MISMATCH", f"원고 소스를 다시 확장할 수 없음 — {e}", "")]
+    diff = [k for k in SOURCE_KEYS if again.get(k) != spec.get(k)]
+    if not diff:
+        return []
+    return [CheckIssue("source", None, "SOURCE_MISMATCH",
+                       f"원고 소스를 지금 등록부로 다시 확장한 결과와 다름: {', '.join(diff)}", "")]
 
 
 def _input_shadows(spec, registry, warn):
