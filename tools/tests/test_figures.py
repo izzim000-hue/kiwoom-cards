@@ -6,6 +6,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from datetime import date
 from pathlib import Path
 
 TOOLS = Path(__file__).resolve().parents[1]
@@ -180,15 +181,29 @@ class AddAndConfirm(unittest.TestCase):
 
     def test_confirm_sets_the_three_fields(self):
         reg = copy.deepcopy(figures.load_registry())
-        e = figures.confirm_figure(reg, "rule_of_72", " 홍길동 ", "2026-11-02")
+        e = figures.confirm_figure(reg, "rule_of_72", " 홍길동 ", "2026-11-02", today=date(2026, 11, 5))
         self.assertEqual((e["verified"], e["checked_on"], e["checked_by"]), ("확인", "2026-11-02", "홍길동"))
+
+    def test_confirm_refuses_future_and_pre_discovery_dates(self):
+        # WR-04 회귀: --date 2099-01-01 이 저장되던 문제
+        reg = copy.deepcopy(figures.load_registry())
+        found = reg["figures"]["rule_of_72"]["found_on"]
+        for on, needle in (("2099-01-01", "미래"), ("2026-11-06", "미래"), ("2020-01-01", "발견일")):
+            with self.subTest(on=on):
+                with self.assertRaisesRegex(RegistryError, needle):
+                    figures.confirm_figure(reg, "rule_of_72", "홍길동", on, today=date(2026, 11, 5))
+        figures.confirm_figure(reg, "rule_of_72", "홍길동", found, today=date(2026, 11, 5))   # 발견일 당일은 가능
+
+    def test_validate_rejects_checked_before_found(self):
+        with self.assertRaisesRegex(RegistryError, "발견일"):
+            figures.validate_registry(registry_with(verified="확인", checked_on="2026-10-01", checked_by="홍길동"))
 
     def test_confirm_refuses_empty_and_ai_names(self):
         reg = copy.deepcopy(figures.load_registry())
         for who in ("", "   ", None, "Claude", "claude-code", "AI", "Claude Code"):
             with self.subTest(who=who):
                 with self.assertRaises(RegistryError):
-                    figures.confirm_figure(reg, "rule_of_72", who, "2026-11-02")
+                    figures.confirm_figure(reg, "rule_of_72", who, "2026-11-02", today=date(2026, 11, 5))
         self.assertEqual(reg["figures"]["rule_of_72"]["verified"], "미확인")
 
     def test_add_parser_has_no_verification_option(self):
@@ -261,10 +276,14 @@ class Cli(unittest.TestCase):
         self.assertIn("등록부 오류", r.stderr)
         r = self.run_cli("figures", "confirm", "rule_of_72", "--by", "", "--registry", self.reg)
         self.assertEqual(r.returncode, 1)
-        r = self.run_cli("figures", "confirm", "rule_of_72", "--by", "홍길동", "--date", "2026-11-02", "--registry", self.reg)
+        r = self.run_cli("figures", "confirm", "rule_of_72", "--by", "홍길동", "--date", "2099-01-01", "--registry", self.reg)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("미래", r.stderr)
+        today = date.today().isoformat()
+        r = self.run_cli("figures", "confirm", "rule_of_72", "--by", "홍길동", "--date", today, "--registry", self.reg)
         self.assertEqual(r.returncode, 0, r.stderr)
         e = json.loads(self.reg.read_text(encoding="utf-8"))["figures"]["rule_of_72"]
-        self.assertEqual((e["verified"], e["checked_on"], e["checked_by"]), ("확인", "2026-11-02", "홍길동"))
+        self.assertEqual((e["verified"], e["checked_on"], e["checked_by"]), ("확인", today, "홍길동"))
 
     def test_confirm_help_marks_it_human_only(self):
         r = self.run_cli("figures", "--help")

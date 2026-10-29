@@ -124,6 +124,8 @@ def validate_entry(fid, entry):
             raise RegistryError(f"{fid}: 확인 상태에는 checked_on 과 checked_by 가 필요함")
         if is_ai_name(by):
             raise RegistryError(f"{fid}.checked_by: {by!r} — Claude/AI 는 확인자가 될 수 없음 (사람이 확인해야 함)")
+    if entry["checked_on"] is not None and entry["checked_on"] < entry["found_on"]:
+        raise RegistryError(f"{fid}.checked_on: 확인일 {entry['checked_on']} 이 발견일 {entry['found_on']} 보다 이름")
     if entry["legal_status"] == "발의" and not PROPOSAL_RE.search(src["name"]):
         raise RegistryError(f"{fid}: 발의 상태는 source.name 에 발의/개정안/정부안 표기가 필요함")
 
@@ -217,8 +219,11 @@ def add_figure(data, fid, fields, today):
     return entry
 
 
-def confirm_figure(data, fid, by, on):
-    """사람 확인자가 값을 1차 출처와 맞춰 본 뒤 `확인` 으로 바꾼다. 빈 이름과 Claude/AI 이름은 거부한다."""
+def confirm_figure(data, fid, by, on, today=None):
+    """사람 확인자가 값을 1차 출처와 맞춰 본 뒤 `확인` 으로 바꾼다. 빈 이름과 Claude/AI 이름은 거부한다.
+
+    확인일은 발견일(found_on) 이후, 오늘(today, 기본 date.today()) 이전이어야 한다 (WR-04).
+    """
     entry = get_figure(data, fid)
     name = (by or "").strip()
     if not name:
@@ -227,6 +232,11 @@ def confirm_figure(data, fid, by, on):
         raise RegistryError(f"{fid}: {name!r} 는 확인자가 될 수 없음 — 사람이 1차 출처를 보고 확인해야 함")
     if not _valid_date(on):
         raise RegistryError(f"{fid}: 확인일 {on!r} 는 YYYY-MM-DD 날짜여야 함")
+    today = (today or date.today()).isoformat()
+    if on > today:
+        raise RegistryError(f"{fid}: 확인일 {on} 이 오늘({today})보다 늦음 — 미래 날짜로 확인할 수 없음")
+    if on < entry["found_on"]:
+        raise RegistryError(f"{fid}: 확인일 {on} 이 발견일 {entry['found_on']} 보다 이름")
     new = dict(entry, verified="확인", checked_on=on, checked_by=name)
     validate_entry(fid, new)
     data["figures"][fid] = new
