@@ -139,9 +139,21 @@ def _record_section(record, record_problem, caption_status):
 
 
 def _timing_section(ctx):
+    """5. 걸린 시간: 묶음 시작·끝, 단계별 초, 요청부터 걸린 시간과 10분 이내 여부 (BNDL-07)."""
     out = ["## 5. 걸린 시간", ""]
-    out += [f"- {s['name']}: {s['seconds']:.1f}초" for s in ctx.get("steps") or []]
-    out += [f"- 합계(지금까지): {ctx.get('elapsed_s', 0):.1f}초", ""]
+    if ctx.get("started_at"):
+        out += [f"- 묶음 시작: {ctx['started_at']}", f"- 묶음 끝: {ctx['finished_at']} (검수 요약을 쓴 시점)"]
+    out += [f"- 걸린 시간 (초): {ctx.get('elapsed_s', 0):.1f}"]
+    out += [f"  - {s['name']}: {s['seconds']:.1f}초" for s in ctx.get("steps") or []]
+    since = ctx.get("elapsed_since_request_s")
+    if since is None:
+        out += ["- 요청 시각 없음 — 묶음 시간만 기록"]
+    else:
+        source = ctx.get("request_source") or ""
+        out += [f"- 요청 시각: {ctx['request_started_at']} (출처: {source})",
+                f"- 요청부터 (초): {since:.1f}",
+                f"- 10분 이내 여부: {'예' if ctx.get('within_10_min') else '아니오'}"]
+    out += ["- 사용자 확인을 기다린 시간(`slot --create` 이전)은 포함되지 않음", ""]
     return out
 
 

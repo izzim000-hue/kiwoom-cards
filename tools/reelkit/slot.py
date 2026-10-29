@@ -3,8 +3,10 @@
 날짜는 이미 쓰인 날짜(게시된 MP4, 원고, 기존 초안 폴더) 중 가장 늦은 날의 다음 날과 오늘 중 늦은 날로 제안한다.
 날짜를 코드에 적어 두지 않고 매번 폴더를 읽어 계산한다. 폴더는 `2026/reels/drafts/` 안에만 만든다 (T-02-14).
 """
+import json
 import re
-from datetime import date, timedelta
+import time
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from . import constants
@@ -118,7 +120,16 @@ def create_draft_dir(reels_dir, date, slug):  # noqa: A002
         target.mkdir(parents=True, exist_ok=False)
     except FileExistsError:
         raise SlotError(f"이미 있는 폴더: {target}") from None
+    stamp_created(target)
     return target
+
+
+def stamp_created(folder):
+    """초안 폴더를 만든 시각을 created.json 에 남긴다 (배타 생성). 묶음이 요청부터 걸린 시간을 잴 때 쓴다 (D-14)."""
+    now = time.time()
+    data = {"created_at": datetime.fromtimestamp(now).isoformat(timespec="seconds"), "epoch": round(now, 3)}
+    with open(Path(folder) / "created.json", "x", encoding="utf-8") as f:
+        f.write(json.dumps(data, ensure_ascii=False, indent=1) + "\n")
 
 
 def _iso(text):

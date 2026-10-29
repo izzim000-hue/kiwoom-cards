@@ -67,7 +67,18 @@ class Bundle(unittest.TestCase):
         self.assertTrue(all(s["status"] == "ok" for s in b["steps"]), b["steps"])
         self.assertEqual(b["status"], "complete")
         self.assertLess(b["elapsed_s"], 600)
-        self.assertIsNone(b["request_started_at"])
+        self.assertEqual(b["request_source"], "created.json")
+        self.assertIsNotNone(b["request_started_at"])
+        self.assertIsNotNone(b["elapsed_since_request_s"])
+        self.assertIs(b["within_10_min"], True)
+        for key in ("started_at", "finished_at"):
+            self.assertRegex(b[key], r"^\d{4}-\d{2}-\d{2}T")
+        self.assertEqual(b["failed_step"], None)
+
+    def test_review_section_5_timing(self):
+        text = self.read("review.md").split("## 5. 걸린 시간", 1)[1]
+        for need in ("묶음 시작", "묶음 끝", "걸린 시간 (초)", "render:", "요청부터 (초)", "10분 이내 여부: 예", "포함되지 않음"):
+            self.assertIn(need, text)
 
     def test_compliance_headline_and_caption_finding(self):
         c = json.loads(self.read("compliance.json"))
@@ -282,6 +293,70 @@ class Failures(unittest.TestCase):
     def test_internal_import_bug_is_not_mapped(self):
         self.assertIsNone(render.env_error_message(ImportError("x", name="reelkit.layout")))
         self.assertIsNone(render.env_error_message(ValueError("x")))
+
+
+class Timing(unittest.TestCase):
+    """요청 시각 기록 (BNDL-07, 렌더 없음: 원고 오류로 일찍 멈추는 폴더에서 bundle.json 을 읽는다)."""
+
+    def folder(self, t, created=None):
+        d = make_folder(t, spec_src="{ not json")
+        if created is not None:
+            (d / "created.json").write_text(json.dumps({"created_at": "x", "epoch": created}), encoding="utf-8")
+        return d
+
+    def read_bundle(self, d):
+        return json.loads((d / "bundle.json").read_text(encoding="utf-8"))
+
+    def test_request_start_flag(self):
+        import time
+        with tempfile.TemporaryDirectory() as t:
+            d = self.folder(t, created=time.time() - 5000)
+            e = time.time() - 30
+            run(DRAFT + ["bundle", str(d), "--request-start", str(e)])
+            b = self.read_bundle(d)
+            self.assertEqual(b["request_source"], "--request-start")
+            self.assertTrue(30 <= b["elapsed_since_request_s"] < 90, b)
+            self.assertIs(b["within_10_min"], True)
+            self.assertIn("요청부터 (초)", (d / "review.md").read_text(encoding="utf-8"))
+
+    def test_over_ten_minutes_is_false(self):
+        import time
+        with tempfile.TemporaryDirectory() as t:
+            d = self.folder(t)
+            run(DRAFT + ["bundle", str(d), "--request-start", str(time.time() - 700)])
+            b = self.read_bundle(d)
+            self.assertGreaterEqual(b["elapsed_since_request_s"], 700)
+            self.assertIs(b["within_10_min"], False)
+            self.assertIn("10분 이내 여부: 아니오", (d / "review.md").read_text(encoding="utf-8"))
+
+    def test_created_json_fallback(self):
+        import time
+        with tempfile.TemporaryDirectory() as t:
+            d = self.folder(t, created=time.time() - 10)
+            run(DRAFT + ["bundle", str(d)])
+            b = self.read_bundle(d)
+            self.assertEqual(b["request_source"], "created.json")
+            self.assertTrue(10 <= b["elapsed_since_request_s"] < 70, b)
+            self.assertTrue((d / "created.json").is_file())
+
+    def test_no_request_time(self):
+        with tempfile.TemporaryDirectory() as t:
+            d = self.folder(t)
+            run(DRAFT + ["bundle", str(d)])
+            b = self.read_bundle(d)
+            for key in ("request_started_at", "request_source", "elapsed_since_request_s", "within_10_min"):
+                self.assertIsNone(b[key], key)
+            self.assertIn("요청 시각 없음 — 묶음 시간만 기록", (d / "review.md").read_text(encoding="utf-8"))
+
+    def test_future_or_bad_request_start_is_exit_1(self):
+        import time
+        with tempfile.TemporaryDirectory() as t:
+            d = self.folder(t)
+            for bad in (str(time.time() + 3600), "nan", "inf", "abc"):
+                r = run(DRAFT + ["bundle", str(d), "--request-start", bad])
+                self.assertEqual(r.returncode, 1, (bad, r.stderr))
+                self.assertIn("초안 오류", r.stderr)
+            self.assertFalse((d / "bundle.json").exists())
 
 
 class ExitCode(unittest.TestCase):

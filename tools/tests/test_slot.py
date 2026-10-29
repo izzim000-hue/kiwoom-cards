@@ -161,6 +161,19 @@ class TempDirProposal(unittest.TestCase):
             with self.assertRaises(slot.SlotError):
                 slot.create_draft_dir(reels, "2026-11-08", "pension-credit-limit")
 
+    def test_create_stamps_created_json(self):
+        import time
+        with tempfile.TemporaryDirectory() as t:
+            reels = make_reels(t)
+            before = time.time()
+            path = slot.create_draft_dir(reels, "2026-11-08", "stamp-me")
+            data = json.loads((path / "created.json").read_text(encoding="utf-8"))
+            self.assertEqual(sorted(data), ["created_at", "epoch"])
+            self.assertTrue(before - 1 <= data["epoch"] <= time.time() + 1)
+            self.assertRegex(data["created_at"], r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$")
+            # 폴더 이름만 읽으므로 사용 중 슬롯 목록은 그대로다
+            self.assertEqual([(d, s) for d, s, _ in slot.used_slots(reels)], [("2026-11-08", "stamp-me")])
+
     def test_create_refuses_path_like_slug(self):
         with tempfile.TemporaryDirectory() as t:
             reels = make_reels(t)

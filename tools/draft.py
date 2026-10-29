@@ -36,7 +36,7 @@
           표현 점검은 tools/data/compliance_rules.json 규칙(초안, 준법 검토 전)을 원고·근거·게시글·해시태그에 적용하고 결과는
           `위험 표현 n건 발견` 또는 `패턴상 발견 없음 — 사람 검수 필요` 둘 중 하나로만 낸다. 발견이 있어도 종료 코드는 바뀌지 않는다.
           원고 소스를 고친 뒤에도 같은 명령으로 전부 다시 만든다. record.json(광고 해당 여부·심의 기록)은 없을 때만 만들고 고치지 않는다.
-          --request-start 는 요청 시각(epoch 초)으로, 주어지면 bundle.json 에 요청부터 걸린 시간을 남긴다.
+          --request-start 는 요청 시각(epoch 초)으로, 주어지면 bundle.json 에 요청부터 걸린 시간을 남긴다 (없으면 slot --create 가 남긴 created.json).
           종료 코드: 0 완료, 1 입력 오류(점검 오류 포함), 2 렌더·파일 환경 오류, 3 레이아웃 경고, 4 업로드 규격 FAIL (4 우선).
   compliance  원고(SPEC)와 게시글(--caption)을 금소법 표현 규칙(tools/data/compliance_rules.json, 초안·준법 검토 전)으로 점검한다.
           결과 머리말은 `위험 표현 n건 발견` 또는 `패턴상 발견 없음 — 사람 검수 필요` 둘 중 하나이며 규칙 버전·기준일이 붙는다.
@@ -111,7 +111,7 @@ def build_parser():
     p = sub.add_parser("bundle", help="초안 폴더를 검수 묶음(MP4·표지·점검표·검수 요약)으로 만든다")
     p.add_argument("dir", help="초안 폴더 경로 (2026/reels/drafts/<게시일>-<슬러그>)")
     p.add_argument("--card", help="대조할 카드뉴스 원고 JSON (check 의 --card 와 같음)")
-    p.add_argument("--request-start", type=float, help="요청 시각 epoch 초 — bundle.json 에 요청부터 걸린 시간을 남김")
+    p.add_argument("--request-start", help="요청 시각 epoch 초 — bundle.json 에 요청부터 걸린 시간을 남김")
     p.add_argument("--rules", help="표현 점검 규칙 파일 (기본 tools/data/compliance_rules.json)")
     p.add_argument("--config", help="게시글 설정 경로 (기본 tools/data/caption_config.json)")
     _registry_arg(p)

@@ -8,6 +8,7 @@ record.json, bundle.json 이 생긴다. 표현 점검(D-06)이 완성된 게시�
 종료 코드: 0 완료, 1 초안·원고·규칙 입력 오류, 2 렌더·파일 환경 오류, 3 레이아웃 경고(항상 엄격), 4 업로드 규격 FAIL (4 가 우선).
 """
 import json
+import math
 import os
 import shutil
 import sys
@@ -114,6 +115,43 @@ def purge_outputs(d, name):
             p.unlink()
 
 
+def resolve_request(d, request_start, now=None):
+    """(요청 시각 epoch 또는 None, 출처 또는 None). --request-start 가 우선이고, 없으면 slot --create 가 남긴 created.json."""
+    now = time.time() if now is None else now
+    if request_start is not None:
+        if isinstance(request_start, str):
+            try:
+                request_start = float(request_start)
+            except ValueError:
+                raise BundleError(f"--request-start 는 epoch 초(숫자)여야 함: {request_start!r}") from None
+        if isinstance(request_start, bool) or not isinstance(request_start, (int, float)) or not math.isfinite(request_start):
+            raise BundleError(f"--request-start 는 epoch 초(숫자)여야 함: {request_start!r}")
+        if request_start > now + 5:
+            raise BundleError(f"--request-start 가 지금보다 늦음: {request_start} > {round(now)}")
+        return float(request_start), "--request-start"
+    try:
+        epoch = json.loads((Path(d) / "created.json").read_text(encoding="utf-8"))["epoch"]
+    except (OSError, ValueError, KeyError, TypeError):
+        return None, None
+    if isinstance(epoch, bool) or not isinstance(epoch, (int, float)) or not math.isfinite(epoch) or epoch > now + 5:
+        return None, None
+    return float(epoch), "created.json"
+
+
+def timing_fields(started, t_start, request):
+    """bundle.json 과 review.md 가 같이 쓰는 시간 기록. 요청 시각이 없으면 요청 관련 값은 모두 None."""
+    finished = time.time()
+    epoch, source = request
+    since = None if epoch is None else round(finished - epoch, 1)
+    return {
+        "started_at": _iso(started), "finished_at": _iso(finished),
+        "elapsed_s": round(time.monotonic() - t_start, 2),
+        "request_started_at": None if epoch is None else _iso(epoch), "request_source": source,
+        "elapsed_since_request_s": since,
+        "within_10_min": None if since is None else since <= TEN_MINUTES,
+    }
+
+
 def final_code(layout_warnings, cover_warnings, spec_checks):
     """종료 코드: 업로드 규격 FAIL 4 (우선), 레이아웃·표지 경고 3, 그 밖 0. 표현 점검 발견은 코드를 바꾸지 않는다."""
     if any(c.status == "FAIL" for c in spec_checks):
@@ -135,6 +173,11 @@ def run_cli(draft_dir, *, card=None, request_start=None, rules=None, registry=No
     except BundleError as e:
         print(f"초안 오류: {e}", file=sys.stderr)
         return 1
+    try:
+        request = resolve_request(d, request_start)
+    except BundleError as e:
+        print(f"초안 오류: {e}", file=sys.stderr)
+        return 1
     paths = draft_paths(d)
     started = time.time()
     t_start = time.monotonic()
@@ -150,7 +193,7 @@ def run_cli(draft_dir, *, card=None, request_start=None, rules=None, registry=No
             exit_code = 2
         else:
             exit_code = _build(d, date_text, name, paths, frames, steps, state, started, t_start,
-                               card, request_start, rules, registry, config)
+                               card, request, rules, registry, config)
     except _Stop as stop:
         exit_code = stop.code
     except BaseException:
@@ -158,23 +201,15 @@ def run_cli(draft_dir, *, card=None, request_start=None, rules=None, registry=No
         raise
     finally:
         shutil.rmtree(frames, ignore_errors=True)
-        _write_bundle_json(paths, name, steps, state, started, t_start, request_start, exit_code)
+        _write_bundle_json(paths, name, steps, state, started, t_start, request, exit_code)
     return exit_code
 
 
-def _write_bundle_json(paths, name, steps, state, started, t_start, request_start, exit_code):
-    finished = time.time()
-    elapsed = round(time.monotonic() - t_start, 2)
-    since = None if request_start is None else round(finished - request_start, 2)
-    data = {
-        "schema": 1, "name": name, "status": "failed" if state["failed"] else "complete",
-        "failed_step": state["failed"], "exit_code": exit_code,
-        "started_at": _iso(started), "finished_at": _iso(finished), "elapsed_s": elapsed,
-        "steps": steps,
-        "request_started_at": None if request_start is None else _iso(request_start),
-        "elapsed_since_request_s": since,
-        "within_10_min": (since if since is not None else elapsed) <= TEN_MINUTES,
-    }
+def _write_bundle_json(paths, name, steps, state, started, t_start, request, exit_code):
+    data = {"schema": 1, "name": name, "status": "failed" if state["failed"] else "complete",
+            "failed_step": state["failed"], "exit_code": exit_code}
+    data.update(timing_fields(started, t_start, request))
+    data["steps"] = steps
     try:
         _atomic_write(paths["bundle"], _json_text(data))
     except OSError as e:
@@ -194,7 +229,7 @@ def _timed(steps, state, name, fn):
 
 
 def _build(d, date_text, name, paths, frames, steps, state, started, t_start,
-           card, request_start, rules_path, registry_path, config_path):
+           card, request, rules_path, registry_path, config_path):
     registry_path = registry_path or figures.REGISTRY_PATH
     memo = {"spec": None, "result": None}
 
@@ -206,7 +241,7 @@ def _build(d, date_text, name, paths, frames, steps, state, started, t_start,
             review.write_failure_review(d, {
                 "name": name, "heading": heading, "errors": list(errors), "result": memo["result"],
                 "record": record, "record_problem": problem, "check": memo.get("check") or {},
-                "steps": list(steps), "elapsed_s": round(time.monotonic() - t_start, 2),
+                "steps": list(steps), **timing_fields(started, t_start, request),
             })
         except OSError as e:
             print(f"환경 오류: review.md 를 쓸 수 없음: {e}", file=sys.stderr)
@@ -364,7 +399,7 @@ def _build(d, date_text, name, paths, frames, steps, state, started, t_start,
             "spec_total": len(r.spec_checks), "spec_ok": sum(1 for c in r.spec_checks if c.status == "PASS"),
             "spec_fail": spec_fail, "layout_warnings": [str(w) for w in r.warnings],
             "caption_status": cap_cfg["status"], "steps": list(steps),
-            "elapsed_s": round(time.monotonic() - t_start, 2),
+            **timing_fields(started, t_start, request),
         })
         review.write_review(d, ctx)
 
