@@ -16,7 +16,7 @@
     {
       "number": "3",
       "name": "점검과 검수 묶음 (Compliance & Review Bundle)",
-      "status": "pending"
+      "status": "in_progress"
     },
     {
       "number": "4",
@@ -27,7 +27,7 @@
   "next": {
     "command": "/gsd-progress --next",
     "label": "Advance to the next step",
-    "reason": "Phase 2 of 4 · 25% · executing"
+    "reason": "Phase 3 of 4 · 25% · executing"
   },
-  "updated_at": "2026-10-29T02:08:13.895Z"
+  "updated_at": "2026-10-29T07:12:21.001Z"
 }
