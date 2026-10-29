@@ -40,6 +40,11 @@
  {"id": "B39", "label": "bad", "category": "단정·보장", "tier": "implicit", "lines": ["돈이 줄어들 걱정은", "이제 안녕이에요"], "expect_severity": "확인 필요"},
  {"id": "B40", "label": "bad", "category": "단정·보장", "tier": "implicit", "lines": ["이 상품이면 노후 걱정 끝"], "expect_severity": "확인 필요"},
  {"id": "B41", "label": "bad", "category": "단정·보장", "tier": "implicit", "lines": ["넣어두기만 하면", "알아서 불어납니다"], "expect_severity": "확인 필요"},
+ {"id": "B42", "label": "bad", "category": "단정·보장", "tier": "explicit", "lines": ["원금 보장 상품이에요", "놓치지 마세요"]},
+ {"id": "B43", "label": "bad", "category": "단정·보장", "tier": "explicit", "lines": ["확정 수익 상품", "중도 해지는 불가"]},
+ {"id": "B44", "label": "bad", "category": "단정·보장", "tier": "explicit", "lines": ["무조건 오릅니다", "걱정하지 마세요"]},
+ {"id": "B45", "label": "bad", "category": "단정·보장", "tier": "explicit", "lines": ["원금 보장되는 상품이라 손해 보지 않아요"]},
+ {"id": "B46", "label": "bad", "category": "상품 권유", "tier": "explicit", "lines": ["지금 가입하세요", "망설이지 마세요"]},
  {"id": "G01", "label": "good", "lines": ["원금 보장 아님", "원금 손실 가능"], "basis": "예시"},
  {"id": "G02", "label": "good", "lines": ["수익을 보장하지 않습니다"]},
  {"id": "G03", "label": "good", "lines": ["원금이 보장되지 않는", "상품도 있어요"]},
@@ -60,5 +65,8 @@
  {"id": "G18", "label": "good", "lines": ["손실이 없다는 보장은", "어디에도 없어요"]},
  {"id": "G19", "label": "good", "lines": ["어머님 노후 준비", "어떻게 시작할까?"]},
  {"id": "G20", "label": "good", "lines": ["궁금한 점은", "고객센터에서 확인하세요"]},
- {"id": "G21", "label": "good", "lines": ["전체 고객이 아니라", "내 상황이 기준이에요"]}
+ {"id": "G21", "label": "good", "lines": ["전체 고객이 아니라", "내 상황이 기준이에요"]},
+ {"id": "G22", "label": "good", "lines": ["원금이 보장된다는 뜻은 아니에요"]},
+ {"id": "G23", "label": "good", "lines": ["원금 보장 상품이라고", "생각하시면 안 됩니다"]},
+ {"id": "G24", "label": "good", "lines": ["수익을 보장해 드리지 않습니다"]}
 ]

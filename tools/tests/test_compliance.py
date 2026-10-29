@@ -78,10 +78,12 @@ class Suppression(unittest.TestCase):
         self.assertEqual(sup[0]["rule"], ["G-01"])
         self.assertEqual(sup[0]["by"], "negator")
 
-    def test_window_crosses_line_break(self):
+    def test_reported_claim_split_over_two_lines_is_a_mention(self):
+        # 부정 창은 줄을 넘지 않지만 '~다는 보장은' 은 주장을 인용하는 말이라 언급으로 제외한다
         found, sup = scan_reel(mk(["손실이 없다는 보장은", "어디에도 없어요"]))
         self.assertEqual(found, [])
         self.assertIn("G-05", ids(sup))
+        self.assertEqual(sup[0]["by"], "mention")
 
     def test_mention_marker(self):
         found, sup = scan_reel(mk(["'확정 수익'이라는 말은", "조심해서 보세요"]))
@@ -107,10 +109,46 @@ class Suppression(unittest.TestCase):
         found, _ = scan_reel(mk(["이건 원금 보장"], ["않아도 돼요"]))
         self.assertIn("G-01", ids(found))
 
-    def test_second_claim_flagged_first_listed_suppressed(self):
+    def test_negator_in_a_later_clause_does_not_cover_the_claim(self):
+        # CR-01: '위험하지 않' 은 앞 절의 '원금 보장' 을 부정하지 않는다
         found, sup = scan_reel(mk(["원금 보장되며 위험하지 않습니다"]))
         self.assertIn("G-05", ids(found))
-        self.assertIn("G-01", ids(sup))
+        self.assertIn("G-01", ids(found))
+        self.assertNotIn("G-01", ids(sup))
+
+
+class NegationScope(unittest.TestCase):
+    """CR-01 회귀: 부정 창은 장면의 줄 하나를 넘지 않고, 부정은 매치한 서술어에 붙어 있어야 한다."""
+
+    def must_fix(self, *lines):
+        res = compliance.run(mk(list(lines)), None, RULES)
+        self.assertGreater(res.counts["수정 필요"], 0, (lines, res.findings, res.suppressed))
+        self.assertTrue(res.headline.startswith("위험 표현"), res.headline)
+
+    def test_next_line_negator_does_not_suppress(self):
+        for lines in (["원금 보장 상품이에요", "놓치지 마세요"], ["원금 보장 상품이에요", "놓치지 않게 저장"],
+                      ["확정 수익 상품", "중도 해지는 불가"], ["무조건 오릅니다", "걱정하지 마세요"],
+                      ["원금 보장", "오해 없도록 다시 말해요"], ["지금 가입하세요", "망설이지 마세요"]):
+            with self.subTest(lines=lines):
+                self.must_fix(*lines)
+
+    def test_same_line_unrelated_negator_does_not_suppress(self):
+        for line in ("원금 보장되는 상품이라 손해 보지 않아요", "원금 보장 상품 놓치지 마세요",
+                     "지금 가입하세요 망설이지 마세요"):
+            with self.subTest(line=line):
+                self.must_fix(line)
+
+    def test_attached_negation_still_suppresses(self):
+        for line in ("원금 보장 아님", "원금이 보장되지 않는 상품도 있어요", "수익을 보장해 드리지 않습니다",
+                     "원금 보장 안 돼요", "원금이 보장된다는 뜻은 아니에요", "원금 보장을 기대하지 마세요",
+                     "원금 보장 상품이라고 생각하면 안 됩니다"):
+            with self.subTest(line=line):
+                res = compliance.run(mk([line]), None, RULES)
+                self.assertEqual(res.counts["수정 필요"], 0, (line, res.findings))
+                self.assertTrue(res.suppressed, line)
+
+    def test_negators_dropped_topic_word(self):
+        self.assertIsNone(RULES.negators.match(" 오해 없도록"))
 
 
 class CompactAndDedupe(unittest.TestCase):
@@ -186,10 +224,10 @@ class Lift(unittest.TestCase):
 class Headline(unittest.TestCase):
     def test_forms(self):
         self.assertEqual(compliance.headline(0, RULES),
-                         "패턴상 발견 없음 — 사람 검수 필요 · 규칙 v0.1(초안) · 기준일 2026-10-29")
+                         "패턴상 발견 없음 — 사람 검수 필요 · 규칙 v0.2(초안) · 기준일 2026-10-29")
         res = compliance.run(mk(["무조건 오르는 종목", "100% 안전한 투자"]), None, RULES)
         self.assertEqual(res.counts["위험 표현"], 2)
-        self.assertEqual(res.headline, "위험 표현 2건 발견 · 규칙 v0.1(초안) · 기준일 2026-10-29")
+        self.assertEqual(res.headline, "위험 표현 2건 발견 · 규칙 v0.2(초안) · 기준일 2026-10-29")
 
     def test_json_shape_and_words(self):
         res = compliance.run(mk(["원금 보장 아님", "무조건 오르는 종목"]), None, RULES)
@@ -340,7 +378,7 @@ class Cli(unittest.TestCase):
         r = run_cli("compliance", str(spec), "--caption", str(cap), "--out", str(out))
         self.assertEqual(r.returncode, 0, r.stderr)
         last = r.stdout.rstrip("\n").splitlines()[-1]
-        self.assertRegex(last, r"^compliance: 위험 표현 \d+건 발견 · 규칙 v0\.1\(초안\) · 기준일 2026-10-29 \| 수정 필요 \d+건")
+        self.assertRegex(last, r"^compliance: 위험 표현 \d+건 발견 · 규칙 v0\.2\(초안\) · 기준일 2026-10-29 \| 수정 필요 \d+건")
         self.assertIn("G-01", r.stdout)
         self.assertNotIn("통과", r.stdout)
         data = json.loads(out.read_text(encoding="utf-8"))

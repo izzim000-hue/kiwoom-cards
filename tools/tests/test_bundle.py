@@ -82,7 +82,7 @@ class Bundle(unittest.TestCase):
 
     def test_compliance_headline_and_caption_finding(self):
         c = json.loads(self.read("compliance.json"))
-        self.assertRegex(c["headline"], r"^위험 표현 \d+건 발견 · 규칙 v0\.1\(초안\) · 기준일 2026-10-29$")
+        self.assertRegex(c["headline"], r"^위험 표현 \d+건 발견 · 규칙 v0\.2\(초안\) · 기준일 2026-10-29$")
         hits = [f for f in c["findings"] if "G-01" in f["rule"]]
         self.assertTrue(hits, c["findings"])
         self.assertEqual((hits[0]["doc"], hits[0]["where"]), ("caption", "caption line 1"))

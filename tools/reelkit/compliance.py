@@ -8,8 +8,11 @@
 점검 방식
 - 글 모델: 필드(장면 top·줄, basis, 게시글 줄, 해시태그)를 NFKC 로 바꾸고 폭 없는 글자·서식 태그를 지운 뒤 한 글로 잇는다.
   한 장면의 필드는 줄바꿈 하나로, 장면 사이와 basis 앞은 빈 줄로 잇는다. 위치는 매치가 시작한 필드로 정한다.
-- 부정·인용 예외: 매치 뒤 22자(문장 끝·빈 줄·'지만' 류에서 끊음)에 부정 표현이 있거나 `라는 말` 같은 언급 표지가 있으면
-  발견이 아니라 `suppressed` 에 남긴다. 줄바꿈 하나는 창을 끊지 않고 장면 경계(빈 줄)는 끊는다.
+- 부정·인용 예외: 매치 바로 뒤 글(최대 22자, 줄바꿈·문장 끝·쉼표·'지만' 류에서 끊음)이 부정 표현으로 *시작*하거나
+  `라는 말` 같은 언급 표지로 시작하면 발견이 아니라 `suppressed` 에 남긴다. negators·mention_markers 는 창의 맨 앞에
+  맞춰(match) 보므로, 부정은 매치한 서술어에 붙어 있어야 한다 (예: '보장하지 않', '보장 상품은 없'). 장면의 줄은 따로 읽히는
+  문장이라 다음 줄의 '놓치지 마세요' 같은 부정은 앞 줄의 주장을 덮지 않는다 (CR-01).
+- except 규칙은 따로 넓은 창(문장 끝·빈 줄·'지만' 류에서 끊음)으로 매치가 든 문장을 본다.
 - 쪼갠 표현: 발견도 제외도 없는 필드에서 공백을 모두 지운 글로 compact_terms 를 찾는다 (규칙 id X-compact).
 - 겹친 매치는 하나로 합치고 더 구체적인 분류를 남긴다.
 - 확인 필요: requires/basis_required 규칙과 check.json·게시글 경고 옮기기(lift)로 만든다. 수치를 다시 판정하지 않는다 (D-07).
@@ -45,7 +48,10 @@ _MARKUP_RE = re.compile(r"</?[gs]>")
 _HASHTAG_TOKEN_RE = re.compile(r"^#\S+$")
 _STATUTE_RE = re.compile(r"제\s*\d+\s*조")
 _NESTED_QUANTIFIER_RE = re.compile(r"(?<!\\)[+*]\)[+*{]")
-_CUT_RE = re.compile(r"[.!?;]|\n\n|하지만|지만|그러나|다만|그런데")
+# 부정 창: 장면의 줄 하나를 넘지 않는다 (줄바꿈 하나에서도 끊음, CR-01)
+_CUT_RE = re.compile(r"[.!?;,]|\n|하지만|지만|그러나|다만|그런데")
+# except 창: 문장 안(줄바꿈 하나로 이어 쓴 줄 포함)을 본다
+_EXCEPT_CUT_RE = re.compile(r"[.!?;]|\n\n|하지만|지만|그러나|다만|그런데")
 _DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 COMPACT_REASON = "공백·숨은 글자로 쪼갠 금지 표현으로 읽힘"
@@ -346,10 +352,10 @@ class _Hit(NamedTuple):
     rule: Rule
 
 
-def _window(text, end):
-    """매치 뒤 최대 22자. 문장 끝, 빈 줄(장면 경계), '지만' 류에서 끊는다. 줄바꿈 하나는 끊지 않는다."""
+def _window(text, end, cut=_CUT_RE):
+    """매치 뒤 최대 22자. 부정 창은 줄바꿈·문장 끝·쉼표·'지만' 류에서 끊는다 (장면의 줄 하나를 넘지 않음)."""
     after = text[end:end + WINDOW]
-    m = _CUT_RE.search(after)
+    m = cut.search(after)
     return after[:m.start()] if m else after
 
 
@@ -364,16 +370,24 @@ def _clause_start(text, pos):
     return start
 
 
+def _negated(rules, window):
+    """부정·언급 표지가 창의 맨 앞에서 시작하면 그 이름, 아니면 None."""
+    if rules.negators is not None and rules.negators.match(window):
+        return "negator"
+    if rules.mention_markers is not None and rules.mention_markers.match(window):
+        return "mention"
+    return None
+
+
 def _suppressed_by(rule, rules, text, start, end, window):
     """부정(negator)·언급(mention)·예외(except) 중 걸린 이름, 없으면 None."""
     if rule.negatable:
-        if rules.negators is not None and rules.negators.search(window):
-            return "negator"
-        if rules.mention_markers is not None and rules.mention_markers.match(window):
-            return "mention"
+        by = _negated(rules, window)
+        if by:
+            return by
     if rule.excepts:
         base = _clause_start(text, start)
-        clause = text[base:end + len(window)]
+        clause = text[base:end + len(_window(text, end, _EXCEPT_CUT_RE))]
         for rx in rule.excepts:
             for m in rx.finditer(clause):
                 if m.start() < end - base and m.end() > start - base:
