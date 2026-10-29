@@ -345,6 +345,30 @@ class Promote(ApproveBase):
         data["files"]["bundle.json"] = approve.sha256_file(self.d / "bundle.json")
         path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
 
+    def test_inconsistent_approval_fields_refuse(self):
+        # WR-01 (일부): 승인 기록 필드가 approve 가 쓰는 꼴·지금 다시 센 값과 맞지 않으면 거부
+        self.approved()
+        path = self.d / "approval.json"
+        good = json.loads(path.read_text(encoding="utf-8"))
+        bad_cases = {
+            "approved_by": lambda d: d.update(approved_by="Claude"),
+            "approved_at": lambda d: d.update(approved_at="어제"),
+            "rules.version": lambda d: d["rules"].update(version="9.9"),
+            "counts": lambda d: d["counts"].update({"확인 필요": d["counts"]["확인 필요"] + 1}),
+            "record": lambda d: d.pop("record"),
+        }
+        for label, mutate in bad_cases.items():
+            with self.subTest(field=label):
+                data = json.loads(json.dumps(good))
+                mutate(data)
+                path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+                code, _o, err = self.promote()
+                self.assertEqual(code, 1, label)
+                self.assertIn("승인", err)
+                self.assertNothingPublished()
+        path.write_text(json.dumps(good, ensure_ascii=False), encoding="utf-8")
+        self.assertEqual(self.promote()[0], 0)
+
     def test_missing_approval_refuses(self):
         code, _o, err = self.promote()
         self.assertEqual(code, 1)

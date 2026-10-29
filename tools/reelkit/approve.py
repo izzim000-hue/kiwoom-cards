@@ -8,6 +8,7 @@ approval.json 으로 남긴다. promote 는 그 승인 기록이 있고, 지문�
 """
 import json
 import os
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -210,6 +211,28 @@ def _read_approval(paths, name):
     return data
 
 
+_APPROVED_AT_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}")
+
+
+def check_approval_fields(approval, loaded, result):
+    """승인 기록이 approve 가 쓴 모양과 지금 상태에 맞는지 본다 (WR-01 일부 보강). approval.json 을 손으로 쓰는 일 자체는
+    막지 못한다(남은 위험, 사용자 결정 사항). 다만 규칙 버전·sha256·건수가 지금 규칙으로 다시 센 값과 다르거나, 승인자·시각이
+    approve 가 쓰는 꼴이 아니면 거부한다."""
+    who = approval.get("approved_by")
+    if not isinstance(who, str) or not who.strip() or figures.is_ai_name(who.strip()):
+        raise ApproveError("승인 기록의 승인자가 사람 이름이 아님 — 사람이 approve 를 다시 실행해야 함")
+    when = approval.get("approved_at")
+    if not isinstance(when, str) or not _APPROVED_AT_RE.fullmatch(when):
+        raise ApproveError("승인 기록의 승인 시각 형식이 다름 — 사람이 approve 를 다시 실행해야 함")
+    rules = approval["rules"]
+    if rules.get("sha256") != loaded.sha256 or rules.get("version") != loaded.version:
+        raise ApproveError("승인 때와 점검 규칙 파일이 다름 — bundle 을 다시 실행하고 사람이 approve 를 다시 실행해야 함")
+    if approval.get("counts") != result.counts:
+        raise ApproveError("승인 기록의 점검 건수가 지금 다시 센 값과 다름 — 사람이 approve 를 다시 실행해야 함")
+    if not isinstance(approval.get("record"), dict):
+        raise ApproveError("승인 기록에 광고·심의 기록 사본이 없음 — 사람이 approve 를 다시 실행해야 함")
+
+
 def publish_dir(d, name):
     """게시 폴더는 언제나 저장소의 `<게시일 연도>/reels` 다 (WR-04). 초안 폴더가 그 아래 drafts/ 에 있지 않으면 거부한다.
     d 는 bundle.validate_draft_dir 이 풀어 둔(resolve) 경로라 심볼릭 링크로 옮겨 둔 drafts/ 도 여기서 걸린다."""
@@ -262,6 +285,7 @@ def promote_cli(draft_dir):
         if result.counts["수정 필요"] > 0:
             raise ApproveError(f"수정 필요 {result.counts['수정 필요']}건 — spec.src.json·caption.src.json 을 고치고 "
                                "bundle 을 다시 실행해 다시 승인 받으세요")
+        check_approval_fields(approval, loaded, result)
         reels, pairs = _targets(d, name)
         for _src, target in pairs:
             if os.path.lexists(target):
