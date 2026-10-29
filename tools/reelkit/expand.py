@@ -17,8 +17,9 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 from . import calc, figures
+from .motion import MODES as MOTION_MODES
 
-ALLOWED_KEYS = ("basis", "inputs", "derive", "series", "scenes")
+ALLOWED_KEYS = ("basis", "inputs", "derive", "series", "scenes", "motion")
 SERIES_KEYS = ("name", "episode", "next")
 # 원문자는 ⑩ 까지만 쓴다 (⑪ 이상은 번들 폰트에서 확인되지 않음, research 가정 A3)
 CIRCLED = "①②③④⑤⑥⑦⑧⑨⑩"
@@ -295,6 +296,9 @@ def expand_source(src, registry):
         raise ExpandError(f"알 수 없는 최상위 키: {', '.join(map(str, unknown))} (허용: {', '.join(ALLOWED_KEYS)})")
     if "basis" in src and not isinstance(src["basis"], str):
         raise ExpandError("basis: 문자열이어야 함")
+    if "motion" in src and (isinstance(src["motion"], bool) or not isinstance(src["motion"], str)
+                            or src["motion"] not in MOTION_MODES):
+        raise ExpandError(f"motion: 'none' 또는 'basic' 만 쓸 수 있음 — {src['motion']!r}")
     _check_scenes(src.get("scenes"))
     series = None
     if "series" in src:
@@ -310,6 +314,8 @@ def expand_source(src, registry):
     out = {"version": SPEC_VERSION}
     if series is not None:
         out["series"] = dict(series)
+    if "motion" in src:
+        out["motion"] = src["motion"]
     if "basis" in src:
         out["basis"] = _expand_field(src["basis"], "basis", None, vals, ledger)
     scenes = src["scenes"]

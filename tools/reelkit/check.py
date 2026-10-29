@@ -308,7 +308,7 @@ def check_spec(spec, registry, *, publish_date=None):
     return report
 
 
-SOURCE_KEYS = ("version", "series", "basis", "scenes", "inputs", "derive", "figures", "basis_items")
+SOURCE_KEYS = ("version", "series", "basis", "scenes", "inputs", "derive", "figures", "basis_items", "motion")
 
 
 def compare_source(spec, src, registry):

@@ -144,6 +144,28 @@ class NegativeCases(unittest.TestCase):
         self.expect_error(src, "inputs.amt")
 
 
+class MotionField(unittest.TestCase):
+    """motion 소스 필드(D-05): none/basic 만 확장되고 원고에 그대로 실린다."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.registry = figures.load_registry()
+
+    def test_allowed_values_carry_over(self):
+        for mode in ("none", "basic"):
+            self.assertEqual(expand_source(mini(motion=mode), self.registry)["motion"], mode)
+
+    def test_absent_key_stays_absent(self):
+        self.assertNotIn("motion", expand_source(mini(), self.registry))
+
+    def test_other_values_are_errors_naming_motion(self):
+        for bad in ("calm", {"preset": "calm"}, 1):
+            with self.assertRaises(ExpandError) as cm:
+                expand_source(mini(motion=bad), self.registry)
+            self.assertIn("motion", str(cm.exception))
+            self.assertIn("basic", str(cm.exception))
+
+
 class UnitsAndFormats(unittest.TestCase):
     """CR-03 회귀: 서식과 단위가 안 맞거나 단위를 글자로 붙이면 확장이 거부한다."""
 

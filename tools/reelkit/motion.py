@@ -110,8 +110,9 @@ BUILD_JS = """(p) => {
   const add = (el, kf, o) => { const a = el.animate(kf, Object.assign({fill: 'both'}, o)); a.pause(); a.currentTime = 0; window.A.push(a); };
   const layers = [...document.querySelectorAll('.rk-layer')];
   const bar = document.getElementById('rk-bar');
-  bar.style.transformOrigin = '0 0';
-  add(bar, [{transform: 'scaleX(0)'}, {transform: 'scaleX(1)'}], {duration: p.total * 1000, easing: 'linear'});
+  // 진행 막대는 transform 대신 width 로 움직인다: scaleX 는 합성기가 막대를 늘려 그려 아래 가장자리가 번지고(y 14 이후 잉크),
+  // 표지 크롭 검사가 그것을 글자로 본다. 막대는 절대 위치라 width 애니메이션이 다른 요소의 배치를 바꾸지 않는다.
+  add(bar, [{width: '0%'}, {width: '100%'}], {duration: p.total * 1000, easing: 'linear'});
   const last = p.scenes.length - 1;
   p.scenes.forEach((s, i) => {
     const layer = layers[i];
@@ -130,8 +131,8 @@ BUILD_JS = """(p) => {
 SEEK_JS = """(a) => {
   for (const x of window.A) x.currentTime = a.t * 1000;
   const eps = 1e-9;
-  document.querySelectorAll('.rk-layer').forEach((L, i) => {
-    const w = a.windows[i];
+  document.querySelectorAll('.rk-layer').forEach((L) => {
+    const w = a.windows[+L.dataset.s];
     L.style.display = (a.t >= w[0] - eps && a.t <= w[1] + eps) ? '' : 'none';
   });
 }"""

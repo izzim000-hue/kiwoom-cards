@@ -1,9 +1,13 @@
 """키움멘토 자막형 릴스 생성기 (1080x1920, 목소리 없음, 무음 오디오 트랙 포함)
-사용: python3 tools/reel.py spec.json 출력.mp4 [--layout {legacy,new}] [--strict] [--overlay-all]
+사용: python3 tools/reel.py spec.json 출력.mp4 [--layout {legacy,new}] [--motion {none,basic}] [--strict] [--overlay-all]
   --layout legacy  게시된 릴스 10편과 같은 배치(기본). 레이아웃 측정 경고 없음(글꼴 대체만 검사)
   --layout new     근거(36px, 본문 바로 아래)·계정명을 안전영역 안에 쌓는 새 배치. 줄바꿈·넘침·안전영역 침범을
                    `scene N line M: KIND (값) "글자"` 로 stderr 에 내고, 안전영역 미리보기 `<출력>.safe-sNN.png` 를 쓴다
                    (1장면 + 가장 높은 장면, --overlay-all 이면 모든 장면). 글자는 줄이거나 자르지 않고 원고 그대로 그린다
+  --motion none    정지 화면 연결(기본, 원고에 motion 이 없을 때와 같음)
+  --motion basic   줄이 0.3초 페이드하며 24px 떠오르고(줄 사이 0.12초) 장면 사이를 0.3초 크로스페이드하는 모션. 프레임 시각마다
+                   애니메이션을 멈춰 찍는 결정적 렌더이며 --layout new 에서만 쓸 수 있다 (legacy 와 함께 쓰면 종료 코드 1, MP4 없음).
+                   주면 원고의 "motion" 필드보다 우선한다 (단독 렌더용; draft.py bundle 은 spec.src.json 의 필드만 따른다)
   --strict         경고가 있으면 MP4 를 쓴 뒤 종료 코드 3
 종료 코드: 0 정상, 1 원고/입력 오류(파일 없음, JSON 오류, 허용되지 않은 마크업), 2 환경 오류(playwright 미설치, Chromium 실행 실패, 번들 폰트 로드 실패),
           3 --strict 인데 레이아웃 경고가 있음, 4 출력 MP4 의 업로드 규격 FAIL (3 과 4 모두 MP4 는 이미 써 둠, 4 가 우선)
@@ -32,11 +36,14 @@ def main(argv=None):
     ap.add_argument("spec", help="원고 JSON 경로")
     ap.add_argument("out", help="출력 MP4 경로")
     ap.add_argument("--layout", choices=["legacy", "new"], default="legacy", help="프레임 배치 (기본 legacy)")
+    ap.add_argument("--motion", choices=["none", "basic"], default=None,
+                    help="모션 (기본: 원고의 motion 필드, 없으면 none). basic 은 --layout new 에서만")
     ap.add_argument("--strict", action="store_true", help="레이아웃 경고가 있으면 종료 코드 3")
     ap.add_argument("--overlay-all", action="store_true", help="모든 장면의 안전영역 미리보기 PNG 를 쓴다 (new 배치)")
     args = ap.parse_args(argv)
     try:
-        r = render_reel(args.spec, args.out, layout=args.layout, overlay_all=args.overlay_all)
+        r = render_reel(args.spec, args.out, layout=args.layout, overlay_all=args.overlay_all,
+                        motion=args.motion)
     except SpecError as e:
         print(f"원고 오류: {e}", file=sys.stderr)
         return 1
@@ -47,6 +54,8 @@ def main(argv=None):
         print(msg, file=sys.stderr)
         return 2
     print(f"duration={r.total:.1f}s cover_ms={r.cover_ms}")
+    if r.motion == "basic":
+        print("motion=basic")
     for w in r.warnings:
         print(str(w), file=sys.stderr)
     if r.warnings:

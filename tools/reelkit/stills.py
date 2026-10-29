@@ -11,7 +11,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from . import constants, timeline
+from . import constants, motion, timeline
 
 GRID_W = constants.W
 GRID_H = 1440
@@ -79,7 +79,12 @@ def cover_crop_warnings(png, **kw):
 
 
 def scene_times(spec):
-    """장면마다 마지막 상태가 시작된 시각 + 0.4초 (초, 소수 둘째 자리). 장면 1 은 표지 시점과 같다."""
+    """장면마다 마지막 상태가 시작된 시각 + 0.4초 (초, 소수 둘째 자리). 장면 1 은 표지 시점과 같다.
+
+    motion basic 이면 시간표의 final_t (모든 애니메이션이 끝난 프레임, 표지·장면 모음에 쓰는 프레임)를 쓴다.
+    """
+    if motion.resolve(spec) == "basic":
+        return [round(sc.final_t, 2) for sc in motion.schedule(spec).scenes]
     states = timeline.build_states(spec)
     times, t = {}, 0.0
     for st in states:
