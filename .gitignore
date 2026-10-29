@@ -3,3 +3,12 @@ __pycache__/
 *.pyc
 tools/tests/_out/
 .render-work/
+# 오디오 파일은 저작권 때문에 커밋하지 않음 (배경음은 초안 폴더에서만 쓴다).
+# 대소문자를 가리지 않는다: git 은 core.ignorecase 가 꺼진 저장소에서 패턴을 대소문자 그대로 비교한다 (Song.MP3 도 막는다)
+*.[mM][pP]3
+*.[mM]4[aA]
+*.[wW][aA][vV]
+*.[aA][aA][cC]
+*.[oO][gG][gG]
+*.[oO][pP][uU][sS]
+*.[fF][lL][aA][cC]

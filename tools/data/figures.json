@@ -1,0 +1,753 @@
+{
+  "schema": 1,
+  "figures": {
+    "income_tax_rate_b1": {
+      "label": "소득세 기본세율 1구간(과세표준 1,400만 원 이하)",
+      "kind": "law",
+      "value": "6",
+      "unit": "%",
+      "includes_local": false,
+      "source": {
+        "name": "소득세법 기본세율 (조문 번호 미확인)",
+        "url": null,
+        "locator": null
+      },
+      "candidate_sources": [
+        "국가법령정보센터 소득세법 (law.go.kr)",
+        "국세청 연말정산 안내 (nts.go.kr)"
+      ],
+      "as_of": "2026-10",
+      "valid_until": null,
+      "found_on": "2026-10-29",
+      "checked_on": null,
+      "checked_by": null,
+      "legal_status": "시행",
+      "verified": "미확인",
+      "notes": "2차 자료 일치, 1차 원문 미확인. 조문 번호 추정 제55조"
+    },
+    "income_tax_rate_b4": {
+      "label": "소득세 기본세율 4구간(8,800만 원 초과 1.5억 원 이하)",
+      "kind": "law",
+      "value": "35",
+      "unit": "%",
+      "includes_local": false,
+      "source": {
+        "name": "소득세법 기본세율 (조문 번호 미확인)",
+        "url": null,
+        "locator": null
+      },
+      "candidate_sources": [
+        "국가법령정보센터 소득세법 (law.go.kr)",
+        "국세청 연말정산 안내 (nts.go.kr)"
+      ],
+      "as_of": "2026-10",
+      "valid_until": null,
+      "found_on": "2026-10-29",
+      "checked_on": null,
+      "checked_by": null,
+      "legal_status": "시행",
+      "verified": "미확인",
+      "notes": "2차 자료 일치, 1차 원문 미확인. 조문 번호 추정 제55조"
+    },
+    "local_income_tax_ratio": {
+      "label": "개인지방소득세(소득세의 10%)",
+      "kind": "law",
+      "value": "10",
+      "unit": "%",
+      "includes_local": false,
+      "source": {
+        "name": "지방세법 개인지방소득세 (조문 번호 미확인)",
+        "url": null,
+        "locator": null
+      },
+      "candidate_sources": [
+        "국가법령정보센터 지방세법 (law.go.kr)",
+        "국세청 연말정산 안내 (nts.go.kr)"
+      ],
+      "as_of": "2026-10",
+      "valid_until": null,
+      "found_on": "2026-10-29",
+      "checked_on": null,
+      "checked_by": null,
+      "legal_status": "시행",
+      "verified": "미확인",
+      "notes": "조문 번호 추정 제92조"
+    },
+    "pension_credit_rate_low": {
+      "label": "연금계좌 세액공제율(총급여 5,500만 원 이하·종합소득금액 4,500만 원 이하)",
+      "kind": "law",
+      "value": "15",
+      "unit": "%",
+      "includes_local": false,
+      "source": {
+        "name": "소득세법 제59조의3 (연금계좌세액공제)",
+        "url": null,
+        "locator": null
+      },
+      "candidate_sources": [
+        "국가법령정보센터 소득세법 (law.go.kr)",
+        "국세청 연말정산 안내 (nts.go.kr)"
+      ],
+      "as_of": "2026-10",
+      "valid_until": null,
+      "found_on": "2026-10-29",
+      "checked_on": null,
+      "checked_by": null,
+      "legal_status": "시행",
+      "verified": "미확인",
+      "notes": ""
+    },
+    "pension_credit_rate_high": {
+      "label": "연금계좌 세액공제율(위 기준 초과)",
+      "kind": "law",
+      "value": "12",
+      "unit": "%",
+      "includes_local": false,
+      "source": {
+        "name": "소득세법 제59조의3 (연금계좌세액공제)",
+        "url": null,
+        "locator": null
+      },
+      "candidate_sources": [
+        "국가법령정보센터 소득세법 (law.go.kr)",
+        "국세청 연말정산 안내 (nts.go.kr)"
+      ],
+      "as_of": "2026-10",
+      "valid_until": null,
+      "found_on": "2026-10-29",
+      "checked_on": null,
+      "checked_by": null,
+      "legal_status": "시행",
+      "verified": "미확인",
+      "notes": ""
+    },
+    "pension_credit_wage_threshold": {
+      "label": "연금계좌 세액공제율 경계 총급여(근로소득자)",
+      "kind": "law",
+      "value": "55000000",
+      "unit": "원",
+      "includes_local": false,
+      "source": {
+        "name": "소득세법 제59조의3 (연금계좌세액공제)",
+        "url": null,
+        "locator": null
+      },
+      "candidate_sources": [
+        "국가법령정보센터 소득세법 (law.go.kr)",
+        "국세청 연말정산 안내 (nts.go.kr)"
+      ],
+      "as_of": "2026-10",
+      "valid_until": null,
+      "found_on": "2026-10-29",
+      "checked_on": null,
+      "checked_by": null,
+      "legal_status": "시행",
+      "verified": "미확인",
+      "notes": ""
+    },
+    "income_tax_rate_b2": {
+      "label": "소득세 기본세율 2구간(과세표준 1,400만 원 초과 5,000만 원 이하)",
+      "kind": "law",
+      "value": "15",
+      "unit": "%",
+      "includes_local": false,
+      "source": {
+        "name": "소득세법 기본세율 (조문 번호 미확인)",
+        "url": null,
+        "locator": null
+      },
+      "candidate_sources": [
+        "국가법령정보센터 소득세법 (law.go.kr)",
+        "국세청 연말정산 안내 (nts.go.kr)"
+      ],
+      "as_of": "2026-10",
+      "valid_until": null,
+      "found_on": "2026-10-29",
+      "checked_on": null,
+      "checked_by": null,
+      "legal_status": "시행",
+      "verified": "미확인",
+      "notes": "2차 자료 일치, 1차 원문 미확인. 조문 번호 추정 제55조"
+    },
+    "income_tax_rate_b3": {
+      "label": "소득세 기본세율 3구간(5,000만 원 초과 8,800만 원 이하)",
+      "kind": "law",
+      "value": "24",
+      "unit": "%",
+      "includes_local": false,
+      "source": {
+        "name": "소득세법 기본세율 (조문 번호 미확인)",
+        "url": null,
+        "locator": null
+      },
+      "candidate_sources": [
+        "국가법령정보센터 소득세법 (law.go.kr)",
+        "국세청 연말정산 안내 (nts.go.kr)"
+      ],
+      "as_of": "2026-10",
+      "valid_until": null,
+      "found_on": "2026-10-29",
+      "checked_on": null,
+      "checked_by": null,
+      "legal_status": "시행",
+      "verified": "미확인",
+      "notes": "2차 자료 일치, 1차 원문 미확인. 조문 번호 추정 제55조"
+    },
+    "income_tax_rate_b5": {
+      "label": "소득세 기본세율 5구간(1.5억 원 초과 3억 원 이하)",
+      "kind": "law",
+      "value": "38",
+      "unit": "%",
+      "includes_local": false,
+      "source": {
+        "name": "소득세법 기본세율 (조문 번호 미확인)",
+        "url": null,
+        "locator": null
+      },
+      "candidate_sources": [
+        "국가법령정보센터 소득세법 (law.go.kr)",
+        "국세청 연말정산 안내 (nts.go.kr)"
+      ],
+      "as_of": "2026-10",
+      "valid_until": null,
+      "found_on": "2026-10-29",
+      "checked_on": null,
+      "checked_by": null,
+      "legal_status": "시행",
+      "verified": "미확인",
+      "notes": "2차 자료 일치, 1차 원문 미확인. 조문 번호 추정 제55조"
+    },
+    "income_tax_rate_b6": {
+      "label": "소득세 기본세율 6구간(3억 원 초과 5억 원 이하)",
+      "kind": "law",
+      "value": "40",
+      "unit": "%",
+      "includes_local": false,
+      "source": {
+        "name": "소득세법 기본세율 (조문 번호 미확인)",
+        "url": null,
+        "locator": null
+      },
+      "candidate_sources": [
+        "국가법령정보센터 소득세법 (law.go.kr)",
+        "국세청 연말정산 안내 (nts.go.kr)"
+      ],
+      "as_of": "2026-10",
+      "valid_until": null,
+      "found_on": "2026-10-29",
+      "checked_on": null,
+      "checked_by": null,
+      "legal_status": "시행",
+      "verified": "미확인",
+      "notes": "2차 자료 일치, 1차 원문 미확인. 조문 번호 추정 제55조"
+    },
+    "income_tax_rate_b7": {
+      "label": "소득세 기본세율 7구간(5억 원 초과 10억 원 이하)",
+      "kind": "law",
+      "value": "42",
+      "unit": "%",
+      "includes_local": false,
+      "source": {
+        "name": "소득세법 기본세율 (조문 번호 미확인)",
+        "url": null,
+        "locator": null
+      },
+      "candidate_sources": [
+        "국가법령정보센터 소득세법 (law.go.kr)",
+        "국세청 연말정산 안내 (nts.go.kr)"
+      ],
+      "as_of": "2026-10",
+      "valid_until": null,
+      "found_on": "2026-10-29",
+      "checked_on": null,
+      "checked_by": null,
+      "legal_status": "시행",
+      "verified": "미확인",
+      "notes": "2차 자료 일치, 1차 원문 미확인. 조문 번호 추정 제55조"
+    },
+    "pension_credit_income_threshold": {
+      "label": "연금계좌 세액공제율 경계 종합소득금액",
+      "kind": "law",
+      "value": "45000000",
+      "unit": "원",
+      "includes_local": false,
+      "source": {
+        "name": "소득세법 제59조의3 (연금계좌세액공제)",
+        "url": null,
+        "locator": null
+      },
+      "candidate_sources": [
+        "국가법령정보센터 소득세법 (law.go.kr)",
+        "국세청 연말정산 안내 (nts.go.kr)",
+        "https://wikidocs.net/blog/@TaxSave/25192/"
+      ],
+      "as_of": "2026-10",
+      "valid_until": null,
+      "found_on": "2026-10-29",
+      "checked_on": null,
+      "checked_by": null,
+      "legal_status": "시행",
+      "verified": "미확인",
+      "notes": "일부 블로그 구기준 4,000만 원 표기 — 충돌"
+    },
+    "pension_credit_limit_savings": {
+      "label": "연금저축 세액공제 대상 납입 한도",
+      "kind": "law",
+      "value": "6000000",
+      "unit": "원",
+      "includes_local": false,
+      "source": {
+        "name": "소득세법 제59조의3 (연금계좌세액공제)",
+        "url": null,
+        "locator": null
+      },
+      "candidate_sources": [
+        "국가법령정보센터 소득세법 (law.go.kr)",
+        "국세청 연말정산 안내 (nts.go.kr)",
+        "https://wikidocs.net/blog/@TaxSave/25192/"
+      ],
+      "as_of": "2026-10",
+      "valid_until": null,
+      "found_on": "2026-10-29",
+      "checked_on": null,
+      "checked_by": null,
+      "legal_status": "시행",
+      "verified": "미확인",
+      "notes": ""
+    },
+    "pension_credit_limit_total": {
+      "label": "연금저축+IRP 합산 세액공제 대상 납입 한도",
+      "kind": "law",
+      "value": "9000000",
+      "unit": "원",
+      "includes_local": false,
+      "source": {
+        "name": "소득세법 제59조의3 (연금계좌세액공제)",
+        "url": null,
+        "locator": null
+      },
+      "candidate_sources": [
+        "국가법령정보센터 소득세법 (law.go.kr)",
+        "국세청 연말정산 안내 (nts.go.kr)",
+        "https://wikidocs.net/blog/@TaxSave/25192/"
+      ],
+      "as_of": "2026-10",
+      "valid_until": null,
+      "found_on": "2026-10-29",
+      "checked_on": null,
+      "checked_by": null,
+      "legal_status": "시행",
+      "verified": "미확인",
+      "notes": "2026 세제개편안도 900만 원 유지로 보도(2차)"
+    },
+    "pension_credit_young_gov_proposal": {
+      "label": "청년(15~34세) 연금계좌 세액공제율 — 2026년 세제개편안",
+      "kind": "law",
+      "value": "15",
+      "unit": "%",
+      "includes_local": false,
+      "source": {
+        "name": "2026년 세제개편안(정부안), 재정경제부 2026-08-03 발표",
+        "url": null,
+        "locator": null
+      },
+      "candidate_sources": [
+        "재정경제부 2026년 세제개편안 보도자료 (moef.go.kr)",
+        "https://segye.com/newsView/20260803518169",
+        "https://www.khan.co.kr/article/202608032044015",
+        "https://www.pwc.com/kr/ko/insights/tax-news-flash/samilpwc_tax-news-flash_260803_kr.pdf",
+        "https://www.tossbank.com/articles/tax-reform"
+      ],
+      "as_of": "2026-08-03",
+      "valid_until": null,
+      "found_on": "2026-10-29",
+      "checked_on": null,
+      "checked_by": null,
+      "legal_status": "발의",
+      "verified": "미확인",
+      "notes": "청년 15~34세 소득 무관. 적용 2027-01-01 이후 납입분으로 보도(일부 자료 2026-01, 충돌). 국회 심의 중"
+    },
+    "pension_credit_member_bill_irp": {
+      "label": "IRP 세액공제율 — 의원 대표발의 소득세법 개정안",
+      "kind": "law",
+      "value": "15",
+      "unit": "%",
+      "includes_local": false,
+      "source": {
+        "name": "소득세법 일부개정법률안(의원 대표발의, 의안번호 미확인)",
+        "url": null,
+        "locator": null
+      },
+      "candidate_sources": [
+        "국회 의안정보시스템 (assembly.go.kr)"
+      ],
+      "as_of": null,
+      "valid_until": null,
+      "found_on": "2026-10-29",
+      "checked_on": null,
+      "checked_by": null,
+      "legal_status": "발의",
+      "verified": "미확인",
+      "notes": "발의 사실만 2차로 확인. 통과 여부 미확인"
+    },
+    "pension_credit_member_bill_young": {
+      "label": "청년 연금계좌 세액공제율 — 의원 대표발의 소득세법 개정안",
+      "kind": "law",
+      "value": "17",
+      "unit": "%",
+      "includes_local": false,
+      "source": {
+        "name": "소득세법 일부개정법률안(의원 대표발의, 의안번호 미확인)",
+        "url": null,
+        "locator": null
+      },
+      "candidate_sources": [
+        "국회 의안정보시스템 (assembly.go.kr)"
+      ],
+      "as_of": null,
+      "valid_until": null,
+      "found_on": "2026-10-29",
+      "checked_on": null,
+      "checked_by": null,
+      "legal_status": "발의",
+      "verified": "미확인",
+      "notes": "발의 사실만 2차로 확인. 통과 여부 미확인"
+    },
+    "interest_income_tax_rate": {
+      "label": "이자소득 원천징수세율(일반과세, 지방소득세 포함)",
+      "kind": "law",
+      "value": "15.4",
+      "unit": "%",
+      "includes_local": true,
+      "source": {
+        "name": "소득세법 원천징수세율 (조문 번호 미확인)",
+        "url": null,
+        "locator": null
+      },
+      "candidate_sources": [
+        "국가법령정보센터 소득세법 (law.go.kr)",
+        "국세청 연말정산 안내 (nts.go.kr)",
+        "https://wikidocs.net/blog/@Insight_Lab/23860/"
+      ],
+      "as_of": "2026-10",
+      "valid_until": null,
+      "found_on": "2026-10-29",
+      "checked_on": null,
+      "checked_by": null,
+      "legal_status": "시행",
+      "verified": "미확인",
+      "notes": "14% + 지방소득세 1.4%"
+    },
+    "nps_early_reduction_per_year": {
+      "label": "조기노령연금 감액률(1년당, 최대 5년)",
+      "kind": "law",
+      "value": "6",
+      "unit": "%",
+      "includes_local": false,
+      "source": {
+        "name": "국민연금법 · 국민연금공단 안내",
+        "url": null,
+        "locator": null
+      },
+      "candidate_sources": [
+        "국민연금공단 (nps.or.kr)",
+        "국가법령정보센터 국민연금법 (law.go.kr)",
+        "https://wikidocs.net/blog/@Insight_Lab/22306/"
+      ],
+      "as_of": "2026-10",
+      "valid_until": null,
+      "found_on": "2026-10-29",
+      "checked_on": null,
+      "checked_by": null,
+      "legal_status": "시행",
+      "verified": "미확인",
+      "notes": ""
+    },
+    "nps_defer_increase_per_year": {
+      "label": "연기연금 가산율(1년당, 최대 5년)",
+      "kind": "law",
+      "value": "7.2",
+      "unit": "%",
+      "includes_local": false,
+      "source": {
+        "name": "국민연금법 · 국민연금공단 안내",
+        "url": null,
+        "locator": null
+      },
+      "candidate_sources": [
+        "국민연금공단 (nps.or.kr)",
+        "국가법령정보센터 국민연금법 (law.go.kr)",
+        "https://wikidocs.net/blog/@Insight_Lab/22306/"
+      ],
+      "as_of": "2026-10",
+      "valid_until": null,
+      "found_on": "2026-10-29",
+      "checked_on": null,
+      "checked_by": null,
+      "legal_status": "시행",
+      "verified": "미확인",
+      "notes": ""
+    },
+    "nps_start_age_1969": {
+      "label": "노령연금 수급 개시 연령(1969년생 이후)",
+      "kind": "law",
+      "value": "65",
+      "unit": "세",
+      "includes_local": false,
+      "source": {
+        "name": "국민연금법 · 국민연금공단 안내",
+        "url": null,
+        "locator": null
+      },
+      "candidate_sources": [
+        "국민연금공단 (nps.or.kr)",
+        "국가법령정보센터 국민연금법 (law.go.kr)",
+        "https://wikidocs.net/blog/@Insight_Lab/22306/"
+      ],
+      "as_of": "2026-10",
+      "valid_until": null,
+      "found_on": "2026-10-29",
+      "checked_on": null,
+      "checked_by": null,
+      "legal_status": "시행",
+      "verified": "미확인",
+      "notes": ""
+    },
+    "nps_avg_old_age_all": {
+      "label": "노령연금 수급자 월평균 수령액(전체)",
+      "kind": "stat",
+      "value": "700000",
+      "unit": "원",
+      "includes_local": false,
+      "source": {
+        "name": "국민연금공단 통계",
+        "url": null,
+        "locator": null
+      },
+      "candidate_sources": [
+        "국민연금공단 통계 (nps.or.kr)",
+        "https://www.kukinews.com/article/view/kuk202605030016"
+      ],
+      "as_of": "2026-01",
+      "valid_until": null,
+      "found_on": "2026-10-29",
+      "checked_on": null,
+      "checked_by": null,
+      "legal_status": "시행",
+      "verified": "미확인",
+      "notes": "2차 자료 69.6~69.8만 원(소수 충돌). 기존 편은 70만 원 표기 — 공단 통계로 정확값 확인 필요"
+    },
+    "nps_avg_old_age_20y": {
+      "label": "노령연금 수급자 월평균 수령액(가입 20년 이상)",
+      "kind": "stat",
+      "value": "1166700",
+      "unit": "원",
+      "includes_local": false,
+      "source": {
+        "name": "국민연금공단 통계",
+        "url": null,
+        "locator": null
+      },
+      "candidate_sources": [
+        "국민연금공단 통계 (nps.or.kr)",
+        "https://www.kukinews.com/article/view/kuk202605030016"
+      ],
+      "as_of": "2026-01",
+      "valid_until": null,
+      "found_on": "2026-10-29",
+      "checked_on": null,
+      "checked_by": null,
+      "legal_status": "시행",
+      "verified": "미확인",
+      "notes": ""
+    },
+    "retire_age_main_job": {
+      "label": "가장 오래 다닌 일자리 퇴직 평균 연령",
+      "kind": "stat",
+      "value": "53.0",
+      "unit": "세",
+      "includes_local": false,
+      "source": {
+        "name": "국가데이터처 2026년 5월 경제활동인구조사 고령층 부가조사 (2026-08-05 발표)",
+        "url": null,
+        "locator": null
+      },
+      "candidate_sources": [
+        "국가데이터처 경제활동인구조사 고령층 부가조사 (kosis.kr)",
+        "https://www.newsis.com/view/NISX20260805_0003737146",
+        "https://www.segye.com/newsView/20260805511809",
+        "https://eiec.kdi.re.kr/policy/materialView.do?num=285107"
+      ],
+      "as_of": "2026-05",
+      "valid_until": null,
+      "found_on": "2026-10-29",
+      "checked_on": null,
+      "checked_by": null,
+      "legal_status": "시행",
+      "verified": "미확인",
+      "notes": ""
+    },
+    "pension_avg_55_79": {
+      "label": "55~79세 연금 수령자 월평균 연금액",
+      "kind": "stat",
+      "value": "880000",
+      "unit": "원",
+      "includes_local": false,
+      "source": {
+        "name": "국가데이터처 2026년 5월 경제활동인구조사 고령층 부가조사 (2026-08-05 발표)",
+        "url": null,
+        "locator": null
+      },
+      "candidate_sources": [
+        "국가데이터처 경제활동인구조사 고령층 부가조사 (kosis.kr)",
+        "https://www.newsis.com/view/NISX20260805_0003737146",
+        "https://www.segye.com/newsView/20260805511809",
+        "https://eiec.kdi.re.kr/policy/materialView.do?num=285107"
+      ],
+      "as_of": "2026-05",
+      "valid_until": null,
+      "found_on": "2026-10-29",
+      "checked_on": null,
+      "checked_by": null,
+      "legal_status": "시행",
+      "verified": "미확인",
+      "notes": ""
+    },
+    "life_expectancy_2024": {
+      "label": "기대수명(2024년 생명표)",
+      "kind": "stat",
+      "value": "83.7",
+      "unit": "세",
+      "includes_local": false,
+      "source": {
+        "name": "국가데이터처 2024년 생명표 (2025-12-03 발표)",
+        "url": null,
+        "locator": null
+      },
+      "candidate_sources": [
+        "국가데이터처 생명표 (kosis.kr)",
+        "https://www.newsis.com/view/NISX20251203_0003426271"
+      ],
+      "as_of": "2024",
+      "valid_until": null,
+      "found_on": "2026-10-29",
+      "checked_on": null,
+      "checked_by": null,
+      "legal_status": "시행",
+      "verified": "미확인",
+      "notes": ""
+    },
+    "cpi_yoy_2026_09": {
+      "label": "소비자물가 상승률(2026년 9월, 전년 동월 대비)",
+      "kind": "stat",
+      "value": "2.9",
+      "unit": "%",
+      "includes_local": false,
+      "source": {
+        "name": "국가데이터처 2026년 9월 소비자물가동향 (2026-10-02 발표)",
+        "url": null,
+        "locator": null
+      },
+      "candidate_sources": [
+        "국가데이터처 소비자물가동향 (kosis.kr)",
+        "https://m.korea.kr/news/policyNewsView.do?newsId=156784092"
+      ],
+      "as_of": "2026-09",
+      "valid_until": null,
+      "found_on": "2026-10-29",
+      "checked_on": null,
+      "checked_by": null,
+      "legal_status": "시행",
+      "verified": "미확인",
+      "notes": "2026-12 기준연도 개편 예정(2차)"
+    },
+    "sp500_2008_return": {
+      "label": "S&P500 2008년 연간 수익률",
+      "kind": "market",
+      "value": "-37.0",
+      "unit": "%",
+      "includes_local": false,
+      "source": {
+        "name": "S&P500 연간 수익률 (2차 자료)",
+        "url": null,
+        "locator": null
+      },
+      "candidate_sources": [
+        "https://ftportfolios.com/Commentary/MarketCommentary/2022/1/11/every-year-looks-volatile-compared-to-2017",
+        "https://www.fool.com/investing/stock-market/indexes/sp-500/annual-returns"
+      ],
+      "as_of": "2008",
+      "valid_until": null,
+      "found_on": "2026-10-29",
+      "checked_on": null,
+      "checked_by": null,
+      "legal_status": "시행",
+      "verified": "미확인",
+      "notes": "총수익 −37.0%, SPY −36.8%로 소수 차이"
+    },
+    "sp500_long_run_avg": {
+      "label": "S&P500 장기 연평균 수익률(산술평균)",
+      "kind": "market",
+      "value": "10.12",
+      "unit": "%",
+      "includes_local": false,
+      "source": {
+        "name": "S&P500 장기 수익률 (2차 자료)",
+        "url": null,
+        "locator": null
+      },
+      "candidate_sources": [
+        "https://ftportfolios.com/Commentary/MarketCommentary/2022/1/11/every-year-looks-volatile-compared-to-2017",
+        "https://www.fool.com/investing/stock-market/indexes/sp-500/annual-returns"
+      ],
+      "as_of": null,
+      "valid_until": null,
+      "found_on": "2026-10-29",
+      "checked_on": null,
+      "checked_by": null,
+      "legal_status": "시행",
+      "verified": "미확인",
+      "notes": "1926년 이후 총수익 산술평균, 산출 기간 끝 연도 미확인. 과거 평균 — 미래 보장 아님"
+    },
+    "rule_of_72": {
+      "label": "72의 법칙(배가 기간 ≈ 72 ÷ 수익률)",
+      "kind": "constant",
+      "value": "72",
+      "unit": "",
+      "includes_local": false,
+      "source": {
+        "name": "72의 법칙 (수학 관례)",
+        "url": null,
+        "locator": null
+      },
+      "candidate_sources": [
+        "사람 확인 한 번이면 충분한 수학 관례"
+      ],
+      "as_of": null,
+      "valid_until": null,
+      "found_on": "2026-10-29",
+      "checked_on": null,
+      "checked_by": null,
+      "legal_status": "시행",
+      "verified": "미확인",
+      "notes": ""
+    }
+  },
+  "unsourced": [
+    {
+      "text": "남자 55.3세 · 여자 51.1세",
+      "seen_in": "2026/03-salary-two-owners-1/spec.json card 2",
+      "reason": "출처 미확보 — 등록부에 넣지 않음"
+    },
+    {
+      "text": "60세 여성은 약 88세까지",
+      "seen_in": "2026/reels/specs/2026-10-28-salary-two-owners-1.json scene 3 line 2",
+      "reason": "출처 미확보 — 등록부에 넣지 않음"
+    },
+    {
+      "text": "소득세 최고세율 45% (10억 원 초과)",
+      "seen_in": "02-RESEARCH.md Assumptions A1",
+      "reason": "검색에서 확인 못 함 — 등록부에 넣지 않음"
+    }
+  ]
+}

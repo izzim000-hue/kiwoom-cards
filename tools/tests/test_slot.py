@@ -1,0 +1,228 @@
+"""slot.py 경계 시험: 잘못된 슬러그·날짜, 충돌, 날짜 제안 계산, 폴더 가둠 (stdlib unittest 전용)."""
+import json
+import subprocess
+import sys
+import tempfile
+import unittest
+from datetime import date
+from pathlib import Path
+
+TOOLS = Path(__file__).resolve().parents[1]
+REPO = TOOLS.parent
+sys.path.insert(0, str(TOOLS))
+
+from reelkit import slot  # noqa: E402
+
+DRAFT = [sys.executable, str(TOOLS / "draft.py")]
+BAD_SLUGS = ["../x", "A", "x_y", "x--y", "-x", "", "a" * 41]
+
+
+def run_draft(*args):
+    return subprocess.run(DRAFT + list(args), capture_output=True, text=True, encoding="utf-8")
+
+
+def published_mirror(root):
+    """<root>/2026/reels 에 게시된 MP4·원고 이름만 빈 파일로 옮겨 둔 임시 릴스 폴더 (WR-09).
+    저장소의 drafts/ 는 git 에 없는 작업 폴더라 읽지 않는다 — 시험 결과가 사용자의 초안 폴더에 좌우되지 않게."""
+    real = REPO / "2026" / "reels"
+    reels = Path(root) / "2026" / "reels"
+    (reels / "specs").mkdir(parents=True)
+    for p in real.glob("*.mp4"):
+        (reels / p.name).write_bytes(b"")
+    for p in (real / "specs").glob("*.json"):
+        (reels / "specs" / p.name).write_text("{}", encoding="utf-8")
+    return reels
+
+
+def make_reels(root, used=()):
+    """used: (날짜, 슬러그) 목록을 게시된 MP4 와 원고로 만든 임시 릴스 폴더."""
+    reels = Path(root) / "reels"
+    (reels / "specs").mkdir(parents=True)
+    for d, s in used:
+        (reels / f"{d}-{s}.mp4").write_bytes(b"")
+        (reels / "specs" / f"{d}-{s}.json").write_text("{}", encoding="utf-8")
+    return reels
+
+
+class InvalidInput(unittest.TestCase):
+    def test_bad_slugs_raise(self):
+        for s in BAD_SLUGS:
+            with self.subTest(slug=s):
+                with self.assertRaises(slot.SlotError):
+                    slot.check_slug(s)
+
+    def test_bad_slugs_exit_1_via_cli(self):
+        for s in BAD_SLUGS:
+            with self.subTest(slug=s):
+                r = run_draft("slot", f"--slug={s}")
+                self.assertEqual(r.returncode, 1, r.stdout)
+                self.assertIn("초안 오류", r.stderr)
+
+    def test_forty_char_slug_ok(self):
+        self.assertEqual(slot.check_slug("a" * 40), "a" * 40)
+
+    def test_bad_date_exits_1(self):
+        for d in ("2026-13-01", "2026-1-1", "내일"):
+            with self.subTest(date=d):
+                r = run_draft("slot", "--date", d, "--slug", "ok-slug")
+                self.assertEqual(r.returncode, 1)
+                self.assertIn("초안 오류", r.stderr)
+
+    def test_create_needs_date_and_slug(self):
+        r = run_draft("slot", "--slug", "ok-slug", "--create")
+        self.assertEqual(r.returncode, 1)
+
+
+class RealDirConflicts(unittest.TestCase):
+    """게시된 릴스 이름과의 충돌. 게시된 이름만 옮긴 임시 폴더로 시험한다 (WR-09: drafts/ 를 읽지 않음)."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.reels = published_mirror(self.tmp.name)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def before(self):
+        drafts = self.reels / "drafts"
+        return sorted(p.name for p in drafts.glob("*")) if drafts.exists() else []
+
+    def test_published_date_conflicts(self):
+        info = slot.propose(self.reels, date="2026-11-07", slug="brand-new-topic", today=date(2026, 10, 29))
+        self.assertTrue(any(c.startswith("날짜 사용 중: 2026-11-07") for c in info["conflicts"]), info["conflicts"])
+        self.assertTrue(info["ask"])
+
+    def test_published_slug_conflicts(self):
+        info = slot.propose(self.reels, date="2026-12-01", slug="tax-deduction", today=date(2026, 10, 29))
+        self.assertTrue(any(c.startswith("슬러그 사용 중: tax-deduction") for c in info["conflicts"]), info["conflicts"])
+
+    def test_create_with_conflict_exits_1_and_creates_nothing(self):
+        before = self.before()
+        r = run_draft("slot", "--reels-dir", str(self.reels), "--date", "2026-11-07", "--slug", "brand-new-topic",
+                      "--create")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("초안 오류", r.stderr)
+        self.assertEqual(before, self.before())
+
+
+class TempDirProposal(unittest.TestCase):
+    def test_next_day_after_latest(self):
+        with tempfile.TemporaryDirectory() as t:
+            reels = make_reels(t, [("2026-11-07", "a-b")])
+            info = slot.propose(reels, slug="new-one", today=date(2026, 10, 29))
+            self.assertEqual(info["proposed_date"], "2026-11-08")
+            self.assertEqual(info["date"], "2026-11-08")
+            self.assertTrue(info["ask"])
+            self.assertEqual(info["conflicts"], [])
+
+    def test_today_when_latest_is_older(self):
+        with tempfile.TemporaryDirectory() as t:
+            reels = make_reels(t, [("2026-10-01", "a-b")])
+            info = slot.propose(reels, slug="new-one", today=date(2026, 10, 29))
+            self.assertEqual(info["proposed_date"], "2026-10-29")
+
+    def test_empty_dir_proposes_today(self):
+        with tempfile.TemporaryDirectory() as t:
+            reels = make_reels(t)
+            self.assertEqual(slot.propose(reels, today=date(2026, 10, 29))["proposed_date"], "2026-10-29")
+
+    def test_explicit_free_slot_does_not_ask(self):
+        with tempfile.TemporaryDirectory() as t:
+            reels = make_reels(t, [("2026-11-07", "a-b")])
+            info = slot.propose(reels, date="2026-11-09", slug="new-one", today=date(2026, 10, 29))
+            self.assertFalse(info["ask"])
+            self.assertEqual(info["conflicts"], [])
+
+    def test_past_or_early_date_asks(self):
+        # WR-05 회귀: 지난 날짜도 ask false 로 통과하던 문제
+        with tempfile.TemporaryDirectory() as t:
+            reels = make_reels(t, [("2026-11-07", "a-b")])
+            info = slot.propose(reels, date="2026-10-01", slug="new-one", today=date(2026, 10, 29))
+            self.assertTrue(info["ask"])
+            self.assertTrue(info["notices"][0].startswith("지난 날짜"), info["notices"])
+            self.assertEqual(info["conflicts"], [])
+            info = slot.propose(reels, date="2026-11-01", slug="new-one", today=date(2026, 10, 29))
+            self.assertTrue(info["ask"])
+            self.assertTrue(info["notices"][0].startswith("제안일보다 이른 날짜"), info["notices"])
+
+    def test_other_year_in_a_year_folder_conflicts(self):
+        with tempfile.TemporaryDirectory() as t:
+            reels = Path(t) / "2026" / "reels"
+            (reels / "specs").mkdir(parents=True)
+            info = slot.propose(reels, date="2020-01-01", slug="old-date", today=date(2026, 10, 29))
+            self.assertTrue(any(c.startswith("연도 불일치") for c in info["conflicts"]), info["conflicts"])
+            with self.assertRaises(slot.SlotError):
+                slot.create_draft_dir(reels, "2020-01-01", "old-date")
+            self.assertFalse((reels / "drafts").exists())
+
+    def test_real_dir_old_date_cannot_be_created(self):
+        with tempfile.TemporaryDirectory() as t:
+            reels = published_mirror(t)
+            r = run_draft("slot", "--reels-dir", str(reels), "--date", "2020-01-01", "--slug", "old-date", "--create")
+            self.assertEqual(r.returncode, 1)
+            self.assertIn("연도 불일치", r.stderr)
+            self.assertFalse((reels / "drafts").exists())
+
+    def test_failed_stamp_leaves_no_folder(self):
+        # IN-07: created.json 쓰기 실패 뒤 빈 폴더가 남아 다시 만들 수 없게 되지 않는다
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as t:
+            reels = make_reels(t)
+            with mock.patch.object(slot, "stamp_created", side_effect=PermissionError("시험용 실패")):
+                with self.assertRaises(slot.SlotError):
+                    slot.create_draft_dir(reels, "2026-11-08", "retry-topic")
+            self.assertFalse((reels / "drafts" / "2026-11-08-retry-topic").exists())
+            d = slot.create_draft_dir(reels, "2026-11-08", "retry-topic")
+            self.assertTrue((d / "created.json").is_file())
+
+    def test_existing_draft_folder_conflicts(self):
+        with tempfile.TemporaryDirectory() as t:
+            reels = make_reels(t)
+            (reels / "drafts" / "2026-11-08-held-topic").mkdir(parents=True)
+            info = slot.propose(reels, date="2026-11-08", slug="other-topic", today=date(2026, 10, 29))
+            self.assertTrue(any("날짜 사용 중" in c for c in info["conflicts"]), info["conflicts"])
+            info = slot.propose(reels, date="2026-11-20", slug="held-topic", today=date(2026, 10, 29))
+            self.assertTrue(any("슬러그 사용 중" in c for c in info["conflicts"]), info["conflicts"])
+            self.assertEqual(slot.propose(reels, today=date(2026, 10, 29))["proposed_date"], "2026-11-09")
+
+    def test_create_stays_inside_drafts_and_second_create_fails(self):
+        with tempfile.TemporaryDirectory() as t:
+            reels = make_reels(t)
+            path = slot.create_draft_dir(reels, "2026-11-08", "pension-credit-limit")
+            self.assertTrue(path.is_dir())
+            self.assertTrue(path.is_relative_to((reels / "drafts").resolve()))
+            with self.assertRaises(slot.SlotError):
+                slot.create_draft_dir(reels, "2026-11-08", "pension-credit-limit")
+
+    def test_create_stamps_created_json(self):
+        import time
+        with tempfile.TemporaryDirectory() as t:
+            reels = make_reels(t)
+            before = time.time()
+            path = slot.create_draft_dir(reels, "2026-11-08", "stamp-me")
+            data = json.loads((path / "created.json").read_text(encoding="utf-8"))
+            self.assertEqual(sorted(data), ["created_at", "epoch"])
+            self.assertTrue(before - 1 <= data["epoch"] <= time.time() + 1)
+            self.assertRegex(data["created_at"], r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$")
+            # 폴더 이름만 읽으므로 사용 중 슬롯 목록은 그대로다
+            self.assertEqual([(d, s) for d, s, _ in slot.used_slots(reels)], [("2026-11-08", "stamp-me")])
+
+    def test_create_refuses_path_like_slug(self):
+        with tempfile.TemporaryDirectory() as t:
+            reels = make_reels(t)
+            with self.assertRaises(slot.SlotError):
+                slot.create_draft_dir(reels, "2026-11-08", "../escape")
+            self.assertFalse((reels / "escape").exists())
+            self.assertEqual(list((reels / "drafts").glob("*")) if (reels / "drafts").exists() else [], [])
+
+    def test_cli_create_json(self):
+        with tempfile.TemporaryDirectory() as t:
+            reels = make_reels(t)
+            r = run_draft("slot", "--reels-dir", str(reels), "--date", "2026-11-08", "--slug", "x1", "--create")
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertTrue(json.loads(r.stdout)["created"])
+            self.assertTrue((reels / "drafts" / "2026-11-08-x1").is_dir())
+
+
+if __name__ == "__main__":
+    unittest.main()

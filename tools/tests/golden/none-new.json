@@ -1,0 +1,155 @@
+{
+ "note": "환경(Chromium·폰트·ffmpeg)이 바뀌면 바뀌기 전 코드에서 --write 로 다시 만든다",
+ "schema": 1,
+ "specs": {
+  "bad-layout.json": {
+   "argv": [
+    "ffmpeg",
+    "-loglevel",
+    "error",
+    "-y",
+    "-f",
+    "concat",
+    "-safe",
+    "0",
+    "-i",
+    "<WORK>/seq.txt",
+    "-f",
+    "lavfi",
+    "-i",
+    "anullsrc=r=44100:cl=stereo",
+    "-vf",
+    "fps=30,format=yuv420p",
+    "-c:v",
+    "libx264",
+    "-crf",
+    "20",
+    "-c:a",
+    "aac",
+    "-shortest",
+    "-t",
+    "7.00",
+    "-movflags",
+    "+faststart",
+    "<OUT>"
+   ],
+   "cover_ms": 5500,
+   "new_inner_html": [
+    "78325f3259050b3a5d399f1af49c376271717dd5a461140cfe0c3988ee2c1cc8",
+    "533095437bba9e8104dcc4bf8f9cae0f5bc2ff8a102af9fa322401091fa1e846",
+    "35c60a9b45a3f8b61a2d46f3b1e2c64c2dc5d5fc697569b4f62ace76a0d2114d",
+    "3a52f344cf1931972d78c6b8a8df34c6d4684b07c9cb8c22c55c64bcc44269d5",
+    "57bdde2de6e6db5f55118b0a48be5e6bf6c6bb6c373034ed20764bd57de48379",
+    "513c292fac12a5e8f9b73d2079d24f718067097c4e6a6d8aa078c3bba90c5bf3",
+    "eb581baef7641e4d83158cfd9e54bae35a3ff96c5d060fb8cebcfccdc37fa041"
+   ],
+   "overlays": [
+    "5a3f01218429c613723999a984174f6889e736a2f3a2ff31c7555b8279421cb2"
+   ],
+   "states": [
+    {
+     "dur": 0.85,
+     "sha256": "6a170fea3ff83933af969381e1a29886c3c44a03c5dde6b3105955d67dcc0cba"
+    },
+    {
+     "dur": 0.85,
+     "sha256": "ab0ecdb2469c09f90aa39da7f0c2a0aed2faedcde1c16eafc2e8d2e15c3f50fc"
+    },
+    {
+     "dur": 0.85,
+     "sha256": "ac810262ba488298e51ef3f4dab3723ce705b119a812f18f3953e8c4b2644c2c"
+    },
+    {
+     "dur": 0.85,
+     "sha256": "230bbb63a565e838b46b305c5580aa2b024d551cfe667fd8d4ffad9397ef78ef"
+    },
+    {
+     "dur": 0.85,
+     "sha256": "66524e15a959c70385a332d42ee475f28ee1ee108667a00711f37a83a07b4cbc"
+    },
+    {
+     "dur": 0.85,
+     "sha256": "92d5cb929ba09952769accb75242fe8b2184181992b18416c9bb3035ff4a0de9"
+    },
+    {
+     "dur": 1.9,
+     "sha256": "7bc601d8f8fe2f1694bd46872a7537568b45d3fad4cf44e9340382acd1a44dd8"
+    }
+   ],
+   "total": 7.0,
+   "warnings": [
+    "scene 1 line top: TOP (top=-76 < 270) \"넘침 시험\"",
+    "scene 1 line 1: WRAP (4 lines) \"이 줄은 일부러 아주 길게 써서 줄바꿈이 생기게 만든 \"",
+    "scene 1 line 1: TOP (top=16 < 270) \"이 줄은 일부러 아주 길게 써서 줄바꿈이 생기게 만든 \"",
+    "scene 1 line 2: RIGHT (right=1609 > 930) \"띄어쓰기없는아주긴한국어토큰입니다\"",
+    "scene 1 line 7: WARN_Y (bottom=1331 > 1250) \"이모지 😀\"",
+    "scene 1 line basis: BASIS_LINES (3 lines > 2) \"이 근거 문장은 일부러 길게 작성해서 서른여섯 픽셀 글\"",
+    "scene 1 line basis: UI_ZONE (bottom=1506 > 1470) \"이 근거 문장은 일부러 길게 작성해서 서른여섯 픽셀 글\"",
+    "scene 1 line account: UI_ZONE (bottom=1596 > 1470) \"@kiwoom.mentor\"",
+    "scene 1 line 7: FONT_FALLBACK (Noto Color Emoji) \"이모지 😀\""
+   ]
+  },
+  "ok-layout.json": {
+   "argv": [
+    "ffmpeg",
+    "-loglevel",
+    "error",
+    "-y",
+    "-f",
+    "concat",
+    "-safe",
+    "0",
+    "-i",
+    "<WORK>/seq.txt",
+    "-f",
+    "lavfi",
+    "-i",
+    "anullsrc=r=44100:cl=stereo",
+    "-vf",
+    "fps=30,format=yuv420p",
+    "-c:v",
+    "libx264",
+    "-crf",
+    "20",
+    "-c:a",
+    "aac",
+    "-shortest",
+    "-t",
+    "5.50",
+    "-movflags",
+    "+faststart",
+    "<OUT>"
+   ],
+   "cover_ms": 2100,
+   "new_inner_html": [
+    "ff37d6662a839f8e4cbd215fdf6c48121fb87d3af539a811b47d980ff5fdb6c0",
+    "b6cd1c587e57fb7e778d7ddd195070209f011e66dc9c48334862d6cd409e9d13",
+    "83dde7a6625d70f4771e29145bf8b931bc4976117ca3671756e4cb94879942b4",
+    "7186de16c81f42d8ff6c3fcc77d48a276d3eeee60b285666422a82fbdc884cf8"
+   ],
+   "overlays": [
+    "e7c5e3e679eda44309c16dab0973bf9d0762f266b12b7acfeb7b35ac64fcafd3"
+   ],
+   "states": [
+    {
+     "dur": 0.85,
+     "sha256": "24150467301680d1c289ee64a66571d3daf24b49c05ed5bbdaf8787ea2026d8a"
+    },
+    {
+     "dur": 0.85,
+     "sha256": "f1376e478d3e617964d752ebc66eb79924ce14c6df5aa990c800fcfd50a68741"
+    },
+    {
+     "dur": 1.9,
+     "sha256": "20ac70075dcd0d4d707f3d6a3ace5d9c9b23e3b429872aea075a4fa4d9c9608e"
+    },
+    {
+     "dur": 1.9,
+     "sha256": "da1b8b680250f591b84faf6786b464a08d531903291a8fa482122a2410880740"
+    }
+   ],
+   "total": 5.5,
+   "warnings": []
+  }
+ }
+}

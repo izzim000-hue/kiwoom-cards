@@ -1,4 +1,5 @@
 """릴스 렌더 상수의 단일 출처 (색, 타이밍, 캔버스, 안전영역, 번들 폰트)."""
+import re
 from pathlib import Path
 
 # 브랜드 색 (기존 릴스 10편과 동일 값)
@@ -53,3 +54,7 @@ FONT_SHA256 = {
     "NotoSansKR-Bold.otf": "5a6ceb287ed2fc6cfc6213144ebea68cbd94b20fc9eb873d8486493bf02d9bda",
     "NotoSansKR-Black.otf": "a9977a588488d2a7f544bb2b589b01bed071dca64a4655d438696301b527884b",
 }
+
+# 원고 글자 패턴 (IN-06: check·motion·expand 가 같은 식을 쓴다)
+TAG_RE = re.compile(r"</?[gs]>")                            # 원고 마크업 <g>, </g>, <s>, </s>
+LINE_WHERE_RE = re.compile(r"^scene (\d+) line (\d+)$")    # 장부 where 의 장면 줄 자리 (카운트업은 여기에만)

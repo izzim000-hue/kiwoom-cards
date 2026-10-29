@@ -11,23 +11,23 @@
     {
       "number": "2",
       "name": "초안 생성 (Draft Generation)",
-      "status": "pending"
+      "status": "in_progress"
     },
     {
       "number": "3",
       "name": "점검과 검수 묶음 (Compliance & Review Bundle)",
-      "status": "pending"
+      "status": "in_progress"
     },
     {
       "number": "4",
       "name": "자막 연출 + 선택 배경음 (Motion & BGM)",
-      "status": "pending"
+      "status": "in_progress"
     }
   ],
   "next": {
     "command": "/gsd-progress --next",
-    "label": "Advance to the next step (plan phase 2)",
-    "reason": "Phase 2 of 4 — needs a plan"
+    "label": "Advance to the next step",
+    "reason": "Phase 4 of 4 · 25% · executing"
   },
-  "updated_at": "2026-10-28T22:27:47.062Z"
+  "updated_at": "2026-10-29T12:55:00.193Z"
 }

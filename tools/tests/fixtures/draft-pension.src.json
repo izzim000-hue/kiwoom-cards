@@ -1,0 +1,19 @@
+{
+ "series": {"name": "연말정산 바로 알기", "episode": 2, "next": "IRP 세액공제 개정안"},
+ "basis": "{{fig.pension_credit_limit_total|man_won}} 납입 예시 · 지방소득세 포함",
+ "derive": {
+  "r_low": {"fn": "with_local", "args": ["fig.pension_credit_rate_low", "fig.local_income_tax_ratio"]},
+  "r_high": {"fn": "with_local", "args": ["fig.pension_credit_rate_high", "fig.local_income_tax_ratio"]},
+  "c_low": {"fn": "pct_of", "args": ["fig.pension_credit_limit_total", "r_low"]},
+  "c_high": {"fn": "pct_of", "args": ["fig.pension_credit_limit_total", "r_high"]}
+ },
+ "scenes": [
+  {"top": "", "lines": ["연금계좌 세액공제", "<g>한도가 얼마일까?</g>"]},
+  {"top": "비유하면", "lines": ["세액공제 한도는", "<g>쿠폰 묶음의 크기</g>", "채운 만큼만 받아요"]},
+  {"top": "연금저축만 넣으면", "lines": ["연 {{fig.pension_credit_limit_savings|man_won}}까지", "<g>세액공제 대상</g>"]},
+  {"top": "IRP까지 합치면", "lines": ["합산 연 {{fig.pension_credit_limit_total|man_won}}", "<g>한도가 늘어나요</g>"]},
+  {"top": "{{fig.pension_credit_limit_total|man_won}} 채우면 세액공제", "lines": ["최대 <g>{{c_low|man1}}</g>", "또는 <g>{{c_high|man1}}</g>", "<s>총급여 {{fig.pension_credit_wage_threshold|man_won}} 기준</s>"]},
+  {"top": "단, 꼭 알아둘 것", "lines": ["낼 세금이 적으면", "공제도 <g>그만큼만</g>", "<s>세무 판단은 세무사 확인</s>"]},
+  {"top": "", "lines": ["저장해두고", "내 납입액부터", "확인해 보세요", "<s>프로필 링크 · 1분 노후자금 계산기</s>"]}
+ ]
+}

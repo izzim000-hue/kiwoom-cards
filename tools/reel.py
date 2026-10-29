@@ -1,9 +1,16 @@
 """키움멘토 자막형 릴스 생성기 (1080x1920, 목소리 없음, 무음 오디오 트랙 포함)
-사용: python3 tools/reel.py spec.json 출력.mp4 [--layout {legacy,new}] [--strict] [--overlay-all]
+사용: python3 tools/reel.py spec.json 출력.mp4 [--layout {legacy,new}] [--motion {none,basic}] [--strict] [--overlay-all]
   --layout legacy  게시된 릴스 10편과 같은 배치(기본). 레이아웃 측정 경고 없음(글꼴 대체만 검사)
   --layout new     근거(36px, 본문 바로 아래)·계정명을 안전영역 안에 쌓는 새 배치. 줄바꿈·넘침·안전영역 침범을
                    `scene N line M: KIND (값) "글자"` 로 stderr 에 내고, 안전영역 미리보기 `<출력>.safe-sNN.png` 를 쓴다
                    (1장면 + 가장 높은 장면, --overlay-all 이면 모든 장면). 글자는 줄이거나 자르지 않고 원고 그대로 그린다
+  --motion none    정지 화면 연결(기본, 원고에 motion 이 없을 때와 같음)
+  --motion basic   줄이 0.3초 페이드하며 24px 떠오르고(줄 사이 0.12초) 장면 사이를 0.3초 크로스페이드하는 모션. 프레임 시각마다
+                   애니메이션을 멈춰 찍는 결정적 렌더이며 --layout new 에서만 쓸 수 있다 (legacy 와 함께 쓰면 종료 코드 1, MP4 없음).
+                   주면 원고의 "motion" 필드보다 우선한다 (단독 렌더용; draft.py bundle 은 spec.src.json 의 필드만 따른다)
+  --bgm, --bgm-license  받지 않는다: 주면 `음원 오류` 로 거부(종료 코드 1, Chromium 을 띄우기 전, MP4 없음).
+                   배경음은 draft.py bundle --bgm 음원 --bgm-license 메모 로만 넣는다 — 라이선스 메모가 review.md 와 승인 지문에 남고
+                   approve/promote 를 거치는 유일한 경로다 (단독 렌더는 메모를 남기지 못하고 출력 경로를 막지 못해 뺐다, WR-01)
   --strict         경고가 있으면 MP4 를 쓴 뒤 종료 코드 3
 종료 코드: 0 정상, 1 원고/입력 오류(파일 없음, JSON 오류, 허용되지 않은 마크업), 2 환경 오류(playwright 미설치, Chromium 실행 실패, 번들 폰트 로드 실패),
           3 --strict 인데 레이아웃 경고가 있음, 4 출력 MP4 의 업로드 규격 FAIL (3 과 4 모두 MP4 는 이미 써 둠, 4 가 우선)
@@ -18,27 +25,13 @@ spec.json 예시:
 """
 import argparse
 import os
-import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-PLAYWRIGHT_MISSING = "playwright 미설치: python3 -m pip install --user -r tools/requirements.txt"
-
-from reelkit.browser import BrowserLaunchError, FontLoadError  # noqa: E402
-from reelkit.encode import EncodeError  # noqa: E402
-from reelkit.render import render_reel  # noqa: E402
+from reelkit.render import PLAYWRIGHT_MISSING, env_error_message, render_reel  # noqa: E402,F401
 from reelkit.spec import SpecError  # noqa: E402
 from reelkit.specprobe import format_report  # noqa: E402
-
-
-def _playwright_error_types():
-    """렌더 중 Playwright 가 던지는 오류 형식. Playwright 가 없으면 빈 튜플(아무것도 잡지 않음)."""
-    try:
-        from playwright.sync_api import Error
-    except ImportError:
-        return ()
-    return (Error,)
 
 
 def main(argv=None):
@@ -46,28 +39,32 @@ def main(argv=None):
     ap.add_argument("spec", help="원고 JSON 경로")
     ap.add_argument("out", help="출력 MP4 경로")
     ap.add_argument("--layout", choices=["legacy", "new"], default="legacy", help="프레임 배치 (기본 legacy)")
+    ap.add_argument("--motion", choices=["none", "basic"], default=None,
+                    help="모션 (기본: 원고의 motion 필드, 없으면 none). basic 은 --layout new 에서만")
     ap.add_argument("--strict", action="store_true", help="레이아웃 경고가 있으면 종료 코드 3")
     ap.add_argument("--overlay-all", action="store_true", help="모든 장면의 안전영역 미리보기 PNG 를 쓴다 (new 배치)")
+    # 배경음은 받지 않는다 (WR-01): argparse 의 알 수 없는 인자 오류(종료 코드 2 = 환경 오류와 겹침) 대신 안내와 함께 1 로 거부
+    ap.add_argument("--bgm", help="받지 않음 — 배경음은 draft.py bundle --bgm 으로만")
+    ap.add_argument("--bgm-license", help="받지 않음 — 배경음은 draft.py bundle --bgm-license 로만")
     args = ap.parse_args(argv)
+    if args.bgm is not None or args.bgm_license is not None:
+        print("음원 오류: reel.py 는 배경음을 섞지 않음 — 라이선스 메모가 검수 요약과 승인 지문에 남도록 "
+              "python3 tools/draft.py bundle 폴더 --bgm 음원 --bgm-license 메모 를 쓰세요", file=sys.stderr)
+        return 1
     try:
-        r = render_reel(args.spec, args.out, layout=args.layout, overlay_all=args.overlay_all)
+        r = render_reel(args.spec, args.out, layout=args.layout, overlay_all=args.overlay_all, motion=args.motion)
     except SpecError as e:
         print(f"원고 오류: {e}", file=sys.stderr)
         return 1
-    except ImportError as e:
-        # 이 패키지 자체의 결함(잘못된 import 등)을 "playwright 미설치" 로 가리지 않는다
-        if (getattr(e, "name", None) or "").split(".")[0] != "playwright":
+    except Exception as e:  # noqa: BLE001 - 환경 오류만 2 로 바꾸고 나머지는 그대로 다시 던진다
+        msg = env_error_message(e)
+        if msg is None:
             raise
-        print(PLAYWRIGHT_MISSING, file=sys.stderr)
-        return 2
-    except (FontLoadError, BrowserLaunchError, EncodeError) as e:
-        print(f"렌더 환경 오류: {e}", file=sys.stderr)
-        return 2
-    except (*_playwright_error_types(), OSError, subprocess.SubprocessError) as e:
-        # ffmpeg/ffprobe 실행, 파일 쓰기, Chromium 실행 중 오류는 원고 오류(1)가 아니라 환경 오류(2)
-        print(f"렌더 환경 오류: {e.__class__.__name__}: {e}", file=sys.stderr)
+        print(msg, file=sys.stderr)
         return 2
     print(f"duration={r.total:.1f}s cover_ms={r.cover_ms}")
+    if r.motion == "basic":
+        print("motion=basic")
     for w in r.warnings:
         print(str(w), file=sys.stderr)
     if r.warnings:

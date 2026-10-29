@@ -1,18 +1,18 @@
 ---
 gsd_state_version: "1.0"
-current_phase: 2
-current_phase_name: 초안 생성 (Draft Generation)
-status: planning
-stopped_at: Phase 2 context gathered
-last_updated: "2026-10-28T22:34:03.354Z"
+current_phase: 4
+current_phase_name: 자막 연출 + 선택 배경음 (Motion & BGM)
+status: executing
+stopped_at: Phase 4 executed; verification human_needed (watch motion reel, optional licensed BGM, licence evidence format)
+last_updated: "2026-10-29T15:04:34.715Z"
 last_activity: 2026-10-28
 last_activity_desc: Phase 1 complete, transitioned to Phase 2
-state_head: 885936b59c70d44c69f434f59dfda929a7bab719
+state_head: b9321a02ef6b32576f5906cf473f7ef3e94db07d
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 4
-  completed_plans: 4
+  total_plans: 15
+  completed_plans: 15
   percent: 25
 ---
 
@@ -27,9 +27,9 @@ See: .planning/PROJECT.md (updated 2026-10-28)
 
 ## Current Position
 
-Phase: 2 — 초안 생성 (Draft Generation)
+Phase: 4 (자막 연출 + 선택 배경음 (Motion & BGM)) — READY TO EXECUTE
 Plan: Not started
-Status: Ready to plan
+Status: Ready to execute
 Last activity: 2026-10-28 — Phase 1 complete, transitioned to Phase 2
 
 Progress: [███░░░░░░░] 25%
@@ -80,6 +80,8 @@ Recent decisions affecting current work:
 - [Phase 1]: Golden SSIM threshold stays 0.98 (lowest measured 0.9923); manifest built only from committed MP4s and specs, never from renderer output
 - [Phase 1]: Golden treats a not-reproducible reel with an upload-spec FAIL as a failure (exit 1)
 
+- [Phase 2]: 국민연금 평균 수령액 같은 통계 수치는 정확한 값을 원고에 쓰지 않는다. 필요할 때 사용자가 따로 자료를 조사해 그때 확인한다(등록부 항목은 미확인 유지)
+
 ### Pending Todos
 
 None yet.
@@ -105,6 +107,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-28T22:34:03.152Z
-Stopped at: Phase 2 context gathered
-Resume file: .planning/phases/02-draft-generation/02-CONTEXT.md
+Last session: 2026-10-29T15:04:34.445Z
+Stopped at: Phase 4 executed; verification human_needed (watch motion reel, optional licensed BGM, licence evidence format)
+Resume file: .planning/phases/04-motion-bgm/04-VERIFICATION.md

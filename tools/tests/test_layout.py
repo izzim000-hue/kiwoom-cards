@@ -14,7 +14,13 @@ REPO = TOOLS.parent
 FIX = Path(__file__).resolve().parent / "fixtures"
 sys.path.insert(0, str(TOOLS))
 
-from reelkit import constants, layout, render  # noqa: E402
+from reelkit import constants, golden, layout, render  # noqa: E402
+
+
+def golden_specs():
+    """게시된 10편의 원고: 골든 기준표의 재현 가능 항목 (폴더를 훑으면 새로 옮긴 릴스에 시험이 깨진다)."""
+    return sorted(REPO / e["spec"] for e in golden.load_manifest()["entries"] if e["status"] == "reproducible")
+
 
 LT, GT, AMP = chr(60), chr(62), chr(38)
 WARN_RE = re.compile(r"scene \d+ line (\d+|top|basis|account): [A-Z_]+ \(")
@@ -152,7 +158,7 @@ class BrowserChecks(unittest.TestCase):
         self.assertTrue(all(w.scene == 1 for w in ws))
 
     def test_committed_specs_never_warn_about_basis_or_account(self):
-        files = sorted((REPO / "2026" / "reels" / "specs").glob("*.json"))
+        files = golden_specs()
         self.assertEqual(len(files), 10)
         counts = {}
         for f in files:
