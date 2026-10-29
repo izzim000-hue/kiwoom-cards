@@ -1,19 +1,25 @@
 """draft.py bundle: 초안 폴더 하나가 검수 묶음으로 만들어지는 전체 흐름 (렌더 1회, stdlib unittest 전용)."""
+import io
 import json
+import os
 import re
 import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from types import SimpleNamespace
+from unittest import mock
 
 TOOLS = Path(__file__).resolve().parents[1]
 FIX = Path(__file__).resolve().parent / "fixtures"
 DRAFT = [sys.executable, str(TOOLS / "draft.py")]
 sys.path.insert(0, str(TOOLS))
 
-from reelkit import review, timeline  # noqa: E402
+from reelkit import bundle, render, review, timeline  # noqa: E402
+from reelkit.browser import BrowserLaunchError  # noqa: E402
 
 DATE, SLUG = "2026-11-08", "pension-credit-limit"
 NAME = f"{DATE}-{SLUG}"
@@ -125,6 +131,167 @@ class Bundle(unittest.TestCase):
         values, problem = review.ensure_record(self.d)
         self.assertIsNone(problem)
         self.assertEqual(values, review.RECORD_DEFAULTS)
+
+
+def make_folder(root, *, spec_src=None, caption_src=None, hook=None):
+    """drafts/<이름> 폴더에 원고 소스 두 개를 둔다 (slot 명령 없이)."""
+    d = Path(root) / "reels" / "drafts" / NAME
+    d.mkdir(parents=True)
+    if spec_src is None:
+        shutil.copy(FIX / "draft-pension.src.json", d / "spec.src.json")
+    else:
+        (d / "spec.src.json").write_text(spec_src, encoding="utf-8")
+    cap = json.loads((FIX / "draft-pension.caption.src.json").read_text(encoding="utf-8"))
+    if hook:
+        cap["hook"] = hook
+    (d / "caption.src.json").write_text(json.dumps(cap, ensure_ascii=False, indent=1), encoding="utf-8")
+    return d
+
+
+def run_inproc(d, **kw):
+    out, err = io.StringIO(), io.StringIO()
+    with redirect_stdout(out), redirect_stderr(err):
+        code = bundle.run_cli(d, **kw)
+    return code, out.getvalue(), err.getvalue()
+
+
+class Rebuild(unittest.TestCase):
+    """편집 후 다시 만들기 (렌더 2회): 산출물은 새로 생기고, 승인 기록은 사라지고, 사람 기록은 남는다 (BNDL-05)."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.TemporaryDirectory()
+        cls.d = make_folder(cls.tmp.name, hook=RISKY_HOOK)
+        (cls.d / "created.json").write_text('{"created_at": "x", "epoch": 1.0}\n', encoding="utf-8")
+        (cls.d / "skeleton.json").write_text('{"keep": 1}\n', encoding="utf-8")
+        cls.first = run(DRAFT + ["bundle", str(cls.d)])
+        assert cls.first.returncode == 0, cls.first.stderr
+        cls.outputs = ("spec.json", "check.json", "caption.txt", "compliance.json", "review.md", f"{NAME}.mp4",
+                       f"{NAME}-cover.png", f"{NAME}-scenes.png")
+        rec = {"ad_applicable": "해당", "brand_relation": "미확인", "review_stage": "내부 검수",
+               "review_no": "테스트-001", "reviewer": "", "note": ""}
+        (cls.d / "record.json").write_text(json.dumps(rec, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+        (cls.d / "approval.json").write_text('{"approved": true}\n', encoding="utf-8")
+        cls.keep_before = {n: (cls.d / n).read_bytes() for n in ("record.json", "created.json", "skeleton.json")}
+        cls.mtime_before = {n: (cls.d / n).stat().st_mtime_ns for n in cls.outputs}
+        cap = json.loads((cls.d / "caption.src.json").read_text(encoding="utf-8"))
+        cap["hook"] = "연금계좌 세액공제, 한도가 얼마일까?"
+        (cls.d / "caption.src.json").write_text(json.dumps(cap, ensure_ascii=False, indent=1), encoding="utf-8")
+        src = (cls.d / "spec.src.json").read_text(encoding="utf-8")
+        assert "채운 만큼만 받아요" in src
+        (cls.d / "spec.src.json").write_text(src.replace("채운 만큼만 받아요", "채운 만큼 받아요"), encoding="utf-8")
+        cls.second = run(DRAFT + ["bundle", str(cls.d)])
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.tmp.cleanup()
+
+    def test_rerun_ok_and_approval_gone(self):
+        self.assertEqual(self.second.returncode, 0, self.second.stderr)
+        self.assertFalse((self.d / "approval.json").exists())
+
+    def test_human_files_untouched_and_shown(self):
+        for n, data in self.keep_before.items():
+            self.assertEqual((self.d / n).read_bytes(), data, n)
+        text = (self.d / "review.md").read_text(encoding="utf-8")
+        for v in ("해당", "내부 검수", "테스트-001"):
+            self.assertIn(v, text)
+
+    def test_outputs_regenerated(self):
+        self.assertIn("채운 만큼 받아요", (self.d / "spec.json").read_text(encoding="utf-8"))
+        c = json.loads((self.d / "compliance.json").read_text(encoding="utf-8"))
+        self.assertFalse([f for f in c["findings"] if "G-01" in f["rule"]], c["findings"])
+        for n in self.outputs:
+            self.assertGreater((self.d / n).stat().st_mtime_ns, self.mtime_before[n], n)
+
+
+class Purge(unittest.TestCase):
+    def test_purge_list_is_exact(self):
+        with tempfile.TemporaryDirectory() as t:
+            d = make_folder(t)
+            gone = ["spec.json", "check.json", "caption.txt", "compliance.json", "review.md", "bundle.json",
+                    "approval.json", f"{NAME}.mp4", f"{NAME}.mp4.part.mp4", f"{NAME}-cover.png",
+                    f"{NAME}-scenes.png", f"{NAME}.safe-s01.png", f"{NAME}.safe-s05.png"]
+            kept = ["record.json", "created.json", "skeleton.json", "notes.txt", "other.png"]
+            for n in gone + kept:
+                (d / n).write_bytes(b"x")
+            bundle.purge_outputs(d, NAME)
+            self.assertEqual([n for n in gone if (d / n).exists()], [])
+            self.assertEqual([n for n in kept if not (d / n).exists()], [])
+            self.assertTrue((d / "spec.src.json").is_file() and (d / "caption.src.json").is_file())
+
+
+class Failures(unittest.TestCase):
+    STALE = ("caption.txt", f"{NAME}.mp4", f"{NAME}-cover.png", f"{NAME}-scenes.png", "approval.json")
+
+    def stale(self, d):
+        for n in self.STALE:
+            (d / n).write_bytes(b"old")
+
+    def test_unregistered_number_stops_before_render(self):
+        with tempfile.TemporaryDirectory() as t:
+            src = (FIX / "draft-pension.src.json").read_text(encoding="utf-8")
+            bad = src.replace("연 {{fig.pension_credit_limit_savings|man_won}}까지", "연 700만 원까지")
+            self.assertNotEqual(src, bad)
+            d = make_folder(t, spec_src=bad)
+            self.stale(d)
+            r = run(DRAFT + ["bundle", str(d)])
+            self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+            self.assertTrue((d / "check.json").is_file())
+            self.assertTrue((d / "compliance.json").is_file())
+            for n in self.STALE:
+                self.assertFalse((d / n).exists(), n)
+            text = (d / "review.md").read_text(encoding="utf-8")
+            self.assertIn("원고 오류 — 영상 미생성", text)
+            self.assertIn("700만", text)
+            self.assertIn("광고 해당 여부", text)
+            b = json.loads((d / "bundle.json").read_text(encoding="utf-8"))
+            self.assertEqual((b["status"], b["failed_step"]), ("failed", "check"))
+
+    def test_invalid_json_is_expand_failure(self):
+        with tempfile.TemporaryDirectory() as t:
+            d = make_folder(t, spec_src="{ not json")
+            self.stale(d)
+            r = run(DRAFT + ["bundle", str(d)])
+            self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+            b = json.loads((d / "bundle.json").read_text(encoding="utf-8"))
+            self.assertEqual((b["status"], b["failed_step"]), ("failed", "expand"))
+            text = (d / "review.md").read_text(encoding="utf-8")
+            self.assertIn("원고 오류 — 영상 미생성", text)
+            self.assertIn("JSON 형식 오류", text)
+            self.assertFalse((d / f"{NAME}.mp4").exists())
+
+    def test_render_environment_error_is_exit_2(self):
+        cases = [(BrowserLaunchError("Chromium 을 열 수 없음"), "렌더 환경 오류: Chromium 을 열 수 없음"),
+                 (ModuleNotFoundError("No module named 'playwright'", name="playwright"), render.PLAYWRIGHT_MISSING)]
+        for exc, want in cases:
+            with self.subTest(exc=type(exc).__name__), tempfile.TemporaryDirectory() as t:
+                d = make_folder(t)
+                self.stale(d)
+                with mock.patch("reelkit.bundle.render_reel", side_effect=exc):
+                    code, _out, err = run_inproc(d)
+                self.assertEqual(code, 2, err)
+                self.assertIn(want, err)
+                self.assertEqual(render.env_error_message(exc), want)
+                b = json.loads((d / "bundle.json").read_text(encoding="utf-8"))
+                self.assertEqual((b["status"], b["failed_step"]), ("failed", "render"))
+                self.assertIn("렌더 환경 오류", (d / "review.md").read_text(encoding="utf-8"))
+                for n in (f"{NAME}.mp4", f"{NAME}-cover.png", f"{NAME}-scenes.png", "approval.json"):
+                    self.assertFalse((d / n).exists(), n)
+
+    def test_internal_import_bug_is_not_mapped(self):
+        self.assertIsNone(render.env_error_message(ImportError("x", name="reelkit.layout")))
+        self.assertIsNone(render.env_error_message(ValueError("x")))
+
+
+class ExitCode(unittest.TestCase):
+    def test_final_code(self):
+        ok, bad = [SimpleNamespace(status="PASS")], [SimpleNamespace(status="PASS"), SimpleNamespace(status="FAIL")]
+        self.assertEqual(bundle.final_code([], [], ok), 0)
+        self.assertEqual(bundle.final_code(["w"], [], ok), 3)
+        self.assertEqual(bundle.final_code([], ["COVER_CROP"], ok), 3)
+        self.assertEqual(bundle.final_code(["w"], ["c"], bad), 4)
+        self.assertEqual(bundle.final_code([], [], bad), 4)
 
 
 class BadFolders(unittest.TestCase):

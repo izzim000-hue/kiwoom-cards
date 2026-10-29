@@ -18,27 +18,13 @@ spec.json 예시:
 """
 import argparse
 import os
-import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-PLAYWRIGHT_MISSING = "playwright 미설치: python3 -m pip install --user -r tools/requirements.txt"
-
-from reelkit.browser import BrowserLaunchError, FontLoadError  # noqa: E402
-from reelkit.encode import EncodeError  # noqa: E402
-from reelkit.render import render_reel  # noqa: E402
+from reelkit.render import PLAYWRIGHT_MISSING, env_error_message, render_reel  # noqa: E402,F401
 from reelkit.spec import SpecError  # noqa: E402
 from reelkit.specprobe import format_report  # noqa: E402
-
-
-def _playwright_error_types():
-    """렌더 중 Playwright 가 던지는 오류 형식. Playwright 가 없으면 빈 튜플(아무것도 잡지 않음)."""
-    try:
-        from playwright.sync_api import Error
-    except ImportError:
-        return ()
-    return (Error,)
 
 
 def main(argv=None):
@@ -54,18 +40,11 @@ def main(argv=None):
     except SpecError as e:
         print(f"원고 오류: {e}", file=sys.stderr)
         return 1
-    except ImportError as e:
-        # 이 패키지 자체의 결함(잘못된 import 등)을 "playwright 미설치" 로 가리지 않는다
-        if (getattr(e, "name", None) or "").split(".")[0] != "playwright":
+    except Exception as e:  # noqa: BLE001 - 환경 오류만 2 로 바꾸고 나머지는 그대로 다시 던진다
+        msg = env_error_message(e)
+        if msg is None:
             raise
-        print(PLAYWRIGHT_MISSING, file=sys.stderr)
-        return 2
-    except (FontLoadError, BrowserLaunchError, EncodeError) as e:
-        print(f"렌더 환경 오류: {e}", file=sys.stderr)
-        return 2
-    except (*_playwright_error_types(), OSError, subprocess.SubprocessError) as e:
-        # ffmpeg/ffprobe 실행, 파일 쓰기, Chromium 실행 중 오류는 원고 오류(1)가 아니라 환경 오류(2)
-        print(f"렌더 환경 오류: {e.__class__.__name__}: {e}", file=sys.stderr)
+        print(msg, file=sys.stderr)
         return 2
     print(f"duration={r.total:.1f}s cover_ms={r.cover_ms}")
     for w in r.warnings:

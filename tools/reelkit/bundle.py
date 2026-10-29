@@ -1,4 +1,4 @@
-"""검수 묶음 만들기: 초안 폴더 하나를 확장 -> 점검 -> 게시글 -> 표현 점검 -> 렌더 -> 표지 -> 검수 요약 순서로 만든다 (BNDL-01, D-11).
+"""검수 묶음 만들기: 초안 폴더 하나를 확장 -> 점검 -> 게시글 -> 표현 점검 -> 렌더 -> 표지 -> 장면 모음 -> 검수 요약 순서로 만든다 (BNDL-01, D-11).
 
 초안 폴더(`2026/reels/drafts/<게시일>-<슬러그>/`)에 Claude 가 쓴 spec.src.json 과 caption.src.json 이 있으면
 `draft.py bundle DIR` 한 번으로 spec.json, check.json, caption.txt, compliance.json, MP4, 표지 PNG, review.md,
@@ -10,7 +10,6 @@ record.json, bundle.json 이 생긴다. 표현 점검(D-06)이 완성된 게시�
 import json
 import os
 import shutil
-import subprocess
 import sys
 import tempfile
 import time
@@ -18,13 +17,17 @@ from datetime import datetime
 from pathlib import Path
 
 from . import calc, caption, check, compliance, convert, expand, figures, review, slot, stills
-from .browser import BrowserLaunchError, FontLoadError
-from .encode import EncodeError
+from .render import PLAYWRIGHT_MISSING, env_error_message, render_reel  # noqa: F401 - render_reel 은 시험이 바꿔 끼운다
 from .spec import SpecError, load_spec
 
 STEPS = ("expand", "check", "caption", "compliance", "render", "cover", "scenes", "review")
 TEN_MINUTES = 600
-PLAYWRIGHT_MISSING = "playwright 미설치: python3 -m pip install --user -r tools/requirements.txt"
+HEAD_SCRIPT = "원고 오류 — 영상 미생성"
+HEAD_RENDER = "렌더 환경 오류"
+HEAD_ENV = "환경 오류 — 영상 미생성"
+# 묶음을 다시 만들 때 맨 처음 지우는 산출물 (D-11). 사람이 쓴 spec.src.json, caption.src.json, skeleton.json,
+# record.json, created.json 과 그 밖의 파일은 건드리지 않는다.
+PURGE_FIXED = ("spec.json", "check.json", "caption.txt", "compliance.json", "review.md", "bundle.json", "approval.json")
 
 
 class BundleError(ValueError):
@@ -96,16 +99,28 @@ def _json_text(data):
     return json.dumps(data, ensure_ascii=False, indent=1) + "\n"
 
 
-def _playwright_error_types():
-    try:
-        from playwright.sync_api import Error
-    except ImportError:
-        return ()
-    return (Error,)
-
-
 def _iso(epoch):
     return datetime.fromtimestamp(epoch).isoformat(timespec="seconds")
+
+
+def purge_outputs(d, name):
+    """이전 실행의 산출물과 승인 기록을 지운다. 이름은 검증된 폴더 이름에서만 만든다 (T-03-08, T-03-11)."""
+    victims = [d / n for n in PURGE_FIXED]
+    victims += [d / f"{name}.mp4", d / f"{name}.mp4.part.mp4", d / f"{name}-cover.png", d / f"{name}-cover.png.part",
+                d / f"{name}-scenes.png", d / f"{name}-scenes.png.part"]
+    victims += sorted(d.glob(f"{name}.safe-s*.png"))
+    for p in victims:
+        if p.is_file() or p.is_symlink():
+            p.unlink()
+
+
+def final_code(layout_warnings, cover_warnings, spec_checks):
+    """종료 코드: 업로드 규격 FAIL 4 (우선), 레이아웃·표지 경고 3, 그 밖 0. 표현 점검 발견은 코드를 바꾸지 않는다."""
+    if any(c.status == "FAIL" for c in spec_checks):
+        return 4
+    if layout_warnings or cover_warnings:
+        return 3
+    return 0
 
 
 class _Stop(Exception):
@@ -127,10 +142,20 @@ def run_cli(draft_dir, *, card=None, request_start=None, rules=None, registry=No
     frames = Path(tempfile.mkdtemp(prefix="reel-frames-"))
     exit_code = 0
     try:
-        exit_code = _build(d, date_text, name, paths, frames, steps, state, started, t_start,
-                           card, request_start, rules, registry, config)
+        try:
+            purge_outputs(d, name)
+        except OSError as e:
+            print(f"환경 오류: 이전 산출물을 지울 수 없음: {e}", file=sys.stderr)
+            state["failed"] = "purge"
+            exit_code = 2
+        else:
+            exit_code = _build(d, date_text, name, paths, frames, steps, state, started, t_start,
+                               card, request_start, rules, registry, config)
     except _Stop as stop:
         exit_code = stop.code
+    except BaseException:
+        state["failed"] = state["failed"] or "internal"
+        raise
     finally:
         shutil.rmtree(frames, ignore_errors=True)
         _write_bundle_json(paths, name, steps, state, started, t_start, request_start, exit_code)
@@ -171,11 +196,38 @@ def _timed(steps, state, name, fn):
 def _build(d, date_text, name, paths, frames, steps, state, started, t_start,
            card, request_start, rules_path, registry_path, config_path):
     registry_path = registry_path or figures.REGISTRY_PATH
+    memo = {"spec": None, "result": None}
+
+    def fail(heading, errors, code, step=None):
+        """실패 검수 요약을 쓰고 멈춘다. 이전 실행의 MP4·표지·게시글은 시작할 때 이미 지웠다."""
+        state["failed"] = state["failed"] or step or "expand"
+        try:
+            record, problem = review.ensure_record(d)
+            review.write_failure_review(d, {
+                "name": name, "heading": heading, "errors": list(errors), "result": memo["result"],
+                "record": record, "record_problem": problem, "check": memo.get("check") or {},
+                "steps": list(steps), "elapsed_s": round(time.monotonic() - t_start, 2),
+            })
+        except OSError as e:
+            print(f"환경 오류: review.md 를 쓸 수 없음: {e}", file=sys.stderr)
+        raise _Stop(code)
+
+    def fallback_compliance(text=None):
+        """원고가 읽히면 표현 점검만이라도 돌려 compliance.json 을 남긴다 (게시글이 없으면 원고만)."""
+        try:
+            spec = memo["spec"] or load_spec(paths["spec"])
+            loaded = compliance.load_rules(rules_path or compliance.RULES_PATH)
+            result = compliance.run(spec, text, loaded, check_json=memo.get("check"))
+            _atomic_write(paths["compliance"], _json_text(result.to_json()))
+            memo["result"] = result
+        except (OSError, ValueError, compliance.RuleError, SpecError):
+            memo["result"] = None
+
     try:
         registry = figures.load_registry(registry_path)
     except figures.RegistryError as e:
         print(f"등록부 오류: {e}", file=sys.stderr)
-        raise _Stop(1) from None
+        fail(HEAD_SCRIPT, [f"등록부 오류: {e}"], 1, "registry")
 
     ctx = {}
 
@@ -197,6 +249,7 @@ def _build(d, date_text, name, paths, frames, steps, state, started, t_start,
             check.apply_card(report, convert.load_card(card), spec, card)
         data = report.to_json(paths["spec"], registry_path)
         _atomic_write(paths["check"], _json_text(data))
+        memo["check"] = data
         return spec, report, data
 
     # 3 caption
@@ -211,12 +264,11 @@ def _build(d, date_text, name, paths, frames, steps, state, started, t_start,
         loaded = compliance.load_rules(rules_path or compliance.RULES_PATH)
         result = compliance.run(spec, text, loaded, check_json=check_data, caption_warnings=warnings)
         _atomic_write(paths["compliance"], _json_text(result.to_json()))
+        memo["result"] = result
         return result
 
     # 5 render
     def do_render():
-        from .render import render_reel   # playwright 는 render_reel 안에서 늦게 읽는다
-
         def sink(scene, png):
             shutil.copyfile(png, frames / f"s{scene + 1:02d}.png")
 
@@ -236,8 +288,10 @@ def _build(d, date_text, name, paths, frames, steps, state, started, t_start,
         stills.contact_sheet(found, paths["scenes"])
         return len(found)
 
+    text = None
     try:
         spec = _timed(steps, state, "expand", do_expand)
+        memo["spec"] = spec
         spec, report, check_data = _timed(steps, state, "check", do_check)
         for issue in report.errors + report.warnings:
             print(str(issue), file=sys.stderr)
@@ -247,21 +301,28 @@ def _build(d, date_text, name, paths, frames, steps, state, started, t_start,
             state["failed"] = "check"
             steps[-1]["status"] = "failed"
             print(f"원고 오류: 점검 오류 {len(report.errors)}건 — 영상을 만들지 않음 ({report.summary()})", file=sys.stderr)
-            raise _Stop(1)
+            fallback_compliance()
+            fail(HEAD_SCRIPT, [str(i) for i in report.errors], 1, "check")
         text, cap_warnings, cap_cfg = _timed(steps, state, "caption", lambda: do_caption(spec))
         for w in cap_warnings:
             print(f"경고: {w}", file=sys.stderr)
         result = _timed(steps, state, "compliance", lambda: do_compliance(spec, text, cap_warnings, check_data))
-    except (SpecError,) as e:
+    except _Stop:
+        raise
+    except SpecError as e:
         print(f"원고 오류: {e}", file=sys.stderr)
-        raise _Stop(1) from None
+        if state["failed"] == "caption":
+            fallback_compliance()
+        fail(HEAD_SCRIPT, [str(e)], 1)
     except (BundleError, expand.ExpandError, calc.CalcError, figures.RegistryError, caption.CaptionError,
             compliance.RuleError, convert.ConvertError, ValueError) as e:
         print(f"초안 오류: {e}", file=sys.stderr)
-        raise _Stop(1) from None
+        if state["failed"] == "caption":
+            fallback_compliance()
+        fail(HEAD_SCRIPT, [str(e)], 1)
     except OSError as e:
         print(f"환경 오류: {e.__class__.__name__}: {e}", file=sys.stderr)
-        raise _Stop(2) from None
+        fail(HEAD_ENV, [f"{e.__class__.__name__}: {e}"], 2)
 
     try:
         r = _timed(steps, state, "render", do_render)
@@ -269,18 +330,15 @@ def _build(d, date_text, name, paths, frames, steps, state, started, t_start,
         _timed(steps, state, "scenes", do_scenes)
     except SpecError as e:
         print(f"원고 오류: {e}", file=sys.stderr)
-        raise _Stop(1) from None
-    except ImportError as e:
-        if (getattr(e, "name", None) or "").split(".")[0] != "playwright":
+        fail(HEAD_SCRIPT, [str(e)], 1)
+    except Exception as e:  # noqa: BLE001 - 환경 오류만 2 로 바꾸고 나머지는 그대로 다시 던진다
+        msg = env_error_message(e)
+        if msg is None and isinstance(e, stills.StillsError):
+            msg = f"렌더 환경 오류: {e}"
+        if msg is None:
             raise
-        print(PLAYWRIGHT_MISSING, file=sys.stderr)
-        raise _Stop(2) from None
-    except (FontLoadError, BrowserLaunchError, EncodeError, stills.StillsError) as e:
-        print(f"렌더 환경 오류: {e}", file=sys.stderr)
-        raise _Stop(2) from None
-    except (*_playwright_error_types(), OSError, subprocess.SubprocessError) as e:
-        print(f"렌더 환경 오류: {e.__class__.__name__}: {e}", file=sys.stderr)
-        raise _Stop(2) from None
+        print(msg, file=sys.stderr)
+        fail(HEAD_RENDER, [msg], 2)
 
     print(f"duration={r.total:.1f}s cover_ms={r.cover_ms}")
     for w in r.warnings:
@@ -318,8 +376,4 @@ def _build(d, date_text, name, paths, frames, steps, state, started, t_start,
 
     elapsed = time.monotonic() - t_start
     print(f"bundle: {name} · {result.headline} · 확인 필요 {result.counts['확인 필요']}건 · {elapsed:.1f}초")
-    if any(c.status == "FAIL" for c in r.spec_checks):
-        return 4
-    if r.warnings or cover_warnings:
-        return 3
-    return 0
+    return final_code(r.warnings, cover_warnings, r.spec_checks)

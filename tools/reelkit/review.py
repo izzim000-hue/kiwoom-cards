@@ -85,22 +85,12 @@ def _figure_lines(check):
     return [f"  - `{fid}` — {'미확인' if fid in unverified else '확인'}" for fid in sorted(set(used) | set(unverified))]
 
 
-def write_review(draft_dir, ctx):
-    """review.md 를 임시 파일에 쓴 뒤 바꿔 넣는다. ctx 키는 bundle.py 가 채운다."""
-    draft_dir = Path(draft_dir)
-    result = ctx["result"]
-    rules = result.rules
-    record, record_problem = ctx["record"], ctx.get("record_problem")
-    check = ctx.get("check") or {}
-    name = ctx["name"]
-    stat = rules.status
-    now = datetime.now().isoformat(timespec="seconds")
+def _compliance_section(result):
+    """1. 점검 결과 (결과가 없으면 못 돌렸다고 적는다: 깨끗하다는 뜻으로 읽히면 안 된다)."""
+    if result is None:
+        return ["## 1. 점검 결과", "", "표현 점검을 돌리지 못함 — 원고 오류를 먼저 고친 뒤 다시 만드세요. 사람 검수 필요", ""]
     by_sev = {s: [f for f in result.findings if f["severity"] == s] for s in ("수정 필요", "확인 필요")}
-
-    out = [f"# 릴스 검수 요약 — {name}", "",
-           f"> **{BANNER}**", "",
-           f"자동 생성 {now} · 규칙 v{rules.version} — {stat}", "",
-           "## 1. 점검 결과", "",
+    out = ["## 1. 점검 결과", "",
            f"**{result.headline}**", "", result.counts_line, "", result.to_json()["limits"], "",
            "### 수정 필요", ""]
     out += _findings_table(by_sev["수정 필요"])
@@ -117,6 +107,70 @@ def write_review(draft_dir, ctx):
         out.append("")
     else:
         out += ["없음", ""]
+    return out
+
+
+def _checklist_section(check):
+    out = ["## 3. 사람 확인 목록", "",
+           "- [ ] 수치 재확인 — 등록부 수치를 1차 출처로 다시 확인 (확인 처리는 사람만)"]
+    out += _figure_lines(check)
+    out += ["- [ ] 기준일 — basis 의 기준 시점과 등록부 valid_until 이 게시일에도 맞는지",
+            "- [ ] 표지 크롭 — 인스타 프로필 그리드 미리보기에서 글자가 잘리지 않는지 확인",
+            "- [ ] 음원 라이선스 — 배경음 없음 = 무음 (음원을 넣었다면 이용 권리 확인)",
+            "- [ ] 개인정보 — 고객 실명·연락처·계좌 등이 영상·게시글에 없는지",
+            "- [ ] 대체 표현 반영 여부 — 위 제안은 참고용이며 원고 수정은 사람이 결정", ""]
+    return out
+
+
+def _record_section(record, record_problem, caption_status):
+    out = ["## 4. 광고·심의 기록", ""]
+    if record_problem:
+        out += [f"> {record_problem}", ""]
+    out += ["| 광고 해당 여부 | 키움 브랜드 관계 | 심의 상태 (초안/내부 검수/승인) | 심의번호 | 검수자 | 메모 |",
+            "|---|---|---|---|---|---|",
+            f"| {_cell(record['ad_applicable'])} | {_cell(record['brand_relation'])} | {_cell(record['review_stage'])} | "
+            f"{_cell(record['review_no'])} | {_cell(record['reviewer'])} | {_cell(record['note'])} |", "",
+            "값을 바꾸려면 이 문서가 아니라 `record.json` 을 고치세요 (review.md 는 묶음을 다시 만들 때마다 새로 써집니다).", ""]
+    if caption_status:
+        out.append(f"- 게시글 고지 문구 상태: {caption_status}")
+    out += ["- 영상 고지: basis 와 주의 장면",
+            "- 고지 문구·위치·심의 절차: 초안 — 준법 검토 전", ""]
+    return out
+
+
+def _timing_section(ctx):
+    out = ["## 5. 걸린 시간", ""]
+    out += [f"- {s['name']}: {s['seconds']:.1f}초" for s in ctx.get("steps") or []]
+    out += [f"- 합계(지금까지): {ctx.get('elapsed_s', 0):.1f}초", ""]
+    return out
+
+
+def _write_atomic(draft_dir, out):
+    draft_dir = Path(draft_dir)
+    path = draft_dir / "review.md"
+    fd, tmp = tempfile.mkstemp(prefix=".review-", suffix=".part", dir=draft_dir)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write("\n".join(out))
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+    return path
+
+
+def write_review(draft_dir, ctx):
+    """review.md 를 임시 파일에 쓴 뒤 바꿔 넣는다. ctx 키는 bundle.py 가 채운다."""
+    result = ctx["result"]
+    rules = result.rules
+    now = datetime.now().isoformat(timespec="seconds")
+    out = [f"# 릴스 검수 요약 — {ctx['name']}", "",
+           f"> **{BANNER}**", "",
+           f"자동 생성 {now} · 규칙 v{rules.version} — {rules.status}", ""]
+    out += _compliance_section(result)
 
     out += ["## 2. 한눈에 보기", "",
             f"- 영상: `{ctx['mp4_name']}` ({ctx['duration']:.1f}초)",
@@ -133,43 +187,28 @@ def write_review(draft_dir, ctx):
         out.append(f"| {i} | {t:.2f} | {_cell(_strip_tags(first))} |")
     out.append("")
 
-    out += ["## 3. 사람 확인 목록", "",
-            "- [ ] 수치 재확인 — 등록부 수치를 1차 출처로 다시 확인 (확인 처리는 사람만)"]
-    out += _figure_lines(check)
-    out += ["- [ ] 기준일 — basis 의 기준 시점과 등록부 valid_until 이 게시일에도 맞는지",
-            "- [ ] 표지 크롭 — 인스타 프로필 그리드 미리보기에서 글자가 잘리지 않는지 확인",
-            "- [ ] 음원 라이선스 — 배경음 없음 = 무음 (음원을 넣었다면 이용 권리 확인)",
-            "- [ ] 개인정보 — 고객 실명·연락처·계좌 등이 영상·게시글에 없는지",
-            "- [ ] 대체 표현 반영 여부 — 위 제안은 참고용이며 원고 수정은 사람이 결정", ""]
+    out += _checklist_section(ctx.get("check") or {})
+    out += _record_section(ctx["record"], ctx.get("record_problem"), ctx["caption_status"])
+    out += _timing_section(ctx)
+    return _write_atomic(draft_dir, out)
 
-    out += ["## 4. 광고·심의 기록", ""]
-    if record_problem:
-        out += [f"> {record_problem}", ""]
-    out += ["| 광고 해당 여부 | 키움 브랜드 관계 | 심의 상태 (초안/내부 검수/승인) | 심의번호 | 검수자 | 메모 |",
-            "|---|---|---|---|---|---|",
-            f"| {_cell(record['ad_applicable'])} | {_cell(record['brand_relation'])} | {_cell(record['review_stage'])} | "
-            f"{_cell(record['review_no'])} | {_cell(record['reviewer'])} | {_cell(record['note'])} |", "",
-            "값을 바꾸려면 이 문서가 아니라 `record.json` 을 고치세요 (review.md 는 묶음을 다시 만들 때마다 새로 써집니다).", "",
-            f"- 게시글 고지 문구 상태: {ctx['caption_status']}",
-            "- 영상 고지: basis 와 주의 장면",
-            "- 고지 문구·위치·심의 절차: 초안 — 준법 검토 전", ""]
 
-    steps = ctx.get("steps") or []
-    out += ["## 5. 걸린 시간", ""]
-    out += [f"- {s['name']}: {s['seconds']:.1f}초" for s in steps]
-    out += [f"- 합계(지금까지): {ctx.get('elapsed_s', 0):.1f}초", ""]
-
-    text = "\n".join(out)
-    path = draft_dir / "review.md"
-    fd, tmp = tempfile.mkstemp(prefix=".review-", suffix=".part", dir=draft_dir)
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            f.write(text)
-        os.replace(tmp, path)
-    except BaseException:
-        try:
-            os.unlink(tmp)
-        except OSError:
-            pass
-        raise
-    return path
+def write_failure_review(draft_dir, ctx):
+    """실패한 실행의 review.md: 어떤 오류인지, 표현 점검 결과가 있으면 그것, 확인 목록과 기록란은 그대로 (D-11)."""
+    result = ctx.get("result")
+    now = datetime.now().isoformat(timespec="seconds")
+    out = [f"# 릴스 검수 요약 — {ctx['name']}", "",
+           f"> **{BANNER}**", ""]
+    if result is not None:
+        out += [f"자동 생성 {now} · 규칙 v{result.rules.version} — {result.rules.status}", ""]
+    else:
+        out += [f"자동 생성 {now}", ""]
+    out += [f"## {ctx['heading']}", "",
+            "이번 실행은 끝까지 가지 못했습니다. 이전 실행의 영상·표지·게시글 문구는 지웠으니 남은 파일을 쓰지 마세요.", ""]
+    out += [f"- {_cell(e)}" for e in ctx["errors"]]
+    out.append("")
+    out += _compliance_section(result)
+    out += _checklist_section(ctx.get("check") or {})
+    out += _record_section(ctx["record"], ctx.get("record_problem"), None)
+    out += _timing_section(ctx)
+    return _write_atomic(draft_dir, out)

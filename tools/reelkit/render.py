@@ -1,14 +1,46 @@
 """원고 -> 프레임 스크린샷 -> MP4 전체 흐름, 장면별 레이아웃 측정과 안전영역 미리보기."""
 import shutil
+import subprocess
 import sys
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import browser, specprobe, timeline
-from .encode import encode_concat
+from .encode import EncodeError, encode_concat
 from .layout import LAYOUTS, MEASURE_JS, TAG_JS, LayoutWarning, evaluate_layout, overlay_html
 from .spec import check_legacy_markup, load_spec
+
+
+PLAYWRIGHT_MISSING = "playwright 미설치: python3 -m pip install --user -r tools/requirements.txt"
+
+
+def playwright_error_types():
+    """렌더 중 Playwright 가 던지는 오류 형식. Playwright 가 없으면 빈 튜플(아무것도 잡지 않음)."""
+    try:
+        from playwright.sync_api import Error
+    except ImportError:
+        return ()
+    return (Error,)
+
+
+def env_error_message(exc):
+    """렌더 환경 오류(종료 코드 2)의 한국어 안내문. 환경 오류가 아니면 None (원고 오류나 코드 결함은 가리지 않는다).
+
+    reel.py 와 draft.py bundle 이 같은 매핑을 쓴다: playwright 미설치, 번들 폰트·Chromium·ffmpeg 실패,
+    Playwright 오류, 파일·하위 프로세스 오류.
+    """
+    if isinstance(exc, ImportError):
+        # 이 패키지 자체의 결함(잘못된 import 등)을 "playwright 미설치" 로 가리지 않는다
+        if (getattr(exc, "name", None) or "").split(".")[0] == "playwright":
+            return PLAYWRIGHT_MISSING
+        return None
+    if isinstance(exc, (browser.FontLoadError, browser.BrowserLaunchError, EncodeError)):
+        return f"렌더 환경 오류: {exc}"
+    if isinstance(exc, (*playwright_error_types(), OSError, subprocess.SubprocessError)):
+        # ffmpeg/ffprobe 실행, 파일 쓰기, Chromium 실행 중 오류는 원고 오류(1)가 아니라 환경 오류(2)
+        return f"렌더 환경 오류: {exc.__class__.__name__}: {exc}"
+    return None
 
 
 @dataclass
