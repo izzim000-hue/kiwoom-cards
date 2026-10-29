@@ -295,3 +295,7 @@ python3 -m unittest discover -s tools/tests -v
   **폰트를 바꾸면** `reelkit/constants.py` 의 `FONT_SHA256` 과 `tools/fonts/README.md` 를 함께 고치고 `golden.py` 를 다시 돌린다.
 - 노트 형식 전용 폰트 `tools/fonts/Gaegu-Bold.ttf` (SIL OFL, 출처·sha256 은 같은 README): `reelkit/constants.py` 의 `NOTE_FONT_SHA256` 과 함께 고친다. `FONT_FILES` 에는 넣지 않는다.
 - `tools/requirements.txt`: `playwright==1.63.0` 고정. 미리 깔린 Chromium 과 맞는 버전이다.
+
+### Claude 차단 규칙 (`.claude/settings.json`)
+
+Claude Code 세션에서는 다음이 차단된다(사람 전용 작업 보호): `tools/data/figures.json`, `approval.json`, `record.json` 직접 편집, `draft.py approve`, `draft.py figures confirm` 실행. 사람은 자기 터미널에서 그대로 실행한다. `figures add`(미확인 등록)는 차단하지 않는다. 남은 위험: 셸에서 파이썬으로 파일을 직접 쓰는 우회는 이 규칙으로 막지 못하며, 커밋 전 `git diff` 검토로 확인한다.
