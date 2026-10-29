@@ -237,7 +237,8 @@ def run_cli(draft_dir, *, card=None, request_start=None, rules=None, registry=No
 
 def _write_bundle_json(paths, name, steps, state, started, t_start, request, exit_code):
     data = {"schema": 1, "name": name, "status": "failed" if state["failed"] else "complete",
-            "failed_step": state["failed"], "exit_code": exit_code}
+            "failed_step": state["failed"], "exit_code": exit_code,
+            "motion": state.get("motion"), "countups": state.get("countups")}   # 렌더 전에 멈췄으면 null
     data.update(timing_fields(started, t_start, request))
     data["steps"] = steps
     try:
@@ -393,6 +394,8 @@ def _build(d, date_text, name, paths, frames, steps, state, started, t_start,
 
     try:
         r = _timed(steps, state, "render", do_render)
+        state["motion"] = getattr(r, "motion", None)
+        state["countups"] = getattr(r, "countups", 0)
         cover_warnings = _timed(steps, state, "cover", do_cover)
         _timed(steps, state, "scenes", do_scenes)
     except SpecError as e:
@@ -431,6 +434,7 @@ def _build(d, date_text, name, paths, frames, steps, state, started, t_start,
             "spec_total": len(r.spec_checks), "spec_ok": sum(1 for c in r.spec_checks if c.status == "PASS"),
             "spec_fail": spec_fail, "spec_warn": sum(1 for c in r.spec_checks if c.status == "WARN"),
             "layout_warnings": [str(w) for w in r.warnings],
+            "motion": state["motion"], "countups": state["countups"],
             "caption_status": cap_cfg["status"], "steps": list(steps),
             **timing_fields(started, t_start, request),
         })

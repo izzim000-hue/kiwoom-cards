@@ -281,9 +281,7 @@ class BundleBasic(unittest.TestCase):
         assert r.returncode == 0, r.stderr
         cls.name = f"{cls.DATE}-{cls.SLUG}"
         cls.d = reels / "drafts" / cls.name
-        src = json.loads((FIX / "draft-pension.src.json").read_text(encoding="utf-8"))
-        src["motion"] = "basic"
-        (cls.d / "spec.src.json").write_text(json.dumps(src, ensure_ascii=False, indent=1), encoding="utf-8")
+        shutil.copy(FIX / "draft-pension-motion.src.json", cls.d / "spec.src.json")
         shutil.copy(FIX / "draft-pension.caption.src.json", cls.d / "caption.src.json")
         cls.r = run_text(DRAFT + ["bundle", str(cls.d)])
         cls.spec = json.loads((cls.d / "spec.json").read_text(encoding="utf-8")) if (cls.d / "spec.json").is_file() else {}
@@ -316,6 +314,22 @@ class BundleBasic(unittest.TestCase):
     def test_frame_count_matches_schedule(self):
         sched = motion.schedule(self.spec)
         self.assertEqual(ffprobe_packets(self.d / f"{self.name}.mp4"), sched.nframes)
+
+    def test_review_and_bundle_record_motion(self):
+        text = (self.d / "review.md").read_text(encoding="utf-8")
+        self.assertIn("모션: basic", text)
+        self.assertIn("카운트업 2곳", text)
+        self.assertIn("중간 숫자는 연출, 최종값만 장부 값", text)
+        self.assertIn("- [ ] 카운트업 — 영상 마지막 프레임의 숫자가 원고 숫자와 같은지 확인", text)
+        b = json.loads((self.d / "bundle.json").read_text(encoding="utf-8"))
+        self.assertEqual((b["motion"], b["countups"]), ("basic", 2))
+        for kind in ("DWELL", "COUNTUP_WRAP"):
+            self.assertNotIn(kind, self.r.stderr)
+            self.assertNotIn(kind, text)
+
+    def test_fixture_matches_helper_source(self):
+        self.assertEqual(json.loads((FIX / "draft-pension-motion.src.json").read_text(encoding="utf-8")),
+                         pension_countup_src())
 
     def test_no_forbidden_words(self):
         for n in ("review.md", "compliance.json", "bundle.json"):

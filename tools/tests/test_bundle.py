@@ -124,6 +124,10 @@ class Bundle(unittest.TestCase):
                      "수치 재확인", "기준일", "표지 크롭", "음원 라이선스", "개인정보"):
             self.assertIn(need, text)
         self.assertEqual(json.loads(self.read("record.json")), review.RECORD_DEFAULTS)
+        self.assertIn("- 모션: none (기존 형식)", text)
+        self.assertNotIn("카운트업", text)
+        b = json.loads(self.read("bundle.json"))
+        self.assertEqual((b["motion"], b["countups"]), ("none", 0))
 
     def test_sources_unchanged(self):
         for n, data in self.before.items():
@@ -261,6 +265,7 @@ class Failures(unittest.TestCase):
             self.assertIn("광고 해당 여부", text)
             b = json.loads((d / "bundle.json").read_text(encoding="utf-8"))
             self.assertEqual((b["status"], b["failed_step"]), ("failed", "check"))
+            self.assertIsNone(b["motion"])   # 렌더 전에 멈춤
 
     def test_invalid_json_is_expand_failure(self):
         with tempfile.TemporaryDirectory() as t:

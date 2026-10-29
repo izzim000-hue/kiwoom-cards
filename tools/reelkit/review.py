@@ -11,6 +11,8 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 
+from . import motion
+
 RECORD_DEFAULTS = {"ad_applicable": "미확인", "brand_relation": "미확인", "review_stage": "미확인",
                    "review_no": "미확인", "reviewer": "", "note": ""}
 RECORD_PROBLEM = "record.json 읽기 오류 — 미확인으로 표시, 파일은 고치지 않음"
@@ -116,10 +118,20 @@ def _compliance_section(result):
     return out
 
 
-def _checklist_section(check):
+def _motion_line(ctx):
+    """## 2 의 모션 줄: 어떤 모션으로 만들었는지, 카운트업이 몇 곳인지, 중간 숫자는 연출이라는 안내 (D-05, D-07)."""
+    if ctx.get("motion") == "basic":
+        return (f"- 모션: basic — 줄 진입·장면 전환 {motion.CROSS:g}초 · 카운트업 {ctx.get('countups') or 0}곳 "
+                "(중간 숫자는 연출, 최종값만 장부 값)")
+    return "- 모션: none (기존 형식)"
+
+
+def _checklist_section(check, countups=0):
     out = ["## 3. 사람 확인 목록", "",
            "- [ ] 수치 재확인 — 등록부 수치를 1차 출처로 다시 확인 (확인 처리는 사람만)"]
     out += _figure_lines(check)
+    if countups:
+        out.append("- [ ] 카운트업 — 영상 마지막 프레임의 숫자가 원고 숫자와 같은지 확인")
     out += ["- [ ] 기준일 — basis 의 기준 시점과 등록부 valid_until 이 게시일에도 맞는지",
             "- [ ] 표지 크롭 — 인스타 프로필 그리드 미리보기에서 글자가 잘리지 않는지 확인",
             "- [ ] 음원 라이선스 — 배경음 없음 = 무음 (음원을 넣었다면 이용 권리 확인)",
@@ -192,6 +204,7 @@ def write_review(draft_dir, ctx):
 
     out += ["## 2. 한눈에 보기", "",
             f"- 영상: `{ctx['mp4_name']}` ({ctx['duration']:.1f}초)",
+            _motion_line(ctx),
             f"- 표지: ![표지]({ctx['cover_name']})",
             f"- 장면 모음: ![장면 모음]({ctx['scenes_name']})",
             *_crop_lines(ctx["cover_warnings"]),
@@ -204,7 +217,7 @@ def write_review(draft_dir, ctx):
         out.append(f"| {i} | {t:.2f} | {_cell(_strip_tags(first))} |")
     out.append("")
 
-    out += _checklist_section(ctx.get("check") or {})
+    out += _checklist_section(ctx.get("check") or {}, ctx.get("countups") or 0)
     out += _record_section(ctx["record"], ctx.get("record_problem"), ctx["caption_status"])
     out += _timing_section(ctx)
     return _write_atomic(draft_dir, out)
