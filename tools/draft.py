@@ -1,14 +1,18 @@
 """키움멘토 릴스 초안 도구 (원고 소스 확장, 수치 등록부)
 사용: python3 tools/draft.py expand SRC OUT [--registry PATH]
+      python3 tools/draft.py check SPEC [--out JSON] [--registry PATH] [--strict]
       python3 tools/draft.py figures {list [--grep 글자] | show ID | add ... | confirm ID --by 이름 [--date YYYY-MM-DD]}
   expand  자리표시자 `{{이름|서식}}` 가 든 원고 소스(SRC)를 등록부·계산 모듈로 채워 v1 호환 원고(OUT)로 쓴다.
           OUT 에는 숫자마다 출처를 적은 `figures` 장부와 쓰인 등록부 항목 `basis_items` 가 함께 들어간다.
           OUT 은 `python3 tools/reel.py OUT out.mp4 --layout new` 로 그대로 렌더할 수 있다.
+  check   확장된 원고(SPEC)의 숫자가 모두 등록부·입력·계산에서 왔는지 따라가 점검한다 (D-07).
+          등록부 밖 숫자는 오류(종료 1), 미확인 수치를 쓴 줄은 `확인 필요` 로 적을 뿐 막지 않는다 (D-03).
+          --out 을 주면 오류가 있어도 check.json 을 쓴다. --strict 는 경고가 있으면 종료 3.
   figures 수치 등록부(tools/data/figures.json) 조회·추가·확인.
           add      새 수치를 추가한다. 확인 상태는 항상 `미확인` 이고 지정하는 옵션이 없다 (D-02).
           confirm  사람 확인자 전용이다 (D-02). 1차 출처(law.go.kr 등)를 직접 열어 값을 맞춰 본 사람이 확인자 이름으로
                    실행한다. Claude 는 이 명령을 실행하면 안 된다. 빈 이름과 Claude/AI 이름은 거부된다.
-종료 코드: 0 정상, 1 원고·등록부 입력 오류(파일 없음, JSON 오류, 규칙 위반), 2 환경 오류(파일 쓰기 실패 등)
+종료 코드: 0 정상, 1 원고·등록부 입력 오류(파일 없음, JSON 오류, 규칙 위반, check 의 오류), 2 환경 오류(파일 쓰기 실패 등)
 """
 import argparse
 import json
@@ -19,7 +23,8 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from reelkit import calc, expand, figures  # noqa: E402
+from reelkit import calc, check, expand, figures  # noqa: E402
+from reelkit.spec import SpecError, load_spec  # noqa: E402
 
 
 def build_parser():
@@ -29,6 +34,12 @@ def build_parser():
     p = sub.add_parser("expand", help="원고 소스의 자리표시자를 채워 원고 JSON 을 쓴다")
     p.add_argument("src", help="원고 소스 JSON 경로")
     p.add_argument("out", help="출력 원고 JSON 경로")
+    _registry_arg(p)
+
+    p = sub.add_parser("check", help="확장된 원고의 숫자를 등록부에 대조해 점검한다")
+    p.add_argument("spec", help="확장된 원고 JSON 경로")
+    p.add_argument("--out", help="check.json 을 쓸 경로 (오류가 있어도 씀)")
+    p.add_argument("--strict", action="store_true", help="경고가 있으면 종료 코드 3")
     _registry_arg(p)
 
     fp = sub.add_parser("figures", help="수치 등록부 조회·추가·확인")
@@ -100,6 +111,40 @@ def cmd_expand(args):
     return 0
 
 
+def cmd_check(args):
+    try:
+        spec = load_spec(args.spec)
+        registry = figures.load_registry(args.registry)
+    except SpecError as e:
+        print(f"원고 오류: {e}", file=sys.stderr)
+        return 1
+    except figures.RegistryError as e:
+        print(f"등록부 오류: {e}", file=sys.stderr)
+        return 1
+    report = check.check_spec(spec, registry)
+    for issue in report.errors + report.warnings:
+        print(str(issue), file=sys.stderr)
+        if issue.kind in check.HINTS and issue.kind != "NOT_EXPANDED":
+            print(f"  -> {check.HINTS[issue.kind]}", file=sys.stderr)
+    for item in report.needs_check:
+        print(f'확인 필요: {item["where"]} [{", ".join(item["ids"])}] "{item["text"]}"')
+    if args.out:
+        try:
+            Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+            Path(args.out).write_text(
+                json.dumps(report.to_json(args.spec, args.registry), ensure_ascii=False, indent=1) + "\n",
+                encoding="utf-8")
+        except OSError as e:
+            print(f"환경 오류: {e.__class__.__name__}: {e}", file=sys.stderr)
+            return 2
+    print(f"check: {report.summary()}")
+    if report.errors:
+        return 1
+    if args.strict and report.warnings:
+        return 3
+    return 0
+
+
 def _registry_command(fn):
     """등록부 하위 명령 공통 처리: RegistryError -> '등록부 오류' 종료 코드 1, 파일 쓰기 실패 -> 종료 코드 2."""
     def run(args):
@@ -167,6 +212,8 @@ def main(argv=None):
     args = build_parser().parse_args(argv)
     if args.command == "figures":
         return FIGURES_COMMANDS[args.figures_command](args)
+    if args.command == "check":
+        return cmd_check(args)
     return cmd_expand(args)
 
 
