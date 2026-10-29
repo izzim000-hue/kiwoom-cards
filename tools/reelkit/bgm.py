@@ -38,6 +38,7 @@ class BgmSource:
     ext: str
     license: str
     duration_s: float
+    sha256: str = ""   # 검사한 순간의 원본 내용 지문. install 이 복사본과 맞춰 본다 (WR-04)
 
 
 def _probe(path):
@@ -133,7 +134,13 @@ def validate(path, memo, draft_dir):
         if not _git_ignores(repo, src):
             raise BgmError("저장소 안 음원이 git 에서 무시되지 않음(.gitignore 에 막혀 있지 않거나 이미 추적 중) — 커밋 방지. "
                            "저장소 밖으로 옮겨서 주세요")
-    data = _probe(src)
+    duration = _check_audio(src)
+    return BgmSource(path=src, name=src.name, ext=ext, license=text, duration_s=duration, sha256=_sha256(src))
+
+
+def _check_audio(path):
+    """ffprobe 로 오디오 스트림이 있고 영상 스트림이 없으며(앨범 그림은 허용) MIN_SECONDS 이상인지 본다. 길이(초)를 돌려준다."""
+    data = _probe(path)
     streams = data.get("streams")
     streams = [s for s in streams if isinstance(s, dict)] if isinstance(streams, list) else []
     if not any(s.get("codec_type") == "audio" for s in streams):
@@ -144,7 +151,7 @@ def validate(path, memo, draft_dir):
     duration = _duration(data)
     if duration < MIN_SECONDS:
         raise BgmError(f"음원이 너무 짧음 ({duration:.1f}초 < {MIN_SECONDS:g}초)")
-    return BgmSource(path=src, name=src.name, ext=ext, license=text, duration_s=duration)
+    return duration
 
 
 def _sha256(path):
@@ -156,7 +163,12 @@ def _sha256(path):
 
 
 def install(src, draft_dir):
-    """검증된 음원을 `<초안>/bgm<확장자>` 로 복사하고 bgm.json 을 쓴다. 쓴 내용(dict)을 돌려준다 (D-11)."""
+    """검증된 음원을 `<초안>/bgm<확장자>` 로 복사하고 bgm.json 을 쓴다. 쓴 내용(dict)을 돌려준다 (D-11).
+
+    검사(validate)와 복사 사이에 원본이 바뀌었을 수 있으므로 (WR-04) 복사본의 지문이 검사 때 원본 지문과 같은지,
+    복사본이 다시 오디오 검사(스트림·길이)를 통과하는지 본다. 아니면 복사본을 지우고 BgmError (bgm.json 은 쓰지 않음).
+    길이는 복사본에서 잰 값을 쓴다.
+    """
     d = Path(draft_dir)
     copy_name = "bgm" + src.ext
     target = d / copy_name
@@ -171,8 +183,19 @@ def install(src, draft_dir):
             part.unlink()
         except OSError:
             pass
-    meta = {"schema": 1, "file": src.name, "copy": copy_name, "sha256": _sha256(target),
-            "license": src.license, "duration_s": round(src.duration_s, 2)}
+    try:
+        digest = _sha256(target)
+        if src.sha256 and digest != src.sha256:
+            raise BgmError("음원이 검사한 뒤에 바뀜 (복사본 지문이 검사 때와 다름) — 파일을 그대로 둔 채 다시 묶으세요")
+        duration = _check_audio(target)
+    except BaseException:
+        try:
+            target.unlink()
+        except OSError:
+            pass
+        raise
+    meta = {"schema": 1, "file": src.name, "copy": copy_name, "sha256": digest,
+            "license": src.license, "duration_s": round(duration, 2)}
     fd, tmp = tempfile.mkstemp(prefix=f".{META}.", suffix=".part", dir=d)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:

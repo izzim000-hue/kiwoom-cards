@@ -29,6 +29,7 @@ TEN_MINUTES = 600
 HEAD_SCRIPT = "원고 오류 — 영상 미생성"
 HEAD_RENDER = "렌더 환경 오류"
 HEAD_ENV = "환경 오류 — 영상 미생성"
+HEAD_BGM = "음원 오류 — 영상 미생성"
 # 묶음을 다시 만들 때 맨 처음 지우는 산출물 (D-11). 사람이 쓴 spec.src.json, caption.src.json, skeleton.json,
 # record.json, created.json 과 그 밖의 파일은 건드리지 않는다. approval.json 이 맨 앞이다 (IN-02: 승인 무효가 먼저).
 PURGE_FIXED = ("approval.json", "spec.json", "check.json", "caption.txt", "compliance.json", "review.md", "bundle.json")
@@ -427,6 +428,9 @@ def _build(d, date_text, name, paths, frames, steps, state, started, t_start,
         state["countups"] = getattr(r, "countups", 0)
         cover_warnings = _timed(steps, state, "cover", do_cover)
         _timed(steps, state, "scenes", do_scenes)
+    except bgm_mod.BgmError as e:   # 복사본이 검사한 원본과 다름 (WR-04): 원고·환경 오류가 아니라 음원 오류(1)
+        print(f"음원 오류: {e}", file=sys.stderr)
+        fail(HEAD_BGM, [str(e)], 1)
     except SpecError as e:
         print(f"원고 오류: {e}", file=sys.stderr)
         fail(HEAD_SCRIPT, [str(e)], 1)

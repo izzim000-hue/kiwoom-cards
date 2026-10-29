@@ -2,6 +2,8 @@
 
 음원은 전부 `ffmpeg -f lavfi -i sine=...` 으로 저장소 밖 임시 폴더에 만든다. 음악을 찾거나 내려받지 않고, 저장소에 오디오 파일을 쓰지 않는다.
 """
+import contextlib
+import io
 import json
 import os
 import re
@@ -231,6 +233,30 @@ class Validate(unittest.TestCase):
         self.assertEqual(bgm.read_meta(self.draft), meta)
         self.assertEqual(sorted(p.name for p in self.draft.iterdir()), ["bgm.json", "bgm.mp3"])
 
+    def test_install_refuses_source_changed_after_validate(self):
+        # WR-04: 검사한 뒤 원본이 바뀌면 복사본을 지우고 거부한다 (bgm.json 없음)
+        outside = tempfile.TemporaryDirectory()      # 저장소(임시 루트) 밖
+        self.addCleanup(outside.cleanup)
+        own = Path(outside.name) / "own.mp3"
+        shutil.copy(Audio.s8, own)
+        src = bgm.validate(own, MEMO, self.draft)
+        self.assertEqual(src.sha256, bundle.sha256_file(own))
+        shutil.copy(Audio.s35, own)
+        with self.assertRaises(BgmError) as cm:
+            bgm.install(src, self.draft)
+        self.assertIn("바뀜", str(cm.exception))
+        self.assertEqual(list(self.draft.iterdir()), [])
+
+    def test_install_reprobes_the_copy(self):
+        # 지문을 비교할 수 없는 경우에도 복사본이 오디오 검사를 다시 통과해야 한다. 길이는 복사본에서 잰다
+        fake = bgm.BgmSource(path=Audio.fake, name="fake.mp3", ext=".mp3", license=MEMO, duration_s=99.0)
+        with self.assertRaises(BgmError):
+            bgm.install(fake, self.draft)
+        self.assertEqual(list(self.draft.iterdir()), [])
+        src = bgm.validate(Audio.s8, MEMO, self.draft)
+        meta = bgm.install(bgm.BgmSource(**{**src.__dict__, "duration_s": 99.0}), self.draft)
+        self.assertAlmostEqual(meta["duration_s"], 8.0, delta=0.2)
+
     def test_read_meta_refusals(self):
         self.assertIsNone(bgm.read_meta(self.draft))
         (self.draft / "bgm.json").write_text("{}", encoding="utf-8")
@@ -406,6 +432,35 @@ class Refusal(unittest.TestCase):
 
     def test_bad_file(self):
         self.assert_refused("--bgm", str(Audio.fake), "--bgm-license", "자체 제작")
+
+
+class InstallFailure(unittest.TestCase):
+    """install 이 BgmError 를 내면 bundle 은 음원 오류(종료 코드 1)로 멈추고 영상을 만들지 않는다 (WR-04). Chromium 을 띄우지 않음."""
+
+    def test_changed_source_stops_bundle_with_exit_1(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        reels = Path(tmp.name) / "reels"
+        (reels / "specs").mkdir(parents=True)
+        r = run_text(DRAFT + ["slot", "--reels-dir", str(reels), "--date", DATE, "--slug", SLUG, "--create"])
+        self.assertEqual(r.returncode, 0, r.stderr)
+        d = reels / "drafts" / NAME
+        shutil.copy(FIX / "draft-pension.src.json", d / "spec.src.json")
+        shutil.copy(FIX / "draft-pension.caption.src.json", d / "caption.src.json")
+
+        def changed(src, draft_dir):
+            raise BgmError("음원이 검사한 뒤에 바뀜 (시험)")
+
+        with mock.patch.object(bgm, "install", changed), \
+                mock.patch.object(bundle, "render_reel", side_effect=AssertionError("렌더하면 안 됨")):
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()) as err:
+                code = bundle.run_cli(str(d), bgm=str(Audio.s8), bgm_license=MEMO)
+        self.assertIn("음원 오류", err.getvalue())
+        self.assertEqual(code, 1)
+        b = json.loads((d / "bundle.json").read_text(encoding="utf-8"))
+        self.assertEqual((b["status"], b["failed_step"]), ("failed", "bgm"))
+        self.assertIn("음원 오류", (d / "review.md").read_text(encoding="utf-8"))
+        self.assertFalse((d / f"{NAME}.mp4").exists())
 
 
 class Rebuild(unittest.TestCase):
