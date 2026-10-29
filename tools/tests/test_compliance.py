@@ -407,6 +407,27 @@ class Loader(unittest.TestCase):
         self.expect_error(lambda d: d["rules"].append(self.rule(pattern="(?:쿠폰)?")), "U-01")
         self.expect_error(lambda d: d["rules"].append(self.rule(pattern="(a+)+b")), "U-01")
 
+    def test_redos_shapes_rejected(self):
+        # WR-05: 문자열 모양이 아니라 구문 나무로 중첩 반복·반복 속 갈래를 찾는다
+        for pat in ("(?:가+나?)+다", "(?:가{1,})+다", "(가|가)+다", "(?:가{1,5})+다"):
+            with self.subTest(pattern=pat):
+                self.expect_error(lambda d, pat=pat: d["rules"].append(
+                    self.rule(pattern=pat, examples={"hit": ["가다"], "miss": ["나"]})), "U-01")
+
+    def test_slow_pattern_rejected_by_time_budget(self):
+        old = compliance.REDOS_BUDGET_S
+        compliance.REDOS_BUDGET_S = 0.0
+        try:
+            self.expect_error(lambda d: None, "너무 느려")
+        finally:
+            compliance.REDOS_BUDGET_S = old
+
+    def test_pattern_rule_needs_hit_and_miss_examples(self):
+        for ex in (None, {"hit": ["쿠폰 묶음"]}, {"hit": ["쿠폰 묶음"], "miss": []}, {"miss": ["쿠폰"]}):
+            with self.subTest(examples=ex):
+                kw = {} if ex is None else {"examples": ex}
+                self.expect_error(lambda d, kw=kw: d["rules"].append(self.rule(**kw)), "U-01")
+
     def test_forbidden_strings(self):
         self.expect_error(lambda d: d["rules"].append(self.rule(reason="제 17 조에 따라")), "U-01")
         self.expect_error(lambda d: d["rules"].append(self.rule(suggest="점검 통과")), "U-01")
@@ -445,7 +466,8 @@ class DataDriven(unittest.TestCase):
             before = compliance.run(spec, None, compliance.load_rules(p)).findings
             self.assertNotIn("U-01", ids(before))
             data["rules"].append({"id": "U-01", "category": "상품 권유", "severity": "수정 필요",
-                                  "pattern": "쿠폰 묶음", "reason": "시험 규칙", "suggest": "시험"})
+                                  "pattern": "쿠폰 묶음", "reason": "시험 규칙", "suggest": "시험",
+                                  "examples": {"hit": ["쿠폰 묶음"], "miss": ["쿠폰 한 장"]}})
             p.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
             after = compliance.run(spec, None, compliance.load_rules(p)).findings
             hit = [f for f in after if "U-01" in f["rule"]]

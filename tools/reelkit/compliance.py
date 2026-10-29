@@ -22,6 +22,9 @@
 import hashlib
 import json
 import re
+import re._constants as _sre_c   # 정규식 구조 검사용 (표준 라이브러리, WR-05)
+import re._parser as _sre_parse
+import time
 import unicodedata
 from bisect import bisect_right
 from dataclasses import dataclass, field
@@ -49,7 +52,9 @@ _ZERO_WIDTH = dict.fromkeys(map(ord, _ZERO_WIDTH_CHARS))
 _MARKUP_RE = re.compile(r"</?[gs]>")
 _HASHTAG_TOKEN_RE = re.compile(r"^#\S+$")
 _STATUTE_RE = re.compile(r"제\s*\d+\s*조")
-_NESTED_QUANTIFIER_RE = re.compile(r"(?<!\\)[+*]\)[+*{]")
+_REPEATS = (_sre_c.MAX_REPEAT, _sre_c.MIN_REPEAT, _sre_c.POSSESSIVE_REPEAT)
+REDOS_BUDGET_S = 0.1          # 규칙 하나가 긴 시험 글 하나를 훑는 데 쓸 수 있는 시간 (WR-05)
+_REDOS_PROBES = ("가", " ", "가 ", "a", "0", "가\n", "원금 ")
 # 부정 창: 장면의 줄 하나를 넘지 않는다 (줄바꿈 하나에서도 끊음, CR-01)
 _CUT_RE = re.compile(r"[.!?;,]|\n|하지만|지만|그러나|다만|그런데")
 # except 창: 문장 안(줄바꿈 하나로 이어 쓴 줄 포함)을 본다
@@ -194,11 +199,56 @@ def _compile(text, macros, rid, label):
         rx = re.compile(source)
     except re.error as e:
         raise RuleError(f"규칙 {rid}: {label} 정규식 오류 ({e})") from None
-    if _NESTED_QUANTIFIER_RE.search(source):
-        raise RuleError(f"규칙 {rid}: {label} 에 중첩된 무한 반복이 있어 거부함 (처리가 끝나지 않을 수 있음)")
+    if _risky_repeat(_sre_parse.parse(source)):
+        raise RuleError(f"규칙 {rid}: {label} 에 중첩된 반복(또는 반복 속 갈래)이 있어 거부함 (처리가 끝나지 않을 수 있음)")
     if rx.search(""):
         raise RuleError(f"규칙 {rid}: {label} 이(가) 빈 글에도 맞아 거부함")
+    for unit in _REDOS_PROBES:
+        for n in (64, 256):
+            probe = unit * (n // len(unit)) + "!"
+            t0 = time.perf_counter()
+            rx.search(probe)
+            if time.perf_counter() - t0 > REDOS_BUDGET_S:
+                raise RuleError(f"규칙 {rid}: {label} 이(가) 긴 글에서 너무 느려 거부함 (처리가 끝나지 않을 수 있음)")
     return rx
+
+
+def _children(av):
+    """정규식 구문 나무 한 마디의 인자에서 아래 SubPattern 들을 꺼낸다."""
+    if isinstance(av, _sre_parse.SubPattern):
+        yield av
+    elif isinstance(av, (tuple, list)):
+        for x in av:
+            yield from _children(x)
+
+
+def _contains(sub, pred):
+    for op, av in sub:
+        if pred(op, av):
+            return True
+        if any(_contains(child, pred) for child in _children(av)):
+            return True
+    return False
+
+
+def _risky_repeat(sub):
+    """역추적이 폭발할 수 있는 모양: 반복(최대 2 이상) 안에 또 반복(최대 2 이상)이 있고 둘 중 하나가 끝이 없거나,
+    끝없는 반복 안에 갈래(|)가 있음 (WR-05: '(?:가+나?)+다', '(?:가{1,})+다', '(가|가)+다')."""
+    for op, av in sub:
+        if op in _REPEATS:
+            lo, hi, body = av
+            if hi > 1:
+                unbounded = hi == _sre_c.MAXREPEAT
+
+                def inner(op2, av2, outer_unbounded=unbounded):
+                    if op2 in _REPEATS and av2[1] > 1:
+                        return outer_unbounded or av2[1] == _sre_c.MAXREPEAT
+                    return outer_unbounded and op2 == _sre_c.BRANCH
+                if _contains(body, inner):
+                    return True
+        if any(_risky_repeat(child) for child in _children(av)):
+            return True
+    return False
 
 
 def _check_strings(value, rid):
@@ -322,6 +372,8 @@ def _load_rule(item, macros):
     if not isinstance(examples, dict) or set(examples) - {"hit", "miss"} or not all(
             isinstance(v, list) and all(isinstance(x, str) for x in v) for v in examples.values()):
         raise RuleError(f"규칙 {rid}: examples 는 {{hit: [글...], miss: [글...]}} 형식이어야 함")
+    if rtype == "pattern" and not (examples.get("hit") and examples.get("miss")):
+        raise RuleError(f"규칙 {rid}: pattern 규칙은 examples 의 hit 과 miss 를 하나 이상씩 적어야 함")
     rule = Rule(id=rid, category=item["category"], severity=item["severity"], type=rtype, negatable=negatable,
                 reason=item["reason"], suggest=item["suggest"], scope=scope, applies_to=tuple(applies),
                 examples=examples)
