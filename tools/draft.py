@@ -6,6 +6,7 @@
       python3 tools/draft.py slot [--date YYYY-MM-DD] [--slug 영문-슬러그] [--reels-dir DIR] [--create]
       python3 tools/draft.py bundle DIR [--card CARD] [--request-start EPOCH] [--rules PATH] [--registry PATH] [--config PATH]
       python3 tools/draft.py compliance SPEC [--caption TXT] [--check JSON] [--rules PATH] [--out JSON]
+      python3 tools/draft.py redteam [--rules PATH] [--corpus PATH] [--heldout PATH] [--json]
       python3 tools/draft.py figures {list [--grep 글자] | show ID | add ... | confirm ID --by 이름 [--date YYYY-MM-DD]}
   expand  자리표시자 `{{이름|서식}}` 가 든 원고 소스(SRC)를 등록부·계산 모듈로 채워 v1 호환 원고(OUT)로 쓴다.
           OUT 에는 숫자마다 출처를 적은 `figures` 장부와 쓰인 등록부 항목 `basis_items` 가 함께 들어간다.
@@ -42,6 +43,10 @@
           발견마다 위치·문제 표현·사유·대체 표현 제안을 보이고 원고·게시글 파일은 고치지 않는다 (제안만). 발견이 있어도 종료 0.
           --check 는 draft.py check 의 check.json 으로, 확인 필요·가정·경고를 그대로 옮겨 싣는다. --out 은 compliance.json 을 쓴다.
           종료 코드: 0 정상, 1 규칙 파일·입력 오류(규칙 id 를 밝힘), 2 --out 쓰기 실패.
+  redteam 점검 규칙의 탐지율·오탐 보고서를 한국어로 낸다 (COMP-04): 기존 10편(골든 기준표의 재현 가능 항목), 가상 문장 표본
+          (tools/tests/redteam/corpus.json, 표본 내), 규칙을 보지 않고 먼저 써 둔 따로 쓴 문장(heldout.json, 규칙 조정에 쓰지 않음).
+          표본 내 수치는 실제보다 높게 나오므로 따로 쓴 문장 줄을 함께 본다. 키워드·패턴 방식이라 암시적 표현은 잡지 못한다.
+          --json 은 같은 숫자를 JSON 객체 하나로 낸다. 종료 코드: 0 보고서 출력, 1 말뭉치·규칙 파일 오류.
   figures 수치 등록부(tools/data/figures.json) 조회·추가·확인.
           add      새 수치를 추가한다. 확인 상태는 항상 `미확인` 이고 지정하는 옵션이 없다 (D-02).
           confirm  사람 확인자 전용이다 (D-02). 1차 출처(law.go.kr 등)를 직접 열어 값을 맞춰 본 사람이 확인자 이름으로
@@ -96,6 +101,12 @@ def build_parser():
     p.add_argument("--check", help="draft.py check 가 쓴 check.json 경로 (확인 필요·가정·경고를 옮김)")
     p.add_argument("--rules", help="규칙 파일 (기본 tools/data/compliance_rules.json)")
     p.add_argument("--out", help="compliance.json 을 쓸 경로")
+
+    p = sub.add_parser("redteam", help="점검 규칙의 탐지율·오탐 보고서 (기존 10편, 표본, 따로 쓴 문장)")
+    p.add_argument("--rules", help="규칙 파일 (기본 tools/data/compliance_rules.json)")
+    p.add_argument("--corpus", help="표본 말뭉치 (기본 tools/tests/redteam/corpus.json)")
+    p.add_argument("--heldout", help="따로 쓴 문장 (기본 tools/tests/redteam/heldout.json, 규칙 조정에 쓰지 않음)")
+    p.add_argument("--json", action="store_true", help="같은 숫자를 JSON 객체 하나로 낸다")
 
     p = sub.add_parser("bundle", help="초안 폴더를 검수 묶음(MP4·표지·점검표·검수 요약)으로 만든다")
     p.add_argument("dir", help="초안 폴더 경로 (2026/reels/drafts/<게시일>-<슬러그>)")
@@ -351,6 +362,23 @@ def cmd_compliance(args):
     return 0
 
 
+def cmd_redteam(args):
+    from reelkit import compliance, redteam   # 보고서를 내는 명령에서만 읽는다
+    try:
+        rules = compliance.load_rules(args.rules or compliance.RULES_PATH)
+        corpus = redteam.load_corpus(args.corpus or redteam.CORPUS_PATH)
+        heldout = redteam.load_corpus(args.heldout or redteam.HELDOUT_PATH)
+        lines, data = redteam.report(rules, corpus, heldout)
+    except (compliance.RuleError, redteam.CorpusError) as e:
+        print(f"초안 오류: {e}", file=sys.stderr)
+        return 1
+    if args.json:
+        print(json.dumps(data, ensure_ascii=False, indent=1))
+    else:
+        print("\n".join(lines))
+    return 0
+
+
 def cmd_bundle(args):
     from reelkit import bundle   # 렌더러를 쓰는 명령에서만 읽는다 (다른 명령은 Playwright 를 읽지 않음)
     return bundle.run_cli(args.dir, card=args.card, request_start=args.request_start, rules=args.rules,
@@ -472,6 +500,8 @@ def main(argv=None):
         return cmd_bundle(args)
     if args.command == "compliance":
         return cmd_compliance(args)
+    if args.command == "redteam":
+        return cmd_redteam(args)
     if args.command == "slot":
         return cmd_slot(args)
     return cmd_expand(args)
