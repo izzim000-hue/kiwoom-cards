@@ -5,7 +5,6 @@
 결과는 t 만의 함수다 (실시간 녹화가 아님). 표준 라이브러리만 쓴다.
 """
 import html
-import re
 from dataclasses import dataclass
 from decimal import ROUND_DOWN, Decimal, InvalidOperation
 
@@ -26,8 +25,8 @@ DWELL_MAX = 6.0     # 그래서 같은 기준이라도 마지막이 아닌 장�
 EASE = "cubic-bezier(.2,.7,.2,1)"
 FPS = constants.FPS
 
-TAG_RE = re.compile(r"</?[gs]>")  # check.py 의 TAG_RE 와 같은 식 (check 가 motion 을 가져오므로 거꾸로 가져오지 않는다)
-LINE_WHERE_RE = re.compile(r"^scene (\d+) line (\d+)$")
+TAG_RE = constants.TAG_RE
+LINE_WHERE_RE = constants.LINE_WHERE_RE
 
 
 def resolve(spec, override=None):

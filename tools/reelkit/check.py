@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from datetime import date
 
 from . import figures as figreg
-from . import convert, expand, motion, numscan, timeline
+from . import constants, convert, expand, motion, numscan, timeline
 from .spec import ALLOWED_TAGS, SpecError
 
 # 하우스 패턴 수치 (research "하우스 패턴 수치": 게시된 10편 실측 — 7장면, 21.8~26.05초, 줄 20~22자, top 최대 21자, 장면당 2~4줄).
@@ -30,7 +30,7 @@ LINES_MIN, LINES_MAX = 2, 5
 
 PROPOSAL_MARK_RE = re.compile(r"발의|개정안|정부안|시행 전")
 APPROX_BEFORE_RE = re.compile(r"약\s*(?:<g>\s*)?$")
-TAG_RE = re.compile(r"</?[gs]>")
+TAG_RE = constants.TAG_RE
 BAD_TAG_RE = re.compile(r"</?[A-Za-z][^<>\s]{0,19}>?|<")
 CAUTION_WORDS = ("단,", "주의", "알아둘")
 

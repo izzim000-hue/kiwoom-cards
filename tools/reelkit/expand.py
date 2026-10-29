@@ -16,7 +16,7 @@ import tempfile
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
-from . import calc, figures
+from . import calc, constants, figures
 from .motion import MODES as MOTION_MODES
 
 ALLOWED_KEYS = ("basis", "inputs", "derive", "series", "scenes", "motion")
@@ -25,7 +25,7 @@ SERIES_KEYS = ("name", "episode", "next")
 CIRCLED = "①②③④⑤⑥⑦⑧⑨⑩"
 NEXT_PREFIX = "<s>다음 편:"
 PLACEHOLDER = re.compile(r"\{\{\s*([A-Za-z0-9_.]+)\s*\|\s*([a-z0-9_]+)\s*(?:\|\s*(up)\s*)?\}\}")
-LINE_WHERE_RE = re.compile(r"scene \d+ line \d+$")
+LINE_WHERE_RE = constants.LINE_WHERE_RE
 NAME_RE = re.compile(r"^[a-z0-9_]+$")
 LABEL_MARKS = ("예시", "가정", "가상")
 LABEL_MARK_RE = re.compile("|".join(LABEL_MARKS))
