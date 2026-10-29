@@ -286,8 +286,8 @@ python3 tools/golden.py [--only STEM] [--jobs N]
 python3 -m unittest discover -s tools/tests -v
 ```
 
-전체 시험 679개 (게시된 릴스를 다시 그리고 모션·배경음 릴스를 여러 번 렌더하므로 이 환경에서 측정한 시간이 약 13분 — 793초). 일부만: `python3 -m unittest discover -s tools/tests -p 'test_doctor.py' -v`.
-모션은 `test_motion.py` (60개, 약 6분), 배경음은 `test_bgm.py` (32개, 약 1.5분), 승인에 든 오디오는 `test_approve.py` 의 `ApproveBgm`.
+전체 시험 748개 (게시된 릴스를 다시 그리고 모션·배경음·노트 릴스를 여러 번 렌더하므로 이 환경에서 측정한 시간이 약 18분 — 1086초). 일부만: `python3 -m unittest discover -s tools/tests -p 'test_doctor.py' -v`.
+모션은 `test_motion.py` (60개, 약 6분), 노트 형식은 `test_note.py` (번들 end-to-end 약 75초 포함), 배경음은 `test_bgm.py` (32개, 약 1.5분), 승인에 든 오디오는 `test_approve.py` 의 `ApproveBgm`.
 
 ## 폰트와 고정 버전
 
