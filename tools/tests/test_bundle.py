@@ -372,6 +372,14 @@ class Timing(unittest.TestCase):
         self.assertEqual(bundle.PURGE_FIXED[0], "approval.json")
 
 
+class UploadSpecLine(unittest.TestCase):
+    def test_warn_is_named_not_silently_unmet(self):
+        # IN-05: PASS 만 충족으로 세므로 모자란 수를 실패·경고로 밝힌다
+        self.assertEqual(review.upload_spec_line(6, 7, 0, 1), "- 업로드 규격 검사: 6/7 항목 충족 (경고 1)")
+        self.assertEqual(review.upload_spec_line(5, 7, 1, 1), "- 업로드 규격 검사: 5/7 항목 충족 (실패 1, 경고 1)")
+        self.assertEqual(review.upload_spec_line(7, 7, 0, 0), "- 업로드 규격 검사: 7/7 항목 충족")
+
+
 class ExitCode(unittest.TestCase):
     def test_final_code(self):
         ok, bad = [SimpleNamespace(status="PASS")], [SimpleNamespace(status="PASS"), SimpleNamespace(status="FAIL")]

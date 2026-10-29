@@ -60,6 +60,12 @@ def _strip_tags(text):
     return TAG_RE.sub("", str(text))
 
 
+def upload_spec_line(ok, total, fail, warn):
+    """업로드 규격 줄. 충족은 PASS 만 세므로 모자란 수를 실패·경고로 나눠 밝힌다 (IN-05: 경고를 말없이 미충족으로 두지 않음)."""
+    notes = [f"실패 {fail}"] * bool(fail) + [f"경고 {warn}"] * bool(warn)
+    return f"- 업로드 규격 검사: {ok}/{total} 항목 충족" + (f" ({', '.join(notes)})" if notes else "")
+
+
 def _crop_lines(cover_warnings):
     if not cover_warnings:
         return ["- 표지 크롭 검사: 그리드 크롭(가운데 1080×1440) 밖 글자 없음 — 최종 크롭은 인스타 그리드 미리보기에서 사람이 확인"]
@@ -189,8 +195,7 @@ def write_review(draft_dir, ctx):
             f"- 표지: ![표지]({ctx['cover_name']})",
             f"- 장면 모음: ![장면 모음]({ctx['scenes_name']})",
             *_crop_lines(ctx["cover_warnings"]),
-            f"- 업로드 규격 검사: {ctx['spec_ok']}/{ctx['spec_total']} 항목 충족"
-            + (f" (실패 {ctx['spec_fail']})" if ctx["spec_fail"] else ""),
+            upload_spec_line(ctx["spec_ok"], ctx["spec_total"], ctx["spec_fail"], ctx.get("spec_warn", 0)),
             "- " + (f"레이아웃 경고 {len(ctx['layout_warnings'])}건" if ctx["layout_warnings"] else "레이아웃 경고 없음")]
     out += [f"  - {_cell(w)}" for w in ctx["layout_warnings"]]
     out.append("")
