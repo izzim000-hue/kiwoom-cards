@@ -28,8 +28,8 @@ HEAD_SCRIPT = "원고 오류 — 영상 미생성"
 HEAD_RENDER = "렌더 환경 오류"
 HEAD_ENV = "환경 오류 — 영상 미생성"
 # 묶음을 다시 만들 때 맨 처음 지우는 산출물 (D-11). 사람이 쓴 spec.src.json, caption.src.json, skeleton.json,
-# record.json, created.json 과 그 밖의 파일은 건드리지 않는다.
-PURGE_FIXED = ("spec.json", "check.json", "caption.txt", "compliance.json", "review.md", "bundle.json", "approval.json")
+# record.json, created.json 과 그 밖의 파일은 건드리지 않는다. approval.json 이 맨 앞이다 (IN-02: 승인 무효가 먼저).
+PURGE_FIXED = ("approval.json", "spec.json", "check.json", "caption.txt", "compliance.json", "review.md", "bundle.json")
 # 묶음이 읽고 만든 파일 (draft_paths 의 키). 완료된 묶음은 bundle.json 의 outputs 에 sha256 을 남기고, approve 는
 # 지금 파일이 그대로인지 대조한다 (WR-02: 묶음 뒤 손으로 고친 caption.txt·spec.json·review.md 를 승인하지 않음).
 OUTPUT_KEYS = ("spec_src", "caption_src", "spec", "check", "caption", "compliance", "mp4", "cover", "scenes", "review")
@@ -195,6 +195,14 @@ def run_cli(draft_dir, *, card=None, request_start=None, rules=None, registry=No
     except BundleError as e:
         print(f"초안 오류: {e}", file=sys.stderr)
         return 1
+    # 어떤 bundle 실행이든(인자 오류로 곧 멈추더라도) 시작하자마자 이전 승인을 무효로 한다 (IN-02)
+    approval = draft_paths(d)["approval"]
+    try:
+        if approval.is_file() or approval.is_symlink():
+            approval.unlink()
+    except OSError as e:
+        print(f"환경 오류: 이전 승인 기록(approval.json)을 지울 수 없음: {e}", file=sys.stderr)
+        return 2
     try:
         request = resolve_request(d, request_start)
     except BundleError as e:

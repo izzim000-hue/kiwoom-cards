@@ -361,6 +361,16 @@ class Timing(unittest.TestCase):
                 self.assertIn("초안 오류", r.stderr)
             self.assertFalse((d / "bundle.json").exists())
 
+    def test_any_bundle_run_invalidates_approval_first(self):
+        # IN-02: 인자 오류로 바로 멈추는 실행도 승인 기록부터 지운다
+        with tempfile.TemporaryDirectory() as t:
+            d = self.folder(t)
+            (d / "approval.json").write_text("{}", encoding="utf-8")
+            r = run(DRAFT + ["bundle", str(d), "--request-start", "abc"])
+            self.assertEqual(r.returncode, 1, r.stderr)
+            self.assertFalse((d / "approval.json").exists())
+        self.assertEqual(bundle.PURGE_FIXED[0], "approval.json")
+
 
 class ExitCode(unittest.TestCase):
     def test_final_code(self):
