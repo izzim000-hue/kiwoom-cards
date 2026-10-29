@@ -48,6 +48,7 @@
  {"id": "B47", "label": "bad", "category": "세무 단정", "tier": "explicit", "lines": ["이 계좌로 옮기면", "세금은 하나도 안 냅니다"]},
  {"id": "B48", "label": "bad", "category": "세무 단정", "tier": "obfuscated", "lines": ["절 세 보 장 계좌"]},
  {"id": "B49", "label": "bad", "category": "단정·보장", "tier": "explicit", "lines": ["이 상품은 손해 날 일은 없어요"]},
+ {"id": "B50", "label": "bad", "category": "단정·보장", "tier": "explicit", "lines": ["매달 넣으면", "반드시 목돈이 쌓입니다"]},
  {"id": "G01", "label": "good", "lines": ["원금 보장 아님", "원금 손실 가능"], "basis": "예시"},
  {"id": "G02", "label": "good", "lines": ["수익을 보장하지 않습니다"]},
  {"id": "G03", "label": "good", "lines": ["원금이 보장되지 않는", "상품도 있어요"]},

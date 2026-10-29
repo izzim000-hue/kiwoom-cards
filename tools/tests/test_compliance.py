@@ -236,6 +236,21 @@ class TaxAndLossClaims(unittest.TestCase):
                 compliance.load_rules(p)
 
 
+class BandeusiResult(unittest.TestCase):
+    """WR-07: '반드시' 와 결과 동사 사이에 말이 끼어도 수정 필요, 권고(확인·~세요·~해야)는 아님."""
+
+    def test_object_between_adverb_and_result(self):
+        for line in ("반드시 1억 원이 모입니다", "반드시 목돈이 쌓입니다", "반드시 수익이 납니다"):
+            with self.subTest(line=line):
+                found, _ = scan_reel(mk([line]))
+                self.assertIn("G-04", ids(found))
+
+    def test_advice_stays_out(self):
+        for line in ("반드시 확인 받으세요", "반드시 영수증을 받아야 해요", "반드시 세무사에게 확인해 보세요"):
+            with self.subTest(line=line):
+                self.assertNotIn("G-04", ids(scan_reel(mk([line]))[0]))
+
+
 class CompactAndDedupe(unittest.TestCase):
     def test_spaced_term(self):
         found, _ = scan_reel(mk(["이건 원 금 보 장 상품"]))
