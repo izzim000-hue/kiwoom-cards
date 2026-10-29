@@ -13,7 +13,7 @@
 ## 릴스 만들기: `reel.py`
 
 ```
-python3 tools/reel.py SPEC OUT [--layout legacy|new] [--strict] [--overlay-all]
+python3 tools/reel.py SPEC OUT [--layout legacy|new] [--motion none|basic] [--strict] [--overlay-all] [--bgm 음원 --bgm-license 메모]
 ```
 
 - `SPEC`: 원고 JSON (`2026/reels/specs/` 의 게시된 10편이 예시). `OUT`: 출력 MP4 경로.
@@ -63,7 +63,7 @@ python3 tools/reel.py 폴더/spec.json 폴더/<게시일>-<슬러그>.mp4 --layo
 ## 검수 묶음: `draft.py bundle`
 
 ```
-python3 tools/draft.py bundle 폴더 [--card 카드 spec.json] [--request-start EPOCH] [--rules PATH] [--registry PATH] [--config PATH]
+python3 tools/draft.py bundle 폴더 [--card 카드 spec.json] [--request-start EPOCH] [--rules PATH] [--registry PATH] [--config PATH] [--bgm 음원 --bgm-license 메모]
 ```
 
 `폴더` 는 `2026/reels/drafts/<게시일>-<슬러그>/` 이고 안에 `spec.src.json` 과 `caption.src.json` 이 있어야 한다. 명령 한 번이 아래 순서로 전부 만든다.
@@ -133,6 +133,44 @@ python3 tools/draft.py promote 폴더
   `promote` 는 승인 기록의 승인자(사람 이름)·시각 꼴, 규칙 버전·sha256, 건수가 지금 규칙으로 다시 센 값과 맞는지 보지만, 지문을 계산할 수 있는 프로세스가 맞춰 쓴 기록까지 가려내지는 못한다.
   이를 막는 권한 거부 규칙은 사용자가 정할 일로 남겨 두었고 설정하지 않았다. 위조된 기록으로 `promote` 해도 파일이 `git status` 에 보일 뿐 커밋·게시는 일어나지 않으므로 사람이 `git diff` 와 `review.md` 로 확인한다.
 
+## 자막 모션과 배경음
+
+### 모션: `"motion": "none" | "basic"`
+
+- 원고 소스(`spec.src.json`)의 `"motion"` 필드로 정한다. 없으면 `none` 이고 기존 10편과 같은 정지 화면 형식 그대로다 (`none` 은 바뀌지 않았고 기준선 시험이 지킨다).
+  `bundle` 에는 모션 옵션이 없다. 단독 렌더(`reel.py`)에서만 `--motion none|basic` 으로 덮어쓸 수 있다. `basic` 은 `--layout new` 에서만 쓸 수 있다 (legacy 와 함께 쓰면 종료 코드 1).
+- `basic`: 줄이 0.3초 동안 페이드하며 24px 떠오른다 (줄 사이 0.12초). 장면 사이는 0.3초 크로스페이드다. 표지와 장면 모음 이미지는 각 장면의 마지막 프레임이다.
+  전환 0.3초 동안 앞뒤 장면의 근거 문구와 계정명이 겹쳐 보일 수 있다 (사람이 영상을 보고 판단).
+- 카운트업: 장면 줄의 자리표시자 끝에 `|up` 을 붙인다 (`{{c_low|man1|up}}`). 줄에 처음 나타날 때 0 에서 0.8초 동안 올라가 마지막 프레임은 원고 숫자와 같다.
+  중간 숫자는 연출이고 장부 값은 최종값뿐이다 (`review.md` 에 이 안내와 확인 항목이 붙는다). 시작값은 0 으로 고정이며 바꿀 수 있게 하는 것은 나중 선택지다.
+  `top`·`basis` 에는 쓸 수 없다. 숫자가 줄바꿈을 바꾸면 `COUNTUP_WRAP` 경고.
+- 장면 체류 시간 = 줄이 다 나타나는 시간 + 0.6초 + 글자 수 / 16 (+ 전환 0.3초). 1.5초보다 짧으면 `DWELL_SHORT`, 6.0초보다 길면 `DWELL_LONG` 경고다.
+  `DWELL_SHORT`, `DWELL_LONG`, `COUNTUP_WRAP` 은 `bundle` 에서 종료 코드 3 (레이아웃 경고와 같음, 사람이 `review.md` 로 판단하고 승인 가능)이다.
+  상수는 `tools/reelkit/motion.py` 한 곳에만 있다. 계수는 게시된 10편의 길이에 맞춰 잡은 값이며 사람이 영상을 본 확인은 아직 남아 있다.
+- 렌더 시간: 프레임마다 시각을 맞춰 찍고 ffmpeg 에 흘려 보내므로 26.3초 `basic` 릴스(카운트업 2곳)의 묶음 전체가 이 환경에서 79.6초 걸렸다 (측정값, 10분 목표 안).
+
+### 배경음: `--bgm`, `--bgm-license`
+
+```
+python3 tools/draft.py bundle 폴더 --bgm 음원파일 --bgm-license "이용 권리 메모"
+python3 tools/reel.py SPEC OUT --layout new --bgm 음원파일 --bgm-license "이용 권리 메모"
+```
+
+- 기본은 무음이다. 음원 파일과 라이선스 메모를 **둘 다** 줘야 한다. 하나만 주거나 메모가 비어 있으면(공백만 포함) 아무것도 지우거나 렌더하기 전에 `음원 오류` 로 거부한다 (종료 코드 1).
+  메모는 500자까지 자유 글이다. 라이선스 증빙을 어떤 형식으로 받을지는 소유자 결정이 남아 있어 형식을 정하지 않았다.
+- 음원 규칙: 일반 파일(심볼릭 링크 거부), 확장자 `.mp3 .m4a .wav .aac .ogg .opus .flac`, 오디오 스트림이 있고(앨범 그림은 허용, 영상이 든 파일은 거부) 3초 이상.
+  저장소 안의 파일은 그 초안 폴더 안에서 `bgm.*` 가 아닌 이름일 때만 받는다 (커밋 방지). 저장소 밖 파일은 어디든 된다.
+- 이 도구는 음악을 찾거나 내려받거나 고르지 않는다. 입력은 사용자가 준 경로 하나뿐이다.
+- 믹스: 영상 길이에 맞춰 반복하거나 자르고, 시작과 끝 1초 페이드, 약 -16 LUFS / 최대 -1.5 dBTP 로 음량을 맞춘다 (ffmpeg 한 번). 업로드 규격 9항목과 AAC 44.1 kHz 스테레오는 그대로다.
+  실제 음악의 음량은 사인파 시험과 1~2 LU 다를 수 있어 귀로 확인한다 (`review.md` 의 음량 확인 항목).
+- `bundle`: 음원을 초안 폴더에 `bgm.<확장자>` 로 복사하고 `bgm.json` (원본 파일 이름, 복사본 이름, sha256, 라이선스 메모, 길이)을 쓴다. 믹스는 복사본에서 한다.
+  `bundle.json` 에 같은 기록(`bgm`)과 두 파일의 지문(`outputs`)이 남고, `review.md` 의 음원 라이선스 줄이 원본 파일 이름·sha256 앞 12자·메모를 그대로 보여 준다 (사람이 이용 권리를 확인).
+  배경음이 없으면 예전 문구(`배경음 없음 = 무음`)가 그대로 나온다.
+- 승인: 배경음이 있는 묶음은 `approve` 와 `promote` 가 오디오를 지문(`approval.json` 의 `files`)에 포함하고, `bundle.json` 의 `bgm` 과 폴더의 `bgm.json`·복사본이 양쪽으로 맞는지 본다.
+  `bundle.json` 에 없는데 폴더에 `bgm.json` 이나 `bgm.*` 가 있어도, 있는데 파일이 없거나 바뀌어도 거부한다. `promote` 는 오디오를 옮기지 않는다 (네 파일만).
+- 다시 묶기: `--bgm` 없이 다시 `bundle` 하면 `bgm.json` 과 `bgm.*` 복사본이 지워져 낡은 음원이 이월되지 않는다. 사용자가 둔 다른 이름의 음원 파일은 지우지 않는다.
+- 커밋 방지: `.gitignore` 가 mp3, m4a, wav, aac, ogg, opus, flac 을 무시하고 `2026/reels/drafts/` 도 무시한다. 시험은 ffmpeg 사인파만 임시 폴더에서 만들어 쓴다.
+
 ## 수치 등록부
 
 `tools/data/figures.json` 은 릴스에 쓰는 세법·요율·통계 수치의 단일 출처다. 항목마다 `label`, `kind`, `value`, `unit`,
@@ -190,7 +228,8 @@ python3 tools/golden.py [--only STEM] [--jobs N]
 python3 -m unittest discover -s tools/tests -v
 ```
 
-전체 시험 (게시된 릴스를 하나씩 다시 그리므로 3~4분). 일부만: `python3 -m unittest discover -s tools/tests -p 'test_doctor.py' -v`.
+전체 시험 679개 (게시된 릴스를 다시 그리고 모션·배경음 릴스를 여러 번 렌더하므로 이 환경에서 측정한 시간이 약 13분 — 793초). 일부만: `python3 -m unittest discover -s tools/tests -p 'test_doctor.py' -v`.
+모션은 `test_motion.py` (60개, 약 6분), 배경음은 `test_bgm.py` (32개, 약 1.5분), 승인에 든 오디오는 `test_approve.py` 의 `ApproveBgm`.
 
 ## 폰트와 고정 버전
 

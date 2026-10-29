@@ -5,7 +5,7 @@
 
 ## spec.src.json
 
-최상위 키는 `series`, `basis`, `inputs`, `derive`, `scenes` 다섯 개뿐이다 (그 밖의 키는 오류). `scenes` 만 필수.
+최상위 키는 `series`, `basis`, `inputs`, `derive`, `scenes`, `motion` 여섯 개뿐이다 (그 밖의 키는 오류). `scenes` 만 필수.
 
 ```json
 {
@@ -96,6 +96,15 @@ derive 결과 단위: `add`/`sub` 는 같은 단위끼리(나이 − 나이 = �
 
 장면 하나는 `{"top": 문자열, "lines": [문자열, ...]}`. `top` 은 비울 수 있다.
 마크업은 `<g>강조(금색)</g>`, `<s>작은 글씨</s>` 만 쓴다.
+
+### motion과 카운트업 (`|up`)
+
+- `"motion": "none"` 또는 `"basic"`. 쓰지 않으면 `none` (기존 10편과 같은 정지 화면 형식)이다. 사용자가 모션을 요청했을 때만 `"motion": "basic"` 을 쓴다.
+  그 밖의 값은 오류다. basic 은 새 배치(`bundle` 은 항상 새 배치)에서만 쓸 수 있다. 모션은 원고 소스에서만 정하며 `bundle` 에는 모션 옵션이 없다.
+- 숫자가 0 에서 올라가며 나타나게 하려면 자리표시자 끝에 `|up` 을 붙인다: `"최대 <g>{{c_low|man1|up}}</g>"` (`c_low` 는 앞서 정의한 derive 결과).
+  **장면 줄(`lines`)의 숫자에만** 쓴다. `top` 이나 `basis` 에 쓰면 확장 오류다. 마지막 화면의 숫자는 장부 값 그대로이고 중간 숫자는 연출이다.
+  `motion` 이 `none` 이면 `|up` 은 화면에 아무 영향이 없다. 한 줄에 들어가는 숫자(`man1`, `pct` 처럼 공백 없는 서식)가 안전하고,
+  줄바꿈이 달라지면 `COUNTUP_WRAP` 경고가 난다.
 
 ## caption.src.json
 
