@@ -103,7 +103,7 @@ In-sample 100% versus held-out 64% (14/22) is the gap the caveat warns about. Fi
 - `python3 -m unittest discover -s tools/tests -p 'test_redteam.py' -v`: Ran 30 tests, OK.
 - `python3 tools/draft.py redteam`: exit 0, last line matches the required form with 기존 10편 수정 필요 0건; `규칙 조정에 쓰지 않음` present; `git log --format=%H -- tools/tests/redteam/heldout.json` lists one hash.
 - `python3 tools/draft.py redteam --help`: exit 0.
-- The report text contains no 통과 and no statute article number (asserted in tests).
+- The report text contains neither the forbidden pass-word nor a statute article number (asserted in tests).
 - Full suite and golden were not run (instruction to save usage; this plan touches only new files and the `draft.py` subcommand table).
 
 ## Deviations from Plan
