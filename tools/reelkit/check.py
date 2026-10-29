@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from datetime import date
 
 from . import figures as figreg
-from . import convert, numscan, timeline
+from . import convert, expand, numscan, timeline
 from .spec import ALLOWED_TAGS
 
 # 하우스 패턴 수치 (research "하우스 패턴 수치": 게시된 10편 실측 — 7장면, 21.8~26.05초, 줄 20~22자, top 최대 21자, 장면당 2~4줄).
@@ -35,6 +35,7 @@ MASK = numscan.MASK
 HINTS = {
     "NOT_EXPANDED": "expand 로 만든 원고가 아님 — python3 tools/draft.py expand 를 먼저 실행",
     "UNREGISTERED": "등록부·inputs·derive 자리표시자가 아닌 숫자 — 필요한 수치면 먼저 사용자에게 물으세요 (D-06)",
+    "UNIT_AFTER": "서식이 단위를 찍는다 — 자리표시자 뒤에 만/원/% 같은 단위를 글자로 쓰지 말고 man_won, pct 같은 서식을 쓰세요",
 }
 
 _WHERE_RE = re.compile(r"scene (\d+) (?:top|line (\d+))$")
@@ -162,6 +163,10 @@ def check_spec(spec, registry, *, publish_date=None):
             for i in range(entry["start"], entry["end"]):
                 masked[i] = MASK
             last_end = entry["end"]
+            unit = expand.unit_after_problem(entry["text"], text[entry["end"]:])
+            if unit:
+                report.errors.append(CheckIssue(
+                    where, scene, "UNIT_AFTER", f"{entry['text']} 뒤에 단위 {unit!r} 를 글자로 붙임 — 단위가 든 서식 필요", text))
             if entry.get("exact") is False and not APPROX_BEFORE_RE.search(text[:entry["start"]]):
                 warn(CheckIssue(where, scene, "APPROX",
                                 f"{entry['text']} — 정확값이 아님, 앞에 '약' 표기 권장", text))

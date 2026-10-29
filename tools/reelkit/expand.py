@@ -29,7 +29,14 @@ SPEC_VERSION = 2
 
 
 class ExpandError(ValueError):
-    """소스가 규칙에 어긋나 확장할 수 없을 때. 메시지는 한국어이며 위치(where)를 밝힌다."""
+    """소스가 규칙에 어긋나 확장할 수 없을 때. 메시지는 한국어이며 위치(where)를 밝힌다.
+
+    `kind` 는 check 가 같은 규칙을 다시 적용할 때 쓰는 분류다 (UNKNOWN_FIG, UNKNOWN_REF, FORMAT, UNIT, CALC, SOURCE).
+    """
+
+    def __init__(self, message, kind="SOURCE"):
+        super().__init__(message)
+        self.kind = kind
 
 
 def _norm(d):
@@ -40,12 +47,12 @@ def _norm(d):
 
 
 class _Values:
-    """이름 -> (정확값 Decimal, 근거 리프 집합). 등록부 조회는 get_figure 를 거친다."""
+    """이름 -> (정확값 Decimal, 근거 리프 집합, 단위). 등록부 조회는 get_figure 를 거친다."""
 
     def __init__(self, registry, inputs):
         self.registry = registry
-        self.inputs = inputs      # name -> Decimal
-        self.derived = {}         # name -> (Decimal, frozenset)
+        self.inputs = inputs      # name -> (Decimal, 단위)
+        self.derived = {}         # name -> (Decimal, frozenset, 단위)
         self.declared = set()     # 선언된 derive 이름 (정의 순서 위반 구분용)
 
     def lookup(self, ref, where):
@@ -55,20 +62,25 @@ class _Values:
                 entry = figures.get_figure(self.registry, fid)  # 없는 id 는 비슷한 id 제안을 담아 던진다
                 value = figures.parse_value(entry["value"], f"{fid}.value")
             except figures.RegistryError as e:
-                raise ExpandError(f"{where}: {e}") from None
-            return value, frozenset({ref})
+                raise ExpandError(f"{where}: {e}", kind="UNKNOWN_FIG") from None
+            return value, frozenset({ref}), entry["unit"]
         if ref.startswith("inputs."):
             name = ref[7:]
             if name not in self.inputs:
-                raise ExpandError(f"{where}: 선언되지 않은 입력 {ref} (선언된 입력: {', '.join(self.inputs) or '없음'})")
-            return self.inputs[name], frozenset({ref})
+                raise ExpandError(f"{where}: 선언되지 않은 입력 {ref} (선언된 입력: {', '.join(self.inputs) or '없음'})",
+                                  kind="UNKNOWN_REF")
+            value, unit = self.inputs[name]
+            return value, frozenset({ref}), unit
         if "." in ref:
-            raise ExpandError(f"{where}: 알 수 없는 참조 {ref} — fig.<id>, inputs.<name>, derive 이름만 쓸 수 있음")
+            raise ExpandError(f"{where}: 알 수 없는 참조 {ref} — fig.<id>, inputs.<name>, derive 이름만 쓸 수 있음",
+                              kind="UNKNOWN_REF")
         if ref in self.derived:
             return self.derived[ref]
         if ref in self.declared:
-            raise ExpandError(f"{where}: derive {ref} 는 아직 정의되기 전에 참조됨 (derive 는 선언 순서대로 계산)")
-        raise ExpandError(f"{where}: 알 수 없는 이름 {ref} (derive 에 선언하거나 fig./inputs. 를 붙여야 함)")
+            raise ExpandError(f"{where}: derive {ref} 는 아직 정의되기 전에 참조됨 (derive 는 선언 순서대로 계산)",
+                              kind="UNKNOWN_REF")
+        raise ExpandError(f"{where}: 알 수 없는 이름 {ref} (derive 에 선언하거나 fig./inputs. 를 붙여야 함)",
+                          kind="UNKNOWN_REF")
 
 
 def _check_inputs(raw):
@@ -94,7 +106,7 @@ def _check_inputs(raw):
         label = item["label"]
         if not isinstance(label, str) or not any(m in label for m in LABEL_MARKS):
             raise ExpandError(f"{where}: label 에 예시/가정/가상 표기가 필요함")
-        values[name] = d
+        values[name] = (d, item["unit"])
     return values
 
 
@@ -119,10 +131,50 @@ def _eval_derive(raw, vals):
         resolved = [vals.lookup(a, where) for a in args]
         leaves = frozenset().union(*(r[1] for r in resolved)) if resolved else frozenset()
         try:
+            unit = calc.result_unit(fn_name, [r[2] for r in resolved])
+        except calc.UnitError as e:
+            raise ExpandError(f"{where}: 단위 오류 — {e}", kind="UNIT") from None
+        try:
             value = func(*[r[0] for r in resolved])
         except (calc.CalcError, ZeroDivisionError, InvalidOperation) as e:
-            raise ExpandError(f"{where}: 계산 오류 — {e}") from None
-        vals.derived[name] = (value, leaves)
+            raise ExpandError(f"{where}: 계산 오류 — {e}", kind="CALC") from None
+        vals.derived[name] = (value, leaves, unit)
+
+
+# 자리표시자 바로 뒤에 글자로 붙인 단위 (CR-03). 서식이 단위를 찍으므로 원고에 단위를 따로 쓰면
+# "{{한도|num}}만 원" -> "9,000,000만 원" 처럼 자릿수가 틀린 숫자가 장부 출처를 단 채 화면에 나간다.
+_LEADING_TAGS = re.compile(r"^(?:</?[gs]>)+")
+_UNIT_AFTER_DIGITS = re.compile(r"^\s?(?:[만억천백십]|원|%|퍼센트|프로|세(?!대)|년|개월|달)")
+_UNIT_AFTER_SUFFIX = re.compile(r"^\s?(?:원|[만억천백]\s?원|(?:만|억)(?![가-힣])|%|퍼센트)")
+
+
+def unit_after_problem(rendered, rest):
+    """서식으로 찍은 글자(rendered) 뒤의 원고 글자(rest)가 단위로 시작하면 그 단위 글자, 아니면 None."""
+    rest = _LEADING_TAGS.sub("", rest)
+    rx = _UNIT_AFTER_DIGITS if rendered[-1:].isdigit() else _UNIT_AFTER_SUFFIX
+    m = rx.match(rest)
+    return m.group(0).strip() if m else None
+
+
+def render_ref(vals, ref, fmt, where):
+    """참조 ref 를 서식 fmt 로 찍는다: (글자, 화면값, 정확값, 근거 리프, 단위). 서식·단위가 안 맞으면 ExpandError.
+
+    expand 와 check 가 같은 함수를 써서, check 가 장부를 믿지 않고 다시 계산할 수 있다 (CR-01).
+    """
+    if not isinstance(fmt, str) or fmt not in calc.FORMATS:
+        raise ExpandError(f"{where}: 알 수 없는 서식 {fmt!r} (사용 가능: {', '.join(calc.FORMATS)})", kind="FORMAT")
+    if not isinstance(ref, str) or not ref:
+        raise ExpandError(f"{where}: 참조 이름이 없음", kind="UNKNOWN_REF")
+    value, leaves, unit = vals.lookup(ref, where)
+    try:
+        calc.check_format_unit(fmt, unit)
+    except calc.UnitError as e:
+        raise ExpandError(f"{where}: {ref} — {e}", kind="UNIT") from None
+    try:
+        rendered, shown = calc.FORMATS[fmt](value)
+    except (calc.CalcError, InvalidOperation) as e:
+        raise ExpandError(f"{where}: 서식 오류 — {e}", kind="CALC") from None
+    return rendered, shown, value, leaves, unit
 
 
 def _expand_field(text, where, scene, vals, ledger):
@@ -132,13 +184,11 @@ def _expand_field(text, where, scene, vals, ledger):
         parts.append(literal)
         cur += len(literal)
         ref, fmt = m.group(1), m.group(2)
-        value, leaves = vals.lookup(ref, where)
-        if fmt not in calc.FORMATS:
-            raise ExpandError(f"{where}: 알 수 없는 서식 {fmt!r} (사용 가능: {', '.join(calc.FORMATS)})")
-        try:
-            rendered, shown = calc.FORMATS[fmt](value)
-        except (calc.CalcError, InvalidOperation) as e:
-            raise ExpandError(f"{where}: 서식 오류 — {e}") from None
+        rendered, shown, value, leaves, _unit = render_ref(vals, ref, fmt, where)
+        bad = unit_after_problem(rendered, text[m.end():])
+        if bad:
+            raise ExpandError(f"{where}: 자리표시자 {{{{{ref}|{fmt}}}}} 뒤에 단위 {bad!r} 를 글자로 쓸 수 없음 "
+                              f"— 단위가 든 서식(man_won, pct, se ...)을 쓰세요", kind="UNIT")
         ledger.append({
             "where": where, "scene": scene, "start": cur, "end": cur + len(rendered), "text": rendered,
             "ref": ref, "fmt": fmt, "value": _norm(value), "exact": shown == value, "sources": sorted(leaves),
