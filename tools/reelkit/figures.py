@@ -179,3 +179,73 @@ def get_figure(registry, fid):
 def figure_value(registry, fid):
     entry = get_figure(registry, fid)
     return parse_value(entry["value"], f"{fid}.value")
+
+
+# ---- 쓰기 (추가·확인·저장) ----------------------------------------------------------------------
+
+# add 가 호출자에게서 받지 못하는 필드: 검증 상태는 add 가 항상 미확인으로 정한다 (D-02)
+FORCED_ON_ADD = ("verified", "checked_on", "checked_by", "found_on")
+ADDABLE = ("label", "kind", "value", "unit", "includes_local", "source", "candidate_sources", "as_of",
+           "valid_until", "legal_status", "notes")
+
+
+def add_figure(data, fid, fields, today):
+    """새 항목을 추가한다 (data 를 직접 바꾸고 항목을 돌려줌). 항상 `미확인`, 확인일·확인자 없음, 발견일 today.
+
+    검증 상태는 인자로 줄 수 없다 — Claude 가 찾은 수치는 사람이 확인하기 전까지 미확인이다 (D-02).
+    """
+    forbidden = [k for k in fields if k in FORCED_ON_ADD]
+    if forbidden:
+        raise RegistryError(f"{fid}: {', '.join(forbidden)} 는 add 에서 지정할 수 없음 (항상 미확인으로 추가)")
+    unknown = [k for k in fields if k not in ADDABLE]
+    if unknown:
+        raise RegistryError(f"{fid}: 알 수 없는 필드 {', '.join(unknown)}")
+    figs = data["figures"]
+    if fid in figs:
+        raise RegistryError(f"{fid}: 이미 등록부에 있는 id — 덮어쓰지 않음 (값 정정은 파일을 직접 고치고 git diff 로 확인)")
+    if not _valid_date(today):
+        raise RegistryError(f"발견일 {today!r}: YYYY-MM-DD 날짜여야 함")
+    entry = {
+        "unit": "", "includes_local": False, "candidate_sources": [], "as_of": None, "valid_until": None, "notes": "",
+        **fields,
+    }
+    entry["source"] = {"url": None, "locator": None, **(fields.get("source") or {})}
+    entry.update(found_on=today, checked_on=None, checked_by=None, verified="미확인")
+    entry = {k: entry[k] for k in ENTRY_KEYS if k in entry}
+    validate_entry(fid, entry)
+    figs[fid] = entry
+    return entry
+
+
+def confirm_figure(data, fid, by, on):
+    """사람 확인자가 값을 1차 출처와 맞춰 본 뒤 `확인` 으로 바꾼다. 빈 이름과 Claude/AI 이름은 거부한다."""
+    entry = get_figure(data, fid)
+    name = (by or "").strip()
+    if not name:
+        raise RegistryError(f"{fid}: 확인자 이름이 필요함")
+    if is_ai_name(name):
+        raise RegistryError(f"{fid}: {name!r} 는 확인자가 될 수 없음 — 사람이 1차 출처를 보고 확인해야 함")
+    if not _valid_date(on):
+        raise RegistryError(f"{fid}: 확인일 {on!r} 는 YYYY-MM-DD 날짜여야 함")
+    new = dict(entry, verified="확인", checked_on=on, checked_by=name)
+    validate_entry(fid, new)
+    data["figures"][fid] = new
+    return new
+
+
+def save_registry(data, path=REGISTRY_PATH):
+    """검증 후 임시 파일에 쓰고 os.replace 로 바꿔 넣는다. 항목 순서는 그대로 보존한다."""
+    validate_registry(data)
+    path = Path(path)
+    fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix=path.name + ".", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+            f.write("\n")
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
