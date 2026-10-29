@@ -336,6 +336,16 @@ class Cli(unittest.TestCase):
         self.assertNotIn("Traceback", r.stderr)
         self.assertFalse(out.exists())
 
+    def test_zero_hashtags_counted_as_zero(self):
+        # WR-06 회귀: 해시태그가 없으면 '다음 편: ...' 줄의 낱말 수(5개)를 세던 문제
+        src = self.tmp / "cap.json"
+        doc = load(CAP)
+        doc["hashtags"] = []
+        src.write_text(json.dumps(doc, ensure_ascii=False), encoding="utf-8")
+        r = self.run_draft("caption", self.expanded(), src, "--out", self.tmp / "c.txt")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("해시태그 0개", r.stdout)
+
     def test_caption_refuses_a_spec_with_check_errors(self):
         spec = self.expanded()
         doc = json.loads(spec.read_text(encoding="utf-8"))

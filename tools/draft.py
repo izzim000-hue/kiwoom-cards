@@ -283,8 +283,8 @@ def cmd_caption(args):
         return 2
     for w in warnings:
         print(f"경고: {w}", file=sys.stderr)
-    tags = text.rstrip("\n").splitlines()[-1].split()
-    print(f"caption: {args.out} 글자 {len(text)}자 · 해시태그 {len(tags)}개")
+    tags = len(config["brand_hashtags"]) + len(src["hashtags"])   # 마지막 줄을 세지 않는다 (해시태그가 없을 수 있음)
+    print(f"caption: {args.out} 글자 {len(text)}자 · 해시태그 {tags}개")
     return 0
 
 
