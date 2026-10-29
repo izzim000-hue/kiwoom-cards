@@ -20,11 +20,7 @@ from .spec import SpecError, load_spec
 # 담은 bundle.json 도 승인 지문에 넣는다 (WR-02). record.json 은 사람이 고치는 파일이라 넣지 않는다 (사본을 approval.json 에 둠).
 PROMOTED_KEYS = ("mp4", "cover", "spec", "caption")
 PROVENANCE_KEYS = ("spec_src", "caption_src", "check", "compliance", "review", "bundle")
-
-
-def _names(draft_dir):
-    p = bundle.draft_paths(draft_dir)
-    return p, [p[k].name for k in PROMOTED_KEYS], [p[k].name for k in PROMOTED_KEYS + PROVENANCE_KEYS]
+HASHED = PROMOTED_KEYS + PROVENANCE_KEYS
 
 
 class ApproveError(ValueError):
@@ -32,11 +28,9 @@ class ApproveError(ValueError):
 
 
 def hashed_names(draft_dir):
-    return _names(draft_dir)[2]
-
-
-PROMOTED = PROMOTED_KEYS
-HASHED = PROMOTED_KEYS + PROVENANCE_KEYS
+    """승인 지문을 남기는 파일 이름 (HASHED 순서)."""
+    p = bundle.draft_paths(draft_dir)
+    return [p[k].name for k in HASHED]
 
 
 sha256_file = bundle.sha256_file
