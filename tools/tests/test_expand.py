@@ -281,7 +281,8 @@ class CountUpSyntax(unittest.TestCase):
         base = check.check_spec(expand_source(self.plain, self.registry), self.registry)
         rep = check.check_spec(spec, self.registry)
         self.assertEqual([str(i) for i in rep.errors], [str(i) for i in base.errors])
-        self.assertEqual([i.kind for i in rep.warnings], [i.kind for i in base.warnings])
+        # |up 은 오류를 더하지 않는다. motion 이 없으면(none) 카운트업이 안 보인다는 경고 하나만 더한다 (IN-03)
+        self.assertEqual([i.kind for i in rep.warnings], [i.kind for i in base.warnings] + ["COUNTUP_IGNORED"])
 
 
 class Cli(unittest.TestCase):

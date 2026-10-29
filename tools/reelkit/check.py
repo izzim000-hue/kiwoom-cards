@@ -47,6 +47,7 @@ HINTS = {
     "SOURCE_MISMATCH": "spec.json 을 손으로 고치지 말고 spec.src.json 을 고쳐 expand 를 다시 실행",
     "REGISTRY_CONFIRM": "등록부의 확인 상태 기록이 잘못됨 — 확인은 사람이 터미널에서 figures confirm 으로만 (Claude 금지)",
     "ASSUMPTION_UNMARKED": "inputs(시나리오 가정) 숫자는 화면에 보여야 한다 — 같은 줄이나 basis 에 예시·가정·가상 표기",
+    "COUNTUP_IGNORED": "motion 이 none 이라 |up 카운트업이 화면에 나오지 않음 — 모션을 원하면 원고 소스에 \"motion\": \"basic\", 아니면 |up 을 지운다",
     "UNIT_AFTER": "서식이 단위를 찍는다 — 자리표시자 뒤에 만/원/% 같은 단위를 글자로 쓰지 말고 man_won, pct 같은 서식을 쓰세요",
 }
 
@@ -357,6 +358,12 @@ def _house_pattern(spec, warn, err):
         total = motion.schedule(spec).total if mode == "basic" else timeline.total_duration(timeline.build_states(spec))
         if not DUR_MIN <= total <= DUR_MAX:
             warn(CheckIssue("scenes", None, "DURATION", f"{total:.1f}초 — 하우스 패턴 {DUR_MIN:g}~{DUR_MAX:g}초", ""))
+    if mode == "none":
+        # |up 은 basic 에서만 보인다: 표시를 잊고 none 으로 만들면 아무 안내 없이 정지 화면이 된다 (IN-03)
+        ups = [e for e in spec.get("figures") or [] if isinstance(e, dict) and "countup" in e]
+        if ups:
+            warn(CheckIssue("motion", None, "COUNTUP_IGNORED",
+                            f"카운트업 {len(ups)}곳 — motion none 에서는 숫자가 처음부터 최종값으로 보임", str(ups[0].get("text", ""))))
     for i, sc in enumerate(scenes, 1):
         if _visible(sc["top"]) > TOP_MAX:
             warn(CheckIssue(f"scene {i} top", i, "TOP_LONG", f"{_visible(sc['top'])}자 > {TOP_MAX}", sc["top"]))

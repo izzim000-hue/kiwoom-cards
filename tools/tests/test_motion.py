@@ -961,6 +961,18 @@ class CheckDuration(unittest.TestCase):
         self.assertEqual(errs, ["MOTION"])
         self.assertNotIn("DURATION", warns)
 
+    def test_countup_with_motion_none_warns(self):
+        spec = pension_countup_spec()
+        self.assertNotIn("COUNTUP_IGNORED", self.house(spec)[0])          # basic: 카운트업이 보임
+        spec["motion"] = "none"
+        self.assertIn("COUNTUP_IGNORED", self.house(spec)[0])
+        del spec["motion"]                                                # 없으면 none
+        self.assertIn("COUNTUP_IGNORED", self.house(spec)[0])
+        self.assertIn("COUNTUP_IGNORED", check.HINTS)
+        plain = expand_source(json.loads((FIX / "draft-pension.src.json").read_text(encoding="utf-8")),
+                              figures.load_registry())
+        self.assertNotIn("COUNTUP_IGNORED", self.house(plain)[0])
+
     def test_check_spec_reports_motion_error(self):
         spec = pension_countup_spec()
         spec["motion"] = "calm"
