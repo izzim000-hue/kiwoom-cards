@@ -85,7 +85,18 @@ Plans:
   3. 데이터 파일의 점검 규칙을 추가·수정하면 코드를 바꾸지 않아도 다음 점검에 반영된다. 기존 10편과 레드팀 사례(부적절 30건 이상, 적절 15건 이상)에 대한 탐지율·오탐 보고서를 볼 수 있다.
   4. 검수 요약 문서 하나에 상태 배너, 점검 결과, 사람 확인 목록(수치 재확인, 기준일, 표지 크롭, 음원 라이선스, 개인정보), 광고 해당 여부·심의 상태(초안/내부 검수/승인)·심의번호 기록 칸이 있다. 기록 칸은 확인 전까지 "미확인"으로 표시된다. 첫 장면 기준 표지(글자가 중앙 1080×1440 안)와 장면별 정지 화면 모음 이미지가 함께 있어 영상을 열지 않고 검토할 수 있다.
   5. 원고 수정을 요청하면 영상, 표지, 게시글 문구, 점검표가 다시 만들어지고 점검도 다시 실행된다. 정식 경로(`2026/reels/`, `specs/`, `captions/`)로 옮기기는 승인 후에만 된다. 수정 필요 항목이 남았거나 승인 뒤 파일이 바뀌었으면 옮기기가 거부된다.
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+**Wave 1**
+- [ ] 03-01-PLAN.md — `draft.py bundle` 한 번으로 확장→점검→게시글→표현 점검→렌더(frame sink)→표지→review.md (tracer), 데이터 파일 규칙 엔진 완성(부정·예외 목록, 압축 검사, 중복 합치기, 근거 누락 규칙, check.json 가져오기)과 `draft.py compliance` (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 03-02-PLAN.md — 규칙을 보지 않고 쓴 따로 쓴 문장(held-out) 먼저 커밋, 레드팀 표본 41/21과 `draft.py redteam` 탐지율·오탐 보고서 (wave 2)
+- [ ] 03-03-PLAN.md — 표지 크롭 검사·장면 모음 이미지(ffmpeg), 다시 만들기 시 승인 기록 삭제·사람 기록 보존·실패 처리, 걸린 시간 기록(created.json, --request-start) (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 03-04-PLAN.md — 사람 전용 `approve`(대화형 터미널·재입력·sha256)와 덮어쓰지 않는 `promote` (tracer), 게시 10편 시험을 golden 목록으로 고정, make-reel 스킬·README, 전체 시험·golden 10/10·redteam·시간 게이트 (wave 3)
 **UI hint**: no
 **Owner gates (Phase 3 시작 전)**: (1) 금소법 광고 해당 여부와 키움 브랜드 관계, (2) 필수 고지 문구·위치(영상/게시글/둘 다)와 내부 심의 절차·심의번호 형식, (3) 표지 방식(기본: 훅 장면 정지 화면. 대안: 전용 표지 레이아웃). 결정 전 기본값은 광고 후보로 간주하는 것이다. 필수 고지·심의 칸은 "미확인"으로 둔다.
 **Research flag**: 필요, 최우선. 금소법 제21·22조, 시행령, 금융광고 가이드라인 원문을 확인하지 못했다. 준법 담당 검토 전까지 규칙은 "초안 규칙"으로 표시하고, 조문 번호를 점검 메시지에 인용하지 않는다.
@@ -114,5 +125,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. 렌더 기반 고정 (Render Foundation) | 4/4 | Complete    | 2026-10-28 |
 | 2. 초안 생성 (Draft Generation) | 4/4 | In Progress | - |
-| 3. 점검과 검수 묶음 (Compliance & Review Bundle) | 0/TBD | Not started | - |
+| 3. 점검과 검수 묶음 (Compliance & Review Bundle) | 0/4 | Planned | - |
 | 4. 자막 연출 + 선택 배경음 (Motion & BGM) | 0/TBD | Not started | - |
