@@ -4,6 +4,7 @@
       python3 tools/draft.py convert CARD [--out JSON]
       python3 tools/draft.py caption SPEC SRC --out TXT [--config PATH] [--registry PATH]
       python3 tools/draft.py slot [--date YYYY-MM-DD] [--slug 영문-슬러그] [--reels-dir DIR] [--create]
+      python3 tools/draft.py bundle DIR [--card CARD] [--request-start EPOCH] [--rules PATH] [--registry PATH] [--config PATH]
       python3 tools/draft.py figures {list [--grep 글자] | show ID | add ... | confirm ID --by 이름 [--date YYYY-MM-DD]}
   expand  자리표시자 `{{이름|서식}}` 가 든 원고 소스(SRC)를 등록부·계산 모듈로 채워 v1 호환 원고(OUT)로 쓴다.
           OUT 에는 숫자마다 출처를 적은 `figures` 장부와 쓰인 등록부 항목 `basis_items` 가 함께 들어간다.
@@ -27,6 +28,14 @@
           면책·CTA 문구는 준법 검토 전 초안이다.
   slot    게시일과 영문 슬러그를 제안하고 게시된 릴스·기존 초안과의 충돌을 알린다 (JSON). 날짜는 폴더를 읽어 계산한다.
           --create 는 --date 와 --slug 가 필요하고 `2026/reels/drafts/<날짜>-<슬러그>/` 만 만든다 (D-14).
+  bundle  초안 폴더(2026/reels/drafts/<게시일>-<슬러그>/, spec.src.json 과 caption.src.json 이 든 곳) 하나를 검수 묶음으로 만든다.
+          expand -> check -> caption -> 표현 점검 -> 렌더(new 배치, 같은 프로세스) -> 표지 -> review.md 순서로 spec.json, check.json,
+          caption.txt, compliance.json, <이름>.mp4, <이름>-cover.png, review.md, record.json, bundle.json 을 폴더에 쓴다.
+          표현 점검은 tools/data/compliance_rules.json 규칙(초안, 준법 검토 전)을 원고·근거·게시글·해시태그에 적용하고 결과는
+          `위험 표현 n건 발견` 또는 `패턴상 발견 없음 — 사람 검수 필요` 둘 중 하나로만 낸다. 발견이 있어도 종료 코드는 바뀌지 않는다.
+          원고 소스를 고친 뒤에도 같은 명령으로 전부 다시 만든다. record.json(광고 해당 여부·심의 기록)은 없을 때만 만들고 고치지 않는다.
+          --request-start 는 요청 시각(epoch 초)으로, 주어지면 bundle.json 에 요청부터 걸린 시간을 남긴다.
+          종료 코드: 0 완료, 1 입력 오류(점검 오류 포함), 2 렌더·파일 환경 오류, 3 레이아웃 경고, 4 업로드 규격 FAIL (4 우선).
   figures 수치 등록부(tools/data/figures.json) 조회·추가·확인.
           add      새 수치를 추가한다. 확인 상태는 항상 `미확인` 이고 지정하는 옵션이 없다 (D-02).
           confirm  사람 확인자 전용이다 (D-02). 1차 출처(law.go.kr 등)를 직접 열어 값을 맞춰 본 사람이 확인자 이름으로
@@ -73,6 +82,14 @@ def build_parser():
     p.add_argument("src", help="게시글 문구 원본 JSON 경로 (hook, summary, hashtags)")
     p.add_argument("--out", required=True, help="caption.txt 를 쓸 경로")
     p.add_argument("--config", default=str(caption.CONFIG_PATH), help="게시글 설정 경로 (기본 tools/data/caption_config.json)")
+    _registry_arg(p)
+
+    p = sub.add_parser("bundle", help="초안 폴더를 검수 묶음(MP4·표지·점검표·검수 요약)으로 만든다")
+    p.add_argument("dir", help="초안 폴더 경로 (2026/reels/drafts/<게시일>-<슬러그>)")
+    p.add_argument("--card", help="대조할 카드뉴스 원고 JSON (check 의 --card 와 같음)")
+    p.add_argument("--request-start", type=float, help="요청 시각 epoch 초 — bundle.json 에 요청부터 걸린 시간을 남김")
+    p.add_argument("--rules", help="표현 점검 규칙 파일 (기본 tools/data/compliance_rules.json)")
+    p.add_argument("--config", help="게시글 설정 경로 (기본 tools/data/caption_config.json)")
     _registry_arg(p)
 
     p = sub.add_parser("convert", help="카드뉴스 원고를 릴스 골격 JSON 으로 바꾼다")
@@ -288,6 +305,12 @@ def cmd_caption(args):
     return 0
 
 
+def cmd_bundle(args):
+    from reelkit import bundle   # 렌더러를 쓰는 명령에서만 읽는다 (다른 명령은 Playwright 를 읽지 않음)
+    return bundle.run_cli(args.dir, card=args.card, request_start=args.request_start, rules=args.rules,
+                          registry=args.registry, config=args.config)
+
+
 def cmd_slot(args):
     try:
         if args.create and not (args.date and args.slug):
@@ -399,6 +422,8 @@ def main(argv=None):
         return cmd_caption(args)
     if args.command == "convert":
         return cmd_convert(args)
+    if args.command == "bundle":
+        return cmd_bundle(args)
     if args.command == "slot":
         return cmd_slot(args)
     return cmd_expand(args)

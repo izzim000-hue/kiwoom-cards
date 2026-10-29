@@ -89,7 +89,8 @@ def _write_overlay(page, make_html, basis, st, prog, path):
     page.evaluate("()=>{const o=document.getElementById('rk-ov'); if(o) o.remove()}")
 
 
-def render_reel(spec_path, out_path, *, layout="legacy", keep_work=False, overlay_all=False):
+def render_reel(spec_path, out_path, *, layout="legacy", keep_work=False, overlay_all=False, frame_sink=None):
+    """frame_sink(장면 번호 0부터, PNG 경로): 장면 최종 상태 프레임을 쓴 직후 한 번 부른다. 작업 폴더는 끝나면 지워지므로 바로 복사한다."""
     _check_layout_name(layout)
     spec = _read_spec(spec_path)
     if layout == "legacy":
@@ -120,6 +121,8 @@ def render_reel(spec_path, out_path, *, layout="legacy", keep_work=False, overla
                     page.screenshot(path=f)
                     files.append((f, st.dur))
                     if st.k == len(st.lines):  # 장면 최종 상태: 스크린샷 뒤에 측정하므로 라벨이 프레임에 남지 않는다
+                        if frame_sink is not None:
+                            frame_sink(st.scene, f)
                         scene = st.scene + 1
                         ws, measured = _scene_checks(page, layout, scene)
                         warnings.extend(ws)
