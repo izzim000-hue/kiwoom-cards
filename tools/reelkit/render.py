@@ -126,6 +126,26 @@ def _write_overlay(page, make_html, basis, st, prog, path):
     page.evaluate("()=>{const o=document.getElementById('rk-ov'); if(o) o.remove()}")
 
 
+def countup_wrap_warnings(spec, cu_lines, measures):
+    """카운트업 줄의 줄바꿈이 정적 배치와 다르면 COUNTUP_WRAP (motion.build 결과와 장면별 정적 측정값으로).
+
+    줄 수가 달라지거나 (`2줄 -> 3줄`), 줄 수는 같아도 줄바꿈 위치가 달라지면 (`148.5만까지 / 받아요 -> 148.5만 / 까지 받아요`) 경고한다 (WR-02).
+    """
+    out = []
+    for c in cu_lines:
+        static = (measures.get(c["s"] + 1) or {}).get("lines") or []
+        want = static[c["j"]] if c["j"] < len(static) else None
+        text = motion_mod.TAG_RE.sub("", spec["scenes"][c["s"]]["lines"][c["j"]])[:30]
+        if want is not None and want["n"] != c["n"]:
+            detail = f"{want['n']}줄 -> {c['n']}줄"
+        elif c.get("moved"):
+            detail = f"줄바꿈 위치 '{c['before']}' -> '{c['after']}'"
+        else:
+            continue
+        out.append(LayoutWarning(c["s"] + 1, str(c["j"] + 1), "COUNTUP_WRAP", detail, text))
+    return out
+
+
 def _render_motion(spec, out_path, *, keep_work, overlay_all, frame_sink, bgm=None):
     """motion basic: 장면 최종 상태 정적 검사 -> 모션 레이어 -> 프레임마다 시간 탐색·스크린샷 -> PNG 파이프 인코딩.
 
@@ -167,13 +187,7 @@ def _render_motion(spec, out_path, *, keep_work, overlay_all, frame_sink, bgm=No
                     _write_overlay(page, new_inner_html, basis, st, prog, path)
                     overlays.append(path)
                 cu_lines = motion_mod.build(page, spec, sched)
-                for c in cu_lines:
-                    static = (measures.get(c["s"] + 1) or {}).get("lines") or []
-                    want = static[c["j"]] if c["j"] < len(static) else None
-                    if want is not None and want["n"] != c["n"]:
-                        text = motion_mod.TAG_RE.sub("", spec["scenes"][c["s"]]["lines"][c["j"]])[:30]
-                        warnings.append(LayoutWarning(c["s"] + 1, str(c["j"] + 1), "COUNTUP_WRAP",
-                                                      f"{want['n']}줄 -> {c['n']}줄", text))
+                warnings.extend(countup_wrap_warnings(spec, cu_lines, measures))
                 warnings.extend(motion_mod.dwell_warnings(spec, sched))
                 with PipeEncoder(out_path, bgm=bgm, total=sched.total) as enc:
                     for f in range(sched.nframes):

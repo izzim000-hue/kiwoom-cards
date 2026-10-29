@@ -254,6 +254,34 @@ BUILD_JS = """(p) => {
     for (const q of c.slice(1)) { if (q.y - last > q.tol) n++; last = q.y; }
     return n;
   };
+  // 줄바꿈 위치 (WR-02): 공백이 아닌 글자마다 그 줄 안의 몇 번째 행에 있는지. 행 수가 같아도 숫자와 조사가 갈라지면 다르다.
+  // text 는 사람이 읽을 모양 ("최대 연금 148.5만 / 까지 받아요").
+  const breaks = (ln) => {
+    const sig = []; let text = '', row = 0, last = null;
+    const tw = document.createTreeWalker(ln, NodeFilter.SHOW_TEXT); let n;
+    while ((n = tw.nextNode())) {
+      const tol = parseFloat(getComputedStyle(n.parentElement).fontSize) * 0.4;
+      for (let i = 0; i < n.nodeValue.length; i++) {
+        const ch = n.nodeValue[i];
+        if (ch.trim()) {
+          const r = document.createRange(); r.setStart(n, i); r.setEnd(n, i + 1);
+          const q = r.getClientRects()[0];
+          if (q) {
+            const y = (q.top + q.bottom) / 2;
+            if (last !== null && y - last > tol) { row++; text = text.trimEnd() + ' / '; }
+            last = y;
+          }
+          sig.push(row);
+        }
+        if (ch.trim() || !text.endsWith(' / ')) text += ch;
+      }
+    }
+    return {sig: sig.join(','), text: text.trim()};
+  };
+  const cuRows = [];
+  [...document.querySelectorAll('.rk-layer')].forEach((layer, s) => {
+    [...layer.querySelectorAll('.rk-ln')].forEach((ln, j) => { if (ln.querySelector('.rk-cu')) cuRows.push(breaks(ln)); });
+  });
   // 카운트업 숫자 상자: 렌더 프레임에 나오는 글자(p.cuTexts[k]: 중간 숫자 전부와 최종 글자) 중 가장 넓은 것의 폭으로 고정한다
   // (CR-01: 어떤 프레임의 숫자도 상자 밖으로 넘쳐 옆 글자를 덮지 않는다). 중간 숫자는 최종 글자의 자릿수·단위로 세므로(cu_text)
   // 보통 최종 글자의 폭 그대로라 줄 배치가 정적 배치와 같다. 글자는 오른쪽 정렬: 숫자 뒤 조사(150만이면)와 붙어 있다.
@@ -270,10 +298,14 @@ BUILD_JS = """(p) => {
   cus.forEach((e, i) => {
     e.style.display = 'inline-block'; e.style.whiteSpace = 'nowrap'; e.style.textAlign = 'right'; e.style.width = fits[i] + 'px';
   });
+  // 상자로 바꾼 뒤 다시 잰다: 줄 수(n)와 줄바꿈 위치(moved, before/after)를 돌려준다
   const cuLines = [];
   [...document.querySelectorAll('.rk-layer')].forEach((layer, s) => {
     [...layer.querySelectorAll('.rk-ln')].forEach((ln, j) => {
-      if (ln.querySelector('.rk-cu')) cuLines.push({s: s, j: j, n: lineCount(textRects(ln))});
+      if (!ln.querySelector('.rk-cu')) return;
+      const before = cuRows[cuLines.length], after = breaks(ln);
+      cuLines.push({s: s, j: j, n: lineCount(textRects(ln)), moved: before.sig !== after.sig,
+                    before: before.text, after: after.text});
     });
   });
   window.A = [];
@@ -338,7 +370,9 @@ def layers_html(spec, items=None):
 def build(page, spec, sched):
     """페이지 본문을 모션 레이어로 바꾸고 폰트 로드를 기다린 뒤 애니메이션을 만든다.
 
-    카운트업 줄마다 모션 DOM 에서 잰 줄 수 [{s, j, n}] (장면·줄 0부터) 를 돌려준다.
+    카운트업 줄마다 모션 DOM 에서 잰 값 [{s, j, n, moved, before, after}] (장면·줄 0부터) 를 돌려준다:
+    n 은 숫자 상자로 바꾼 뒤의 줄 수, moved 는 상자로 바꾸기 전(정적 배치와 같은 마크업)과 뒤의 줄바꿈 위치가 다른지,
+    before/after 는 그 두 배치를 " / " 로 나눠 적은 글자 (WR-02).
     """
     items = countup_entries(spec)
     page.evaluate("h=>{document.body.innerHTML=h}", layout.root_html(1.0, layers_html(spec, items)))

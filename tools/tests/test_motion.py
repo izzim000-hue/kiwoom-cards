@@ -599,6 +599,7 @@ class CountUp(unittest.TestCase):
     def test_build_reports_motion_line_counts(self):
         self.assertEqual([(c["s"], c["j"]) for c in self.cu_lines], [(4, 0), (4, 1)])
         self.assertTrue(all(c["n"] == 1 for c in self.cu_lines))
+        self.assertFalse([c for c in self.cu_lines if c["moved"]], self.cu_lines)
 
     def test_box_is_one_width_one_left_one_height_over_the_count_window(self):
         sc = self.sched.scenes[4]
@@ -653,10 +654,10 @@ FIT_CASES = (("<g>", "150만", "</g>이면 충분", "man1", "1500000"),
              ("최대 <g>", "148.5만", "</g>까지", "man1", "1485000"))
 
 
-def fit_spec():
-    """FIT_CASES 를 장면마다 하나씩 첫 줄에 카운트업으로 둔 손 원고 (장부는 countup_entries 가 검사하는 키만)."""
+def fit_spec(cases=FIT_CASES):
+    """cases 를 장면마다 하나씩 첫 줄에 카운트업으로 둔 손 원고 (장부는 countup_entries 가 검사하는 키만)."""
     scenes, ledger = [], []
-    for i, (pre, text, post, fmt, value) in enumerate(FIT_CASES):
+    for i, (pre, text, post, fmt, value) in enumerate(cases):
         scenes.append({"top": "", "lines": [pre + text + post, "다음 줄"]})
         ledger.append({"where": f"scene {i + 1} line 1", "start": len(pre), "end": len(pre) + len(text), "text": text,
                        "fmt": fmt, "value": value, "countup": True})
@@ -753,6 +754,36 @@ class CountUpFit(unittest.TestCase):
 
     def test_lines_do_not_rewrap(self):
         self.assertTrue(all(c["n"] == 1 for c in self.cu_lines), self.cu_lines)
+
+    def static_measures(self, spec):
+        out = {}
+        for i, sc in enumerate(spec["scenes"], 1):
+            self.page.evaluate("h=>{document.body.innerHTML=h}",
+                               layout.new_inner_html(sc["top"], sc["lines"], len(sc["lines"]), 1.0, spec.get("basis", "")))
+            self.page.evaluate("document.fonts.ready.then(()=>0)")
+            out[i] = self.page.evaluate(layout.MEASURE_JS)
+        return out
+
+    def test_same_count_but_moved_break_warns(self):
+        # WR-02: 정적 배치는 "최대 연금 / 148.5만까지 받아요", 숫자 상자가 생기면 "최대 연금 148.5만 / 까지 받아요" — 둘 다 2줄
+        spec = fit_spec(FIT_CASES[:4] + (("최대 연금 <g>", "148.5만", "</g>까지 받아요", "man1", "1485000"),))
+        static = self.static_measures(spec)
+        cu_lines = motion.build(self.page, spec, motion.schedule(spec))
+        row = [c for c in cu_lines if c["s"] == 4][0]
+        self.assertEqual((row["n"], static[5]["lines"][0]["n"]), (2, 2))
+        self.assertTrue(row["moved"], row)
+        self.assertEqual(row["before"], "최대 연금 / 148.5만까지 받아요")
+        self.assertEqual(row["after"], "최대 연금 148.5만 / 까지 받아요")
+        ws = render.countup_wrap_warnings(spec, cu_lines, static)
+        self.assertEqual([(w.scene, w.line, w.kind) for w in ws], [(5, "1", "COUNTUP_WRAP")])
+        self.assertIn("줄바꿈 위치", ws[0].value)
+
+    def test_unchanged_breaks_do_not_warn(self):
+        spec = fit_spec()
+        static = self.static_measures(spec)
+        cu_lines = motion.build(self.page, spec, motion.schedule(spec))
+        self.assertFalse([c for c in cu_lines if c["moved"]], cu_lines)
+        self.assertEqual(render.countup_wrap_warnings(spec, cu_lines, static), [])
 
     def test_wider_intermediate_grows_the_box(self):
         # 넓은 중간 글자가 생겨도(예: 서식 규칙이 바뀌어) 상자가 그 글자에 맞춰 커진다: 측정이 마지막 방어선
