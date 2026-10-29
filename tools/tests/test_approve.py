@@ -189,6 +189,16 @@ class Approve(ApproveBase):
         self.assertEqual(code, 1)
         self.assertIn("지문", err)
 
+    def test_upload_spec_fail_bundle_refuses(self):
+        # WR-03: 업로드 규격 FAIL(종료 4) 묶음은 승인하지 않는다
+        write_bundle_json(self.d, exit_code=4)
+        code, _o, err = self.approve()
+        self.assertEqual(code, 1)
+        self.assertIn("업로드 규격 FAIL", err)
+        self.assertFalse((self.d / "approval.json").exists())
+        write_bundle_json(self.d, exit_code=3)
+        self.assertEqual(self.approve()[0], 0)
+
     def test_incomplete_bundle_refuses(self):
         (self.d / "bundle.json").write_text(json.dumps({"status": "failed"}), encoding="utf-8")
         code, _o, err = self.approve()
@@ -316,6 +326,24 @@ class Promote(ApproveBase):
         self.assertEqual(code, 1)
         self.assertIn("다른 규칙", err)
         self.assertFalse((self.d / "approval.json").exists())
+
+    def test_promote_rereads_bundle_state(self):
+        # WR-03: promote 도 bundle.json 을 다시 읽는다 (지문이 같아도 종료 4 기록이면 거부)
+        self.approved_anyway()
+        code, _o, err = self.promote()
+        self.assertEqual(code, 1)
+        self.assertIn("업로드 규격 FAIL", err)
+        self.assertNothingPublished()
+
+    def approved_anyway(self):
+        """종료 4 묶음에 대해 approve 를 우회해 만든(위조) 승인 기록 — promote 가 스스로 걸러야 한다."""
+        write_bundle_json(self.d, exit_code=0)
+        self.approved()
+        write_bundle_json(self.d, exit_code=4)
+        path = self.d / "approval.json"
+        data = json.loads(path.read_text(encoding="utf-8"))
+        data["files"]["bundle.json"] = approve.sha256_file(self.d / "bundle.json")
+        path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
 
     def test_missing_approval_refuses(self):
         code, _o, err = self.promote()

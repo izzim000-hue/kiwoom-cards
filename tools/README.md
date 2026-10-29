@@ -110,6 +110,7 @@ python3 tools/draft.py promote 폴더
 ```
 
 - `approve` 는 **사람이 자기 터미널에서만** 실행한다 (Claude 실행 금지). 터미널이 아니면 아무 일도 하기 전에 거부한다. 빈 이름과 Claude/AI 이름도 거부한다.
+  `bundle.json` 이 완료 상태가 아니거나 업로드 규격 FAIL(종료 코드 4)이면 거부한다 (종료 3 레이아웃 경고는 주의만). `promote` 도 같은 검사를 다시 한다.
   지금 규칙으로 다시 훑어 수정 필요가 있으면 거부하고, 아니면 머리말·건수·`record.json` 값(미확인 항목 표시)·지문을 기록할 파일 목록을 보인 뒤 폴더 이름을 다시 입력받는다.
   맞으면 `approval.json` 에 승인자, 시각, 규칙 버전·sha256, 건수, `record.json` 사본, 열 파일의 sha256 을 쓴다. 지문 대상: `<이름>.mp4`, `<이름>-cover.png`, `spec.json`, `caption.txt`, `spec.src.json`, `caption.src.json`, `check.json`, `compliance.json`, `review.md`, `bundle.json`.
   완료된 `bundle` 은 `bundle.json` 의 `outputs` 에 원고 소스·산출물·`review.md`·장면 모음의 sha256 을 남기고, `approve` 는 지금 파일이 그와 같지 않으면(묶음 뒤 손으로 고침) 거부한다. 고치려면 소스를 고치고 `bundle` 을 다시 실행한다.

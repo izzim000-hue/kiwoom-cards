@@ -97,12 +97,28 @@ def _now_iso():
     return datetime.now().isoformat(timespec="seconds")
 
 
+APPROVABLE_EXIT = (0, 3)   # 0 완료, 3 레이아웃·표지 경고(사람이 review.md 로 판단). 4 업로드 규격 FAIL 은 승인·옮기기 거부 (WR-03)
+
+
 def _bundle_complete(paths):
     try:
         data = json.loads(paths["bundle"].read_text(encoding="utf-8"))
     except (OSError, UnicodeDecodeError, ValueError):
         return None
     return data if isinstance(data, dict) and data.get("status") == "complete" else None
+
+
+def bundle_ok(paths):
+    """완료됐고 업로드 규격 FAIL 이 없는 묶음의 bundle.json 내용. 아니면 거부 사유와 함께 ApproveError."""
+    info = _bundle_complete(paths)
+    if info is None:
+        raise ApproveError("bundle.json 이 없거나 완료(complete) 상태가 아님 — bundle 을 다시 실행하세요")
+    code = info.get("exit_code")
+    if code == 4:
+        raise ApproveError("bundle 종료 코드 4 — 업로드 규격 FAIL 인 영상은 승인·게시할 수 없음 (review.md 확인 후 다시 만들기)")
+    if code not in APPROVABLE_EXIT or isinstance(code, bool):
+        raise ApproveError(f"bundle 종료 코드 {code!r} — 승인할 수 없는 상태 (bundle 을 다시 실행하세요)")
+    return info
 
 
 def approve_cli(draft_dir, by):
@@ -124,11 +140,8 @@ def approve_cli(draft_dir, by):
         print("승인 오류: 승인자는 사람 이름이어야 함 (Claude/AI 이름 거부)", file=sys.stderr)
         return 1
     paths = bundle.draft_paths(d)
-    info = _bundle_complete(paths)
-    if info is None:
-        print("승인 오류: bundle.json 이 없거나 완료(complete) 상태가 아님 — bundle 을 다시 실행하세요", file=sys.stderr)
-        return 1
     try:
+        info = bundle_ok(paths)
         check_outputs(paths, info)
         loaded = _load_rules()
         hashes = file_hashes(d)
@@ -156,8 +169,6 @@ def approve_cli(draft_dir, by):
     code = info.get("exit_code")
     if code == 3:
         print("  주의: bundle 종료 코드 3 — 레이아웃·표지 경고가 있었음 (review.md 확인)", file=sys.stderr)
-    elif code == 4:
-        print("  주의: bundle 종료 코드 4 — 업로드 규격 FAIL 이 있었음 (review.md 확인)", file=sys.stderr)
     print("  지문을 기록할 파일:", file=sys.stderr)
     for fname in hashes:
         print(f"    {fname}", file=sys.stderr)
@@ -243,6 +254,7 @@ def promote_cli(draft_dir):
             if current[fname] != digest:
                 raise ApproveError(f"승인 뒤 바뀜: {fname} — bundle 을 다시 실행하고 다시 승인 받으세요")
         file_hashes(d)   # 심볼릭 링크·폴더 밖 경로 거부
+        check_outputs(paths, bundle_ok(paths))   # bundle.json 은 승인 지문 안에 있으므로 승인 때의 묶음 상태 그대로 (WR-03)
         loaded = _load_rules()
         if approval["rules"].get("sha256") != loaded.sha256:
             raise ApproveError("승인 때와 점검 규칙 파일이 다름 — bundle 을 다시 실행하고 사람이 approve 를 다시 실행해야 함")
