@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from decimal import Decimal
 from pathlib import Path
 
 TESTS = Path(__file__).resolve().parent
@@ -16,7 +17,7 @@ sys.path.insert(0, str(TOOLS))
 sys.path.insert(0, str(TESTS))
 
 import none_guard  # noqa: E402
-from reelkit import browser, check, figures, layout, motion, render, stills  # noqa: E402
+from reelkit import browser, calc, check, figures, layout, motion, render, stills  # noqa: E402
 from reelkit.expand import ExpandError, expand_source  # noqa: E402
 from reelkit.spec import SpecError  # noqa: E402
 
@@ -439,6 +440,232 @@ class Geometry(unittest.TestCase):
                 offset = got["t"] - w["t"]
                 self.assertGreaterEqual(offset, -0.01, f"scene {k + 1} line {j + 1} offset {offset}")
                 self.assertLessEqual(offset, motion.RISE_PX + 0.01, f"scene {k + 1} line {j + 1} offset {offset}")
+
+
+def pension_countup_src():
+    """연금 편 소스에서 장면 5 의 두 숫자에 |up 을 붙인 사본 (motion basic)."""
+    src = json.loads((FIX / "draft-pension.src.json").read_text(encoding="utf-8"))
+    lines = src["scenes"][4]["lines"]
+    lines[0] = lines[0].replace("{{c_low|man1}}", "{{c_low|man1|up}}")
+    lines[1] = lines[1].replace("{{c_high|man1}}", "{{c_high|man1|up}}")
+    src["motion"] = "basic"
+    return src
+
+
+def pension_countup_spec():
+    return expand_source(pension_countup_src(), figures.load_registry())
+
+
+def strip_tags(text):
+    return motion.TAG_RE.sub("", text)
+
+
+class CountUpUnit(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.spec = pension_countup_spec()
+        cls.items = motion.countup_entries(cls.spec)
+
+    def test_two_entries_in_document_order(self):
+        self.assertEqual([(si, li) for si, li, _e in self.items], [(4, 0), (4, 1)])
+        for _si, _li, e in self.items:
+            self.assertTrue(e["countup"])
+
+    def test_final_text_is_ledger_text_object(self):
+        e = self.items[0][2]
+        for p in (1, 1.0, 1.7, 25):
+            self.assertIs(motion.cu_text(e, p), e["text"])
+
+    def test_start_is_zero_string_from_formats(self):
+        for _si, _li, e in self.items:
+            want = calc.FORMATS[e["fmt"]](Decimal(0))[0]
+            self.assertEqual(motion.cu_text(e, 0), want)
+            self.assertEqual(motion.cu_text(e, -0.5), want)
+        self.assertEqual(motion.cu_text(self.items[0][2], 0), "0만")
+
+    def test_intermediate_values_come_from_formats_and_never_decrease(self):
+        e = self.items[0][2]
+        shown = []
+        for n in range(0, 21):
+            p = n / 20
+            text = motion.cu_text(e, p)
+            if p < 1:
+                eased = 1 - (1 - p) ** 3
+                self.assertEqual(text, calc.FORMATS[e["fmt"]](Decimal(e["value"]) * Decimal(str(eased)))[0])
+            shown.append(Decimal(text.replace(",", "").replace("만", "")))
+        self.assertEqual(shown, sorted(shown))
+        self.assertGreater(shown[-1], shown[0])
+
+    def test_countup_texts_follow_line_start(self):
+        sched = motion.schedule(self.spec)
+        sc = sched.scenes[4]
+        t_start = sc.start
+        t_end = sc.start + motion.STAGGER + motion.COUNT
+        first = motion.countup_texts(sched, self.items, t_start)
+        self.assertEqual(first[0], "0만")
+        self.assertEqual(first[1], "0만")                      # 두 번째 줄은 STAGGER 뒤에 시작
+        late = motion.countup_texts(sched, self.items, t_start + motion.STAGGER)
+        self.assertNotEqual(late[0], "0만")
+        self.assertEqual(late[1], "0만")
+        self.assertEqual(motion.countup_texts(sched, self.items, t_end),
+                         [e["text"] for _s, _l, e in self.items])
+
+    def test_schedule_settle_counts_countup(self):
+        sc = motion.schedule(self.spec).scenes[4]
+        self.assertEqual(sc.countup_lines, (0, 1))
+        self.assertAlmostEqual(sc.settle, motion.STAGGER + motion.COUNT)
+
+    def forged(self, **change):
+        spec = copy.deepcopy(self.spec)
+        for e in spec["figures"]:
+            if e.get("countup") and e["where"] == "scene 5 line 1":
+                e.update(change)
+        return spec
+
+    def test_forged_entries_refused(self):
+        cases = {
+            "text moved": dict(start=0, end=len(self.items[0][2]["text"])),
+            "unknown fmt": dict(fmt="zzz"),
+            "bad value": dict(value="abc"),
+            "infinite value": dict(value="Infinity"),
+            "not a scene line": dict(where="scene 5 top"),
+            "line missing": dict(where="scene 5 line 9"),
+            "countup not true": dict(countup="yes"),
+        }
+        for name, change in cases.items():
+            with self.subTest(name), self.assertRaises(SpecError):
+                motion.countup_entries(self.forged(**change))
+
+    def test_overlapping_pair_refused(self):
+        spec = copy.deepcopy(self.spec)
+        twin = copy.deepcopy([e for e in spec["figures"] if e.get("countup")][0])
+        spec["figures"].append(twin)
+        with self.assertRaises(SpecError) as cm:
+            motion.countup_entries(spec)
+        self.assertIn("겹침", str(cm.exception))
+
+    def test_no_countup_means_no_items(self):
+        self.assertEqual(motion.countup_entries(two_scene_spec()), [])
+        plain = expand_source(json.loads((FIX / "draft-pension.src.json").read_text(encoding="utf-8")),
+                              figures.load_registry())
+        self.assertEqual(motion.countup_entries(plain), [])
+
+
+class CountUp(unittest.TestCase):
+    """한 브라우저에서 모션 DOM 을 직접 본다 (인코딩 없음): 상자 폭·왼쪽·줄 높이가 프레임마다 같고 마지막은 원고와 같다."""
+
+    @classmethod
+    def setUpClass(cls):
+        from playwright.sync_api import sync_playwright
+        cls.tmp = Path(tempfile.mkdtemp(prefix="test-motion-cu-"))
+        cls.pw = sync_playwright().start()
+        cls.browser, _used = browser.launch(cls.pw)
+        cls.page = render._open_checked_page(cls.browser, cls.tmp)
+        cls.spec = pension_countup_spec()
+        cls.sched = motion.schedule(cls.spec)
+        cls.items = motion.countup_entries(cls.spec)
+        cls.cu_lines = motion.build(cls.page, cls.spec, cls.sched)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.pw.stop()
+        shutil.rmtree(cls.tmp, ignore_errors=True)
+
+    def at(self, t, cu=None):
+        motion.seek(self.page, self.sched, t, cu if cu is not None else motion.countup_texts(self.sched, self.items, t))
+
+    def boxes(self):
+        return self.page.evaluate(
+            "()=>[...document.querySelectorAll('.rk-cu')].map(e=>{const r=e.getBoundingClientRect();"
+            "const l=e.closest('.rk-ln').getBoundingClientRect();"
+            "return {w:r.width,l:r.left,lh:l.height,text:e.textContent,kids:e.children.length}})")
+
+    def test_build_reports_motion_line_counts(self):
+        self.assertEqual([(c["s"], c["j"]) for c in self.cu_lines], [(4, 0), (4, 1)])
+        self.assertTrue(all(c["n"] == 1 for c in self.cu_lines))
+
+    def test_box_is_one_width_one_left_one_height_over_the_count_window(self):
+        sc = self.sched.scenes[4]
+        seen = {0: [], 1: []}
+        for n in range(10):
+            t = sc.start + (sc.settle) * n / 9
+            self.at(t)
+            for k, b in enumerate(self.boxes()):
+                seen[k].append((round(b["w"], 2), round(b["l"], 2), round(b["lh"], 2)))
+        for k, rows in seen.items():
+            self.assertEqual(len({r[0] for r in rows}), 1, f"count-up {k} width")
+            self.assertEqual(len({r[1] for r in rows}), 1, f"count-up {k} left")
+            self.assertEqual(len({r[2] for r in rows}), 1, f"count-up {k} line height")
+            self.assertGreater(rows[0][0], 50)
+
+    def test_text_changes_during_window_but_box_does_not(self):
+        sc = self.sched.scenes[4]
+        self.at(sc.start + 0.4)
+        mid = [b["text"] for b in self.boxes()]
+        self.at(sc.final_t)
+        end = [b["text"] for b in self.boxes()]
+        self.assertNotEqual(mid[0], end[0])
+        self.assertEqual(end, [e["text"] for _s, _l, e in self.items])
+
+    def test_window_start_shows_p0_string(self):
+        for k, (si, li, e) in enumerate(self.items):
+            t0 = self.sched.scenes[si].start + li * motion.STAGGER
+            self.at(t0)
+            self.assertEqual(self.boxes()[k]["text"], calc.FORMATS[e["fmt"]](Decimal(0))[0])
+
+    def test_final_line_text_equals_script_line(self):
+        for k, sc in enumerate(self.sched.scenes):
+            self.at(sc.final_t)
+            got = self.page.evaluate(
+                "(s)=>[...document.querySelectorAll('.rk-layer')[s].querySelectorAll('.rk-ln')].map(e=>e.textContent)", k)
+            want = [strip_tags(l) for l in self.spec["scenes"][k]["lines"]]
+            self.assertEqual(got, want, f"scene {k + 1}")
+
+    def test_frame_strings_are_text_not_markup(self):
+        self.at(self.sched.scenes[4].start + 0.3, ["<b>x</b>", "<b>x</b>"])
+        for b in self.boxes():
+            self.assertEqual(b["kids"], 0)
+            self.assertEqual(b["text"], "<b>x</b>")
+
+
+class CountUpRender(unittest.TestCase):
+    """같은 원고를 reel.py 로 끝까지 렌더한다 (파일 한 번, 라이브러리 한 번)."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = Path(tempfile.mkdtemp(prefix="test-motion-curender-"))
+        cls.spec = pension_countup_spec()
+        cls.spec_path = cls.tmp / "spec.json"
+        cls.spec_path.write_text(json.dumps(cls.spec, ensure_ascii=False), encoding="utf-8")
+        cls.proc = run_reel(cls.spec_path, cls.tmp / "cu.mp4", "--layout", "new")
+        cls.res = render.render_reel(cls.spec_path, cls.tmp / "lib.mp4", layout="new")
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.tmp, ignore_errors=True)
+
+    def test_reel_py_exit_and_spec(self):
+        self.assertEqual(self.proc.returncode, 0, self.proc.stderr)
+        self.assertIn("spec: PASS 9/9", self.proc.stderr)
+        self.assertNotIn("COUNTUP_WRAP", self.proc.stdout + self.proc.stderr)
+
+    def test_library_result(self):
+        self.assertEqual(self.res.countups, 2)
+        self.assertEqual(self.res.motion, "basic")
+        self.assertFalse([w for w in self.res.warnings if w.kind == "COUNTUP_WRAP"])
+
+    def test_forged_ledger_stops_render_with_exit_1(self):
+        bad = copy.deepcopy(self.spec)
+        for e in bad["figures"]:
+            if e.get("countup"):
+                e["fmt"] = "zzz"
+        p = self.tmp / "bad.json"
+        p.write_text(json.dumps(bad, ensure_ascii=False), encoding="utf-8")
+        out = self.tmp / "bad.mp4"
+        r = run_reel(p, out, "--layout", "new")
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertFalse(out.exists())
 
 
 if __name__ == "__main__":

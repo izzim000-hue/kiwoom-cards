@@ -24,7 +24,8 @@ SERIES_KEYS = ("name", "episode", "next")
 # 원문자는 ⑩ 까지만 쓴다 (⑪ 이상은 번들 폰트에서 확인되지 않음, research 가정 A3)
 CIRCLED = "①②③④⑤⑥⑦⑧⑨⑩"
 NEXT_PREFIX = "<s>다음 편:"
-PLACEHOLDER = re.compile(r"\{\{\s*([A-Za-z0-9_.]+)\s*\|\s*([a-z0-9_]+)\s*\}\}")
+PLACEHOLDER = re.compile(r"\{\{\s*([A-Za-z0-9_.]+)\s*\|\s*([a-z0-9_]+)\s*(?:\|\s*(up)\s*)?\}\}")
+LINE_WHERE_RE = re.compile(r"scene \d+ line \d+$")
 NAME_RE = re.compile(r"^[a-z0-9_]+$")
 LABEL_MARKS = ("예시", "가정", "가상")
 LABEL_MARK_RE = re.compile("|".join(LABEL_MARKS))
@@ -192,16 +193,21 @@ def _expand_field(text, where, scene, vals, ledger):
         literal = text[pos:m.start()]
         parts.append(literal)
         cur += len(literal)
-        ref, fmt = m.group(1), m.group(2)
+        ref, fmt, up = m.group(1), m.group(2), m.group(3)
+        if up and not LINE_WHERE_RE.match(where):
+            raise ExpandError(f"{where}: 카운트업 표시(|up)는 장면 줄에서만 쓸 수 있음")
         rendered, shown, value, leaves, _unit = render_ref(vals, ref, fmt, where)
         bad = unit_after_problem(rendered, text[m.end():])
         if bad:
             raise ExpandError(f"{where}: 자리표시자 {{{{{ref}|{fmt}}}}} 뒤에 단위 {bad!r} 를 글자로 쓸 수 없음 "
                               f"— 단위가 든 서식(man_won, pct, se ...)을 쓰세요", kind="UNIT")
-        ledger.append({
+        entry = {
             "where": where, "scene": scene, "start": cur, "end": cur + len(rendered), "text": rendered,
             "ref": ref, "fmt": fmt, "value": norm(value), "exact": shown == value, "sources": sorted(leaves),
-        })
+        }
+        if up:
+            entry["countup"] = True   # 숫자 세어 올라가기(basic 모션). 장부의 나머지 키는 그대로 (D-04)
+        ledger.append(entry)
         parts.append(rendered)
         cur += len(rendered)
         pos = m.end()

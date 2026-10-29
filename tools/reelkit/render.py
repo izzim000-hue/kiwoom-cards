@@ -55,6 +55,7 @@ class RenderResult:
     overlays: list = field(default_factory=list)
     spec_checks: list = field(default_factory=list)
     motion: str = "none"
+    countups: int = 0
 
 
 def _read_spec(spec_path):
@@ -133,6 +134,7 @@ def _render_motion(spec, out_path, *, keep_work, overlay_all, frame_sink):
     states = timeline.build_states(spec)
     progs = timeline.progress_values(states)
     sched = motion_mod.schedule(spec)
+    cu_items = motion_mod.countup_entries(spec)   # Chromium 을 띄우기 전에 장부를 검사한다 (T-04-06)
     finals_at = {sc.final_frame: sc.index for sc in sched.scenes}
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -163,10 +165,17 @@ def _render_motion(spec, out_path, *, keep_work, overlay_all, frame_sink):
                     path = out_path.with_name(out_path.stem + f".safe-s{scene:02d}.png")
                     _write_overlay(page, new_inner_html, basis, st, prog, path)
                     overlays.append(path)
-                motion_mod.build(page, spec, sched)
+                cu_lines = motion_mod.build(page, spec, sched)
+                for c in cu_lines:
+                    static = (measures.get(c["s"] + 1) or {}).get("lines") or []
+                    want = static[c["j"]] if c["j"] < len(static) else None
+                    if want is not None and want["n"] != c["n"]:
+                        text = motion_mod.TAG_RE.sub("", spec["scenes"][c["s"]]["lines"][c["j"]])[:30]
+                        warnings.append(LayoutWarning(c["s"] + 1, str(c["j"] + 1), "COUNTUP_WRAP",
+                                                      f"{want['n']}줄 -> {c['n']}줄", text))
                 with PipeEncoder(out_path) as enc:
                     for f in range(sched.nframes):
-                        motion_mod.seek(page, sched, f / FPS)
+                        motion_mod.seek(page, sched, f / FPS, motion_mod.countup_texts(sched, cu_items, f / FPS))
                         png = page.screenshot(type="png")
                         idx = finals_at.get(f)
                         if idx is not None:
@@ -185,7 +194,8 @@ def _render_motion(spec, out_path, *, keep_work, overlay_all, frame_sink):
         else:
             shutil.rmtree(work, ignore_errors=True)
     return RenderResult(out=out_path, total=sched.total, cover_ms=round(sched.scenes[0].final_t * 1000),
-                        launch=used, warnings=warnings, overlays=overlays, spec_checks=spec_checks, motion="basic")
+                        launch=used, warnings=warnings, overlays=overlays, spec_checks=spec_checks, motion="basic",
+                        countups=len(cu_items))
 
 
 def render_reel(spec_path, out_path, *, layout="legacy", keep_work=False, overlay_all=False, frame_sink=None,

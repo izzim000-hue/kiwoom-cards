@@ -223,6 +223,67 @@ class UnitsAndFormats(unittest.TestCase):
         self.assertEqual(set(calc.FORMAT_UNITS), set(calc.FORMATS))
 
 
+LEDGER_KEYS = {"where", "scene", "start", "end", "text", "ref", "fmt", "value", "exact", "sources"}
+
+
+class CountUpSyntax(unittest.TestCase):
+    """{{ref|fmt|up}}: 장면 줄에서만, 장부 항목에 countup true 하나만 더한다 (D-04)."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.registry = figures.load_registry()
+        cls.plain = load(TOOLS / "tests" / "fixtures" / "draft-pension.src.json")
+
+    def with_up(self, src_line=("c_low", "man1")):
+        src = copy.deepcopy(self.plain)
+        ref, fmt = src_line
+        src["scenes"][4]["lines"][0] = src["scenes"][4]["lines"][0].replace(f"{{{{{ref}|{fmt}}}}}",
+                                                                           f"{{{{{ref}|{fmt}|up}}}}")
+        return src
+
+    def test_up_marks_only_that_entry(self):
+        base = expand_source(self.plain, self.registry)
+        up = expand_source(self.with_up(), self.registry)
+        self.assertEqual(up["scenes"], base["scenes"])
+        marked = [e for e in up["figures"] if e.get("countup")]
+        self.assertEqual([e["where"] for e in marked], ["scene 5 line 1"])
+        for a, b in zip(base["figures"], up["figures"]):
+            self.assertEqual({k: v for k, v in b.items() if k != "countup"}, a)
+
+    def test_plain_ledger_has_exact_keys(self):
+        for e in expand_source(self.plain, self.registry)["figures"]:
+            self.assertEqual(set(e), LEDGER_KEYS)
+
+    def test_up_outside_scene_line_refused(self):
+        for key, where in (("top", "scene 5 top"), ("basis", "basis")):
+            src = copy.deepcopy(self.plain)
+            if key == "top":
+                src["scenes"][4]["top"] = "{{fig.pension_credit_limit_total|man_won|up}} 채우면"
+            else:
+                src["basis"] = "{{fig.pension_credit_limit_total|man_won|up}} 납입 예시 · 지방소득세 포함"
+            with self.assertRaises(ExpandError) as cm:
+                expand_source(src, self.registry)
+            self.assertIn(where, str(cm.exception))
+            self.assertIn("|up", str(cm.exception))
+
+    def test_other_third_piece_refused(self):
+        src = copy.deepcopy(self.plain)
+        src["scenes"][4]["lines"][0] = "최대 {{c_low|man1|down}}"
+        with self.assertRaises(ExpandError) as cm:
+            expand_source(src, self.registry)
+        self.assertIn("자리표시자", str(cm.exception))
+
+    def test_check_accepts_up_source(self):
+        from reelkit import check
+        src = self.with_up()
+        spec = expand_source(src, self.registry)
+        self.assertEqual(check.compare_source(spec, src, self.registry), [])
+        base = check.check_spec(expand_source(self.plain, self.registry), self.registry)
+        rep = check.check_spec(spec, self.registry)
+        self.assertEqual([str(i) for i in rep.errors], [str(i) for i in base.errors])
+        self.assertEqual([i.kind for i in rep.warnings], [i.kind for i in base.warnings])
+
+
 class Cli(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="test-expand-"))
