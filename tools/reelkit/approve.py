@@ -9,12 +9,11 @@ approval.json 으로 남긴다. promote 는 그 승인 기록이 있고, 지문�
 import hashlib
 import json
 import os
-import re
 import sys
 from datetime import datetime
 from pathlib import Path
 
-from . import bundle, compliance, figures, review
+from . import bundle, compliance, constants, figures, review
 from .spec import SpecError, load_spec
 
 # 옮기는 네 파일과 출처 확인용 네 파일. bundle.draft_paths 의 키 이름이다 (review.md, bundle.json, record.json 은 지문 대상 아님).
@@ -106,7 +105,8 @@ def approve_cli(draft_dir, by):
         return 1
     try:
         d, _date, name = bundle.validate_draft_dir(draft_dir)
-    except bundle.BundleError as e:
+        publish_dir(d, name)
+    except (bundle.BundleError, ApproveError) as e:
         print(f"승인 오류: {e}", file=sys.stderr)
         return 1
     who = (by or "").strip()
@@ -191,8 +191,17 @@ def _read_approval(paths, name):
     return data
 
 
+def publish_dir(d, name):
+    """게시 폴더는 언제나 저장소의 `<게시일 연도>/reels` 다 (WR-04). 초안 폴더가 그 아래 drafts/ 에 있지 않으면 거부한다.
+    d 는 bundle.validate_draft_dir 이 풀어 둔(resolve) 경로라 심볼릭 링크로 옮겨 둔 drafts/ 도 여기서 걸린다."""
+    expected = (constants.REPO_ROOT / name[:4] / "reels").resolve()
+    if d.parent.parent != expected:
+        raise ApproveError(f"초안 폴더가 게시일 연도({name[:4]})의 게시 폴더 아래가 아님: {expected}/drafts/{name} 이어야 함")
+    return expected
+
+
 def _targets(d, name):
-    reels = d.parent.parent
+    reels = publish_dir(d, name)
     paths = bundle.draft_paths(d)
     return reels, [
         (paths["mp4"], reels / f"{name}.mp4"),
@@ -206,7 +215,8 @@ def promote_cli(draft_dir):
     """D-16: 승인된, 그대로인, 수정 필요 0건인 네 파일만 게시 경로로 옮긴다. 덮어쓰지 않고 git 도 부르지 않는다."""
     try:
         d, _date, name = bundle.validate_draft_dir(draft_dir)
-    except bundle.BundleError as e:
+        publish_dir(d, name)
+    except (bundle.BundleError, ApproveError) as e:
         print(f"옮기기 오류: {e}", file=sys.stderr)
         return 1
     paths = bundle.draft_paths(d)
@@ -233,9 +243,6 @@ def promote_cli(draft_dir):
             raise ApproveError(f"수정 필요 {result.counts['수정 필요']}건 — spec.src.json·caption.src.json 을 고치고 "
                                "bundle 을 다시 실행해 다시 승인 받으세요")
         reels, pairs = _targets(d, name)
-        year = reels.parent.name
-        if re.fullmatch(r"\d{4}", year) and name[:4] != year:
-            raise ApproveError(f"게시일 연도({name[:4]})가 게시 폴더 연도({year})와 다름")
         for _src, target in pairs:
             if os.path.lexists(target):
                 raise ApproveError(f"이미 게시된 파일 — 덮어쓰지 않음: {target}")

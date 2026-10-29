@@ -18,7 +18,7 @@ DRAFT = [sys.executable, str(TOOLS / "draft.py")]
 sys.path.insert(0, str(TOOLS))
 
 import draft  # noqa: E402
-from reelkit import approve, caption, check, compliance, expand, figures, slot  # noqa: E402
+from reelkit import approve, caption, check, compliance, constants, expand, figures, slot  # noqa: E402
 
 DATE, SLUG = "2026-11-08", "pension-credit-limit"
 NAME = f"{DATE}-{SLUG}"
@@ -69,8 +69,11 @@ class ApproveBase(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.root = Path(self.tmp.name)
-        self.reels = self.root / "reels"
+        self.reels = self.root / "2026" / "reels"   # 게시 폴더는 <저장소>/<연도>/reels (WR-04): 저장소 뿌리를 self.root 로 바꿔 시험
         self.d = make_draft(self.reels)
+        patcher = mock.patch.object(constants, "REPO_ROOT", self.root)
+        patcher.start()
+        self.addCleanup(patcher.stop)
         self.targets = [self.reels / f"{NAME}.mp4", self.reels / f"{NAME}-cover.png",
                         self.reels / "specs" / f"{NAME}.json", self.reels / "captions" / f"{NAME}.txt"]
 
@@ -352,15 +355,41 @@ class Promote(ApproveBase):
 
     def test_year_mismatch_refuses(self):
         made = make_draft(self.root / "2027" / "reels", "2027-01-05", "new-year-reel")
-        (self.root / "2027").rename(self.root / "2026")   # 폴더 이름은 2027-…, 게시 폴더는 2026/reels
-        year_reels = self.root / "2026" / "reels"
-        d = year_reels / "drafts" / made.name
+        d = self.reels / "drafts" / made.name
+        made.rename(d)   # 폴더 이름은 2027-…, 놓인 곳은 2026/reels/drafts
         code, _o, err = self.call(["approve", str(d), "--by", "홍길동"], typed=d.name)
-        self.assertEqual(code, 0, err)
+        self.assertEqual(code, 1)
+        self.assertIn("연도", err)
+        self.assertFalse((d / "approval.json").exists())
         code, _o, err = self.call(["promote", str(d)])
         self.assertEqual(code, 1)
         self.assertIn("연도", err)
-        self.assertFalse((year_reels / f"{d.name}.mp4").exists())
+        self.assertFalse((self.reels / f"{d.name}.mp4").exists())
+
+    def test_drafts_outside_the_repository_year_folder_refuse(self):
+        # WR-04: 아무 X/drafts/<이름> 이 X/ 로 옮겨지지 않는다
+        self.approved()
+        other_reels = self.root / "elsewhere"
+        (other_reels / "drafts").mkdir(parents=True)
+        moved = other_reels / "drafts" / NAME
+        self.d.rename(moved)
+        code, _o, err = self.promote(d=moved)
+        self.assertEqual(code, 1)
+        self.assertIn("게시 폴더", err)
+        self.assertFalse((other_reels / f"{NAME}.mp4").exists())
+        self.assertNothingPublished()
+
+    def test_symlinked_drafts_folder_refuses(self):
+        self.approved()
+        real = self.root / "x" / "drafts"
+        real.parent.mkdir()
+        (self.reels / "drafts").rename(real)
+        (self.reels / "drafts").symlink_to(real)
+        code, _o, err = self.promote()
+        self.assertEqual(code, 1)
+        self.assertIn("게시 폴더", err)
+        self.assertNothingPublished()
+        self.assertFalse((self.root / f"{NAME}.mp4").exists())
 
 
 if __name__ == "__main__":
