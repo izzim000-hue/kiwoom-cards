@@ -124,7 +124,8 @@ class BuildCaption(Base):
         text, warns = self.build()
         lines = text.splitlines()
         self.assertEqual([w.split(" [")[0] for w in warns],
-                         ["확인 필요: summary[1]", "확인 필요: summary[2]", "확인 필요: summary[3]"])
+                         ["확인 필요: summary[1]", "확인 필요: summary[2]", "확인 필요: summary[3]",
+                          f"면책·CTA 문구 상태: {self.config['status']}"])
         self.assertEqual(lines[0], "연말정산 바로 알기 ② | 연금계좌 세액공제, 한도가 얼마일까?")
         self.assertEqual(lines[1], "")
         self.assertEqual([ln[:2] for ln in lines[2:5]], ["• "] * 3)
@@ -153,6 +154,12 @@ class BuildCaption(Base):
         spec = copy.deepcopy(self.spec)
         spec["basis"] = "2026년 세법 기준 · 지방소득세 포함"
         self.assertEqual(self.basis_line(spec), "근거 · 기준: 2026년 세법 기준 · 지방소득세 포함")
+
+    def test_config_status_is_surfaced_but_not_printed_in_caption(self):
+        # WR-07 회귀: '준법 검토 전' 상태가 어디에도 보이지 않던 문제
+        text, warns = self.build()
+        self.assertIn(f"면책·CTA 문구 상태: {self.config['status']}", warns)
+        self.assertNotIn(self.config["status"], text)
 
     def test_config_defaults(self):
         self.assertEqual(self.config["brand_hashtags"], [])
@@ -323,6 +330,7 @@ class Cli(unittest.TestCase):
         r = self.run_draft("caption", self.expanded(), CAP, "--out", out)
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("해시태그 4개", r.stdout)
+        self.assertIn("면책·CTA 문구 상태: 초안 문구", r.stderr)
         self.assertTrue(out.read_text(encoding="utf-8").startswith("연말정산 바로 알기 ② | "))
 
     def test_bad_src_exits_1_without_traceback(self):

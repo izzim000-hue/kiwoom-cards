@@ -221,4 +221,5 @@ def build_caption(spec, src, config, registry=None):
         warnings.append(f"첫 줄 {len(first)}자 — {config['first_line_warn']}자 넘으면 더보기에 가려질 수 있음")
     if not basis:
         warnings.append("원고에 basis 가 없어 근거 줄이 비어 있음")
+    warnings.append(f"면책·CTA 문구 상태: {config['status']}")   # WR-07: caption.txt 에는 넣지 않고 검수자에게만
     return text, warnings
