@@ -11,6 +11,7 @@ import math
 import os
 import subprocess
 import tempfile
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -106,7 +107,7 @@ def validate(path, memo, draft_dir):
     if path is None or memo is None:
         raise BgmError("음원 파일(--bgm)과 라이선스 메모(--bgm-license)는 함께 줘야 함")
     text = str(memo).strip()
-    if not text:
+    if not _visible(text):
         raise BgmError("라이선스 메모가 비어 있음 — 음원 이용 권리를 적어야 배경음을 넣을 수 있음")
     if len(text) > MEMO_MAX:
         raise BgmError(f"라이선스 메모가 너무 김 ({len(text)}자 > {MEMO_MAX}자)")
@@ -152,6 +153,14 @@ def _check_audio(path):
     if duration < MIN_SECONDS:
         raise BgmError(f"음원이 너무 짧음 ({duration:.1f}초 < {MIN_SECONDS:g}초)")
     return duration
+
+
+def _visible(text):
+    """보이는 글자만: 제어(Cc)·서식(Cf: 폭 없는 공백, BOM, 방향 제어)·공백·줄 구분 문자를 뺀다 (IN-02).
+
+    str.strip() 은 U+200B, U+FEFF, NUL 등을 남기므로 그것만으로 된 메모가 '비어 있지 않음' 으로 통과했다.
+    """
+    return "".join(c for c in text if unicodedata.category(c) not in ("Cc", "Cf", "Zs", "Zl", "Zp"))
 
 
 def _sha256(path):

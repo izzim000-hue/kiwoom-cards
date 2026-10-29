@@ -44,7 +44,9 @@ def _cell(text):
     return str(text).replace("|", "\\|").replace("\n", " ").strip()
 
 
-CONTROL_RE = re.compile(r"[\x00-\x1f\x7f-\x9f\u2028\u2029]")
+# 제어 문자, 줄 구분, 폭 없는 문자(U+200B-U+200F: 방향 표시 LRM/RLM 포함), 방향 제어(U+202A-U+202E, U+2066-U+2069),
+# 단어 결합자 등(U+2060-U+2064), BOM(U+FEFF). 파일 이름·메모가 사람에게 보이는 순서를 바꾸거나 숨지 못하게 공백으로 바꾼다 (IN-02).
+CONTROL_RE = re.compile(r"[\x00-\x1f\x7f-\x9f\u200b-\u200f\u2028-\u202e\u2060-\u2064\u2066-\u2069\ufeff]")
 
 
 def _safe_text(text):

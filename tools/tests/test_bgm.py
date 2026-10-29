@@ -131,6 +131,19 @@ class Validate(unittest.TestCase):
         self.refused(Audio.s8, "", "비어 있음")
         self.refused(Audio.s8, "가" * (bgm.MEMO_MAX + 1), "너무 김")
 
+    def test_invisible_only_memo_refused(self):
+        # IN-02: 폭 없는 공백·BOM·NUL·방향 제어만으로 된 메모는 비어 있는 것으로 본다
+        for memo in ("\u200b", "\ufeff \u200b", "\x00", "\u202e\u2066", "\u3000\u200d"):
+            with self.subTest(memo=memo):
+                self.refused(Audio.s8, memo, "비어 있음")
+        self.assertEqual(bgm.validate(Audio.s8, "\u200b자체 제작", self.draft).license, "\u200b자체 제작")
+
+    def test_review_neutralises_bidi_and_zero_width(self):
+        from reelkit import review
+        text = review._safe_text("song\u202e3pm.exe\u200b\ufeff\u2066x\u2069")
+        self.assertIsNone(re.search("[\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]", text))
+        self.assertTrue(text.startswith("song 3pm.exe"))
+
     def test_good_source(self):
         src = bgm.validate(Audio.s35, f"  {MEMO}  ", self.draft)
         self.assertEqual((src.name, src.ext, src.license), ("s35.mp3", ".mp3", MEMO))
