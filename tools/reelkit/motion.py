@@ -7,7 +7,7 @@
 import html
 import re
 from dataclasses import dataclass
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_DOWN, Decimal, InvalidOperation
 
 from . import calc, constants, layout
 from .spec import SpecError
@@ -122,12 +122,41 @@ def _bad_entry(where, why):
     return SpecError(f"figures: 카운트업 자리 {where} 가 원고 줄과 맞지 않음 — {why}")
 
 
+# 끝의 ".0" 을 생략하는 0.1 단위 서식과 그 기본 단위. 최종 글자에 소수점이 없으면(150만, 10%) 중간 숫자도
+# 정수 단위로 센다: 그렇지 않으면 "98.6만" 처럼 최종 글자보다 넓은 중간 숫자가 상자 밖으로 넘친다 (CR-01).
+_POINT_DROPPING = {"pct": 1, "signed_pct": 1, "man1": 10000, "num": 1, "se": 1, "dal": 1}
+_EOK = 100000000
+
+
+def countup_step(entry):
+    """중간 숫자를 0 쪽으로 내림할 단위(기본 단위, Decimal) 또는 None (서식 그대로).
+
+    중간 숫자가 최종 글자보다 자릿수·단위가 많아지지 않게 최종 글자의 표시 정밀도로 센다 (CR-01):
+    - 소수점을 생략하는 서식에서 최종 글자에 소수점이 없으면 정수 단위 (150만 -> 0만 … 149만).
+    - eok_man_won 의 최종 글자가 억 단위면 만 부분이 있을 때 만 단위, 없으면 억 단위
+      ("1억 원" 은 "9,999만 원" 처럼 넓은 중간 글자 없이 "0만 원" 에서 "1억 원" 으로 바뀐다).
+    """
+    fmt, text = entry["fmt"], entry["text"]
+    if fmt in _POINT_DROPPING and "." not in text:
+        return Decimal(_POINT_DROPPING[fmt])
+    if fmt == "eok_man_won" and "억" in text:
+        return Decimal(10000 if "만" in text else _EOK)
+    return None
+
+
 def cu_text(entry, p):
-    """진행도 p(0~1)의 카운트업 글자. p >= 1 이면 장부 글자 그대로, 아니면 calc.FORMATS 로 찍은 중간값 (시작값은 0)."""
+    """진행도 p(0~1)의 카운트업 글자. p >= 1 이면 장부 글자 그대로, 아니면 calc.FORMATS 로 찍은 중간값 (시작값은 0).
+
+    중간값은 countup_step 단위로 0 쪽으로 내림한 뒤 찍는다 (최종 글자보다 넓어지지 않게, CR-01).
+    """
     if p >= 1:
         return entry["text"]
     eased = 1 - (1 - max(p, 0)) ** 3
-    return calc.FORMATS[entry["fmt"]](Decimal(entry["value"]) * Decimal(str(eased)))[0]
+    value = Decimal(entry["value"]) * Decimal(str(eased))
+    step = countup_step(entry)
+    if step is not None:
+        value = (value / step).to_integral_value(rounding=ROUND_DOWN) * step
+    return calc.FORMATS[entry["fmt"]](value)[0]
 
 
 def countup_entries(spec):
@@ -181,6 +210,18 @@ def countup_texts(sched, items, t):
     return [cu_text(entry, (t - (sched.scenes[si].start + li * STAGGER)) / COUNT) for si, li, entry in items]
 
 
+def countup_variants(sched, items):
+    """카운트업마다 렌더 프레임(0 .. nframes-1)에 실제로 나오는 글자 전부 (나온 순서, 중복 없음).
+
+    BUILD_JS 가 이 글자들을 모두 재서 상자 폭을 가장 넓은 글자에 맞춘다 (CR-01: 어떤 프레임도 상자 밖으로 넘치지 않음).
+    """
+    seen = [dict() for _ in items]
+    for f in range(sched.nframes):
+        for k, text in enumerate(countup_texts(sched, items, f / FPS)):
+            seen[k][text] = None
+    return [list(s) for s in seen]
+
+
 def _line_markup(line, ents):
     """카운트업이 든 줄의 마크업: 숫자 자리만 고정 폭 span 으로 감싼다 (조각을 이으면 markup_new(line) 과 같다)."""
     out, pos = "", 0
@@ -213,10 +254,22 @@ BUILD_JS = """(p) => {
     for (const q of c.slice(1)) { if (q.y - last > q.tol) n++; last = q.y; }
     return n;
   };
-  // 카운트업 숫자 상자: 최종 글자의 폭으로 고정해 중간 숫자가 짧아도 줄이 밀리지 않게 한다 (애니메이션을 만들기 전, 모든 레이어가 보일 때).
+  // 카운트업 숫자 상자: 렌더 프레임에 나오는 글자(p.cuTexts[k]: 중간 숫자 전부와 최종 글자) 중 가장 넓은 것의 폭으로 고정한다
+  // (CR-01: 어떤 프레임의 숫자도 상자 밖으로 넘쳐 옆 글자를 덮지 않는다). 중간 숫자는 최종 글자의 자릿수·단위로 세므로(cu_text)
+  // 보통 최종 글자의 폭 그대로라 줄 배치가 정적 배치와 같다. 글자는 오른쪽 정렬: 숫자 뒤 조사(150만이면)와 붙어 있다.
+  // 애니메이션을 만들기 전, 모든 레이어가 보일 때 잰다.
   const cus = [...document.querySelectorAll('.rk-cu')];
   const widths = cus.map(e => e.getBoundingClientRect().width);
-  cus.forEach((e, i) => { e.style.display = 'inline-block'; e.style.whiteSpace = 'nowrap'; e.style.width = widths[i] + 'px'; });
+  const fits = cus.map((e, i) => {
+    const final = e.textContent; let w = widths[i];
+    e.style.whiteSpace = 'nowrap';
+    for (const s of (p.cuTexts[+e.dataset.k] || [])) { e.textContent = s; w = Math.max(w, e.getBoundingClientRect().width); }
+    e.textContent = final; e.style.whiteSpace = '';
+    return w;
+  });
+  cus.forEach((e, i) => {
+    e.style.display = 'inline-block'; e.style.whiteSpace = 'nowrap'; e.style.textAlign = 'right'; e.style.width = fits[i] + 'px';
+  });
   const cuLines = [];
   [...document.querySelectorAll('.rk-layer')].forEach((layer, s) => {
     [...layer.querySelectorAll('.rk-ln')].forEach((ln, j) => {
@@ -287,10 +340,12 @@ def build(page, spec, sched):
 
     카운트업 줄마다 모션 DOM 에서 잰 줄 수 [{s, j, n}] (장면·줄 0부터) 를 돌려준다.
     """
-    page.evaluate("h=>{document.body.innerHTML=h}", layout.root_html(1.0, layers_html(spec)))
+    items = countup_entries(spec)
+    page.evaluate("h=>{document.body.innerHTML=h}", layout.root_html(1.0, layers_html(spec, items)))
     page.evaluate("document.fonts.ready.then(()=>0)")
     payload = {"total": sched.raw_total, "cross": CROSS, "enter": ENTER, "stagger": STAGGER, "rise": RISE_PX,
-               "ease": EASE, "scenes": [{"start": sc.start, "end": sc.end, "n": sc.n_lines} for sc in sched.scenes]}
+               "ease": EASE, "scenes": [{"start": sc.start, "end": sc.end, "n": sc.n_lines} for sc in sched.scenes],
+               "cuTexts": countup_variants(sched, items)}
     return page.evaluate(BUILD_JS, payload)
 
 

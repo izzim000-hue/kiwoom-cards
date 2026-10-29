@@ -9,6 +9,7 @@ import tempfile
 import unittest
 from decimal import Decimal
 from pathlib import Path
+from unittest import mock
 
 TESTS = Path(__file__).resolve().parent
 TOOLS = TESTS.parent
@@ -641,6 +642,131 @@ class CountUp(unittest.TestCase):
         for b in self.boxes():
             self.assertEqual(b["kids"], 0)
             self.assertEqual(b["text"], "<b>x</b>")
+
+
+# 최종 글자보다 넓은 중간 숫자가 나오던 서식들 (CR-01): man1 정수(98.6만 > 150만), pct 정수(6.6% > 10%),
+# eok_man_won 억 단위(9,999만 원 > 1억 원)와 억+만, 그리고 소수점 있는 man1 (연금 편) — 숫자 뒤에 조사가 붙은 줄.
+FIT_CASES = (("<g>", "150만", "</g>이면 충분", "man1", "1500000"),
+             ("<g>", "10%", "</g>를 넘으면", "pct", "10"),
+             ("<g>", "1억 원", "</g>까지 모아요", "eok_man_won", "100000000"),
+             ("<g>", "3억 7,200만 원", "</g>", "eok_man_won", "372000000"),
+             ("최대 <g>", "148.5만", "</g>까지", "man1", "1485000"))
+
+
+def fit_spec():
+    """FIT_CASES 를 장면마다 하나씩 첫 줄에 카운트업으로 둔 손 원고 (장부는 countup_entries 가 검사하는 키만)."""
+    scenes, ledger = [], []
+    for i, (pre, text, post, fmt, value) in enumerate(FIT_CASES):
+        scenes.append({"top": "", "lines": [pre + text + post, "다음 줄"]})
+        ledger.append({"where": f"scene {i + 1} line 1", "start": len(pre), "end": len(pre) + len(text), "text": text,
+                       "fmt": fmt, "value": value, "countup": True})
+    return {"motion": "basic", "basis": "예시", "scenes": scenes, "figures": ledger}
+
+
+class CountUpSteps(unittest.TestCase):
+    """중간 숫자는 최종 글자의 표시 정밀도로 센다 (CR-01): 자릿수·소수점·단위가 최종 글자보다 많아지지 않는다."""
+
+    def texts(self, k):
+        e = motion.countup_entries(fit_spec())[k][2]
+        return e, [motion.cu_text(e, n / 240) for n in range(240)]
+
+    def test_integer_finals_count_in_integers(self):
+        for k in (0, 1):
+            e, texts = self.texts(k)
+            with self.subTest(e["text"]):
+                self.assertFalse([t for t in texts if "." in t])
+                self.assertEqual(texts[0], calc.FORMATS[e["fmt"]](Decimal(0))[0])
+                self.assertGreater(len(set(texts)), 5)            # 실제로 센다
+
+    def test_eok_final_never_shows_wider_man_text(self):
+        e, texts = self.texts(2)
+        self.assertEqual(set(texts), {"0만 원"})                    # 1억 원: 억 단위로 센다 (9,999만 원 없음)
+        e, texts = self.texts(3)
+        self.assertTrue(all(len(t) <= len(e["text"]) for t in texts), texts)
+        self.assertTrue(any(t.startswith("3억 ") for t in texts))
+
+    def test_decimal_final_keeps_format_values(self):
+        e, texts = self.texts(4)
+        self.assertIsNone(motion.countup_step(e))
+        self.assertTrue(any("." in t for t in texts))
+
+    def test_variants_cover_every_frame(self):
+        spec = fit_spec()
+        sched, items = motion.schedule(spec), motion.countup_entries(spec)
+        variants = motion.countup_variants(sched, items)
+        for f in range(sched.nframes):
+            for k, text in enumerate(motion.countup_texts(sched, items, f / motion.FPS)):
+                self.assertIn(text, variants[k])
+        self.assertEqual([v[-1] for v in variants], [e["text"] for _s, _l, e in items])
+
+
+class CountUpFit(unittest.TestCase):
+    """모든 렌더 프레임에서 카운트업 글자가 상자 안에 있다 (CR-01). 브라우저 한 번, 인코딩 없음."""
+
+    OVER_JS = """() => [...document.querySelectorAll('.rk-cu')]
+      .filter(e => e.closest('.rk-layer').style.display !== 'none')
+      .map(e => { const b = e.getBoundingClientRect(); const r = document.createRange(); r.selectNodeContents(e);
+                  const t = r.getBoundingClientRect();
+                  return {k: +e.dataset.k, over: Math.max(t.right - b.right, b.left - t.left, e.scrollWidth - e.clientWidth),
+                          w: b.width, text: e.textContent}; })"""
+
+    @classmethod
+    def setUpClass(cls):
+        from playwright.sync_api import sync_playwright
+        cls.tmp = Path(tempfile.mkdtemp(prefix="test-motion-fit-"))
+        cls.pw = sync_playwright().start()
+        cls.browser, _used = browser.launch(cls.pw)
+        cls.page = render._open_checked_page(cls.browser, cls.tmp)
+        cls.spec = fit_spec()
+        cls.sched = motion.schedule(cls.spec)
+        cls.items = motion.countup_entries(cls.spec)
+        # 정적 배치의 숫자 폭 (모션 레이어를 만들기 전, 줄 마크업 그대로)
+        cls.page.evaluate("h=>{document.body.innerHTML=h}", layout.root_html(1.0, motion.layers_html(cls.spec, cls.items)))
+        cls.page.evaluate("document.fonts.ready.then(()=>0)")
+        cls.static_w = cls.page.evaluate("()=>[...document.querySelectorAll('.rk-cu')].map(e=>e.getBoundingClientRect().width)")
+        cls.cu_lines = motion.build(cls.page, cls.spec, cls.sched)
+        cls.worst = {}
+        for f in range(cls.sched.nframes):
+            t = f / motion.FPS
+            motion.seek(cls.page, cls.sched, t, motion.countup_texts(cls.sched, cls.items, t))
+            for m in cls.page.evaluate(cls.OVER_JS):
+                if m["k"] not in cls.worst or m["over"] > cls.worst[m["k"]]["over"]:
+                    cls.worst[m["k"]] = {**m, "f": f}
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.pw.stop()
+        shutil.rmtree(cls.tmp, ignore_errors=True)
+
+    def test_no_frame_overflows_the_box(self):
+        self.assertEqual(sorted(self.worst), list(range(len(FIT_CASES))))
+        for k, m in sorted(self.worst.items()):
+            with self.subTest(FIT_CASES[k][1]):
+                self.assertLessEqual(m["over"], 0.5, m)
+
+    def test_box_keeps_the_static_width(self):
+        # 중간 숫자가 최종 글자보다 넓지 않으므로 상자 = 최종 글자 폭 = 정적 배치 (마지막 프레임 배치가 바뀌지 않음)
+        for k, m in sorted(self.worst.items()):
+            with self.subTest(FIT_CASES[k][1]):
+                self.assertAlmostEqual(m["w"], self.static_w[k], delta=0.01)
+
+    def test_lines_do_not_rewrap(self):
+        self.assertTrue(all(c["n"] == 1 for c in self.cu_lines), self.cu_lines)
+
+    def test_wider_intermediate_grows_the_box(self):
+        # 넓은 중간 글자가 생겨도(예: 서식 규칙이 바뀌어) 상자가 그 글자에 맞춰 커진다: 측정이 마지막 방어선
+        spec = fit_spec()
+        sched, items = motion.schedule(spec), motion.countup_entries(spec)
+        real = motion.countup_variants
+        with mock.patch.object(motion, "countup_variants",
+                               lambda s, it: [v + ["9,999만 원"] for v in real(s, it)]):
+            motion.build(self.page, spec, sched)
+        widths = self.page.evaluate("()=>[...document.querySelectorAll('.rk-cu')].map(e=>e.getBoundingClientRect().width)")
+        self.assertGreater(widths[2], self.static_w[2] + 100)
+        motion.seek(self.page, sched, sched.scenes[2].start + 0.3, ["9,999만 원"] * len(items))
+        over = {m["k"]: m["over"] for m in self.page.evaluate(self.OVER_JS)}
+        self.assertLessEqual(over[2], 0.5)
 
 
 class CountUpRender(unittest.TestCase):
