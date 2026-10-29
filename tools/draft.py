@@ -1,6 +1,7 @@
 """키움멘토 릴스 초안 도구 (원고 소스 확장, 수치 등록부)
 사용: python3 tools/draft.py expand SRC OUT [--registry PATH]
       python3 tools/draft.py check SPEC [--out JSON] [--registry PATH] [--date YYYY-MM-DD] [--strict] [--legacy]
+      python3 tools/draft.py caption SPEC SRC --out TXT [--config PATH]
       python3 tools/draft.py figures {list [--grep 글자] | show ID | add ... | confirm ID --by 이름 [--date YYYY-MM-DD]}
   expand  자리표시자 `{{이름|서식}}` 가 든 원고 소스(SRC)를 등록부·계산 모듈로 채워 v1 호환 원고(OUT)로 쓴다.
           OUT 에는 숫자마다 출처를 적은 `figures` 장부와 쓰인 등록부 항목 `basis_items` 가 함께 들어간다.
@@ -10,6 +11,9 @@
           --out 을 주면 오류가 있어도 check.json 을 쓴다. --strict 는 경고가 있으면 종료 3.
           --date 는 게시 예정일(기본 오늘): 등록부 valid_until 이 이보다 이르면 EXPIRED 경고.
           --legacy 는 게시된 v1 원고(장부 없음)용 보고 전용: 등록부 없는 수치 숫자 개수만 알리고 종료 0, 원고는 고치지 않는다.
+  caption  원고(SPEC)와 게시글 문구 원본(SRC: hook, summary 3줄, hashtags)으로 게시글 caption.txt 를 조립한다 (D-11 순서).
+          시리즈명·회차·다음 편은 원고의 series 에서만 가져온다. 해시태그는 브랜드 태그 포함 최대 5개, 전체 2,200자 이하.
+          게시글 문구의 숫자는 원고에 이미 있는 숫자여야 한다. 면책·CTA 문구는 준법 검토 전 초안이다.
   figures 수치 등록부(tools/data/figures.json) 조회·추가·확인.
           add      새 수치를 추가한다. 확인 상태는 항상 `미확인` 이고 지정하는 옵션이 없다 (D-02).
           confirm  사람 확인자 전용이다 (D-02). 1차 출처(law.go.kr 등)를 직접 열어 값을 맞춰 본 사람이 확인자 이름으로
@@ -26,7 +30,7 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from reelkit import calc, check, expand, figures  # noqa: E402
+from reelkit import calc, caption, check, expand, figures  # noqa: E402
 from reelkit.spec import SpecError, load_spec  # noqa: E402
 
 
@@ -46,6 +50,12 @@ def build_parser():
     p.add_argument("--date", help="게시 예정일 YYYY-MM-DD (기본 오늘) — valid_until 만료 경고 기준")
     p.add_argument("--legacy", action="store_true", help="게시된 v1 원고: 수치 숫자 개수만 보고하고 종료 0")
     _registry_arg(p)
+
+    p = sub.add_parser("caption", help="원고와 문구 원본으로 게시글 caption.txt 를 쓴다")
+    p.add_argument("spec", help="확장된 원고 JSON 경로")
+    p.add_argument("src", help="게시글 문구 원본 JSON 경로 (hook, summary, hashtags)")
+    p.add_argument("--out", required=True, help="caption.txt 를 쓸 경로")
+    p.add_argument("--config", default=str(caption.CONFIG_PATH), help="게시글 설정 경로 (기본 tools/data/caption_config.json)")
 
     fp = sub.add_parser("figures", help="수치 등록부 조회·추가·확인")
     fsub = fp.add_subparsers(dest="figures_command", required=True)
@@ -171,6 +181,28 @@ def cmd_check(args):
     return 0
 
 
+def cmd_caption(args):
+    try:
+        spec = load_spec(args.spec)
+        src = _read_json(args.src)
+        config = caption.load_config(args.config)
+        text, warnings = caption.build_caption(spec, src, config)
+    except (SpecError, caption.CaptionError, ValueError) as e:
+        print(f"초안 오류: {e}", file=sys.stderr)
+        return 1
+    try:
+        Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.out).write_text(text, encoding="utf-8")
+    except OSError as e:
+        print(f"환경 오류: {e.__class__.__name__}: {e}", file=sys.stderr)
+        return 2
+    for w in warnings:
+        print(f"경고: {w}", file=sys.stderr)
+    tags = text.rstrip("\n").splitlines()[-1].split()
+    print(f"caption: {args.out} 글자 {len(text)}자 · 해시태그 {len(tags)}개")
+    return 0
+
+
 def _registry_command(fn):
     """등록부 하위 명령 공통 처리: RegistryError -> '등록부 오류' 종료 코드 1, 파일 쓰기 실패 -> 종료 코드 2."""
     def run(args):
@@ -240,6 +272,8 @@ def main(argv=None):
         return FIGURES_COMMANDS[args.figures_command](args)
     if args.command == "check":
         return cmd_check(args)
+    if args.command == "caption":
+        return cmd_caption(args)
     return cmd_expand(args)
 
 

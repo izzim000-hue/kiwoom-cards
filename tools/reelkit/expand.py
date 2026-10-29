@@ -1,6 +1,6 @@
 """원고 소스(자리표시자 포함) -> v1 호환 원고 + 수치 장부 (표준 라이브러리만 사용, D-05).
 
-소스는 `basis`(선택), `inputs`(선택), `derive`(선택), `scenes` 만 가진다. 숫자는 글자로 적지 않고
+소스는 `basis`(선택), `inputs`(선택), `derive`(선택), `series`(선택), `scenes` 만 가진다. 숫자는 글자로 적지 않고
 `{{이름|서식}}` 으로 쓴다. 이름은 등록부 id (`fig.<id>`), 이 릴스 한정 시나리오 가정 (`inputs.<name>`),
 또는 앞서 정의한 `derive` 이름이다. 값 계산은 calc.FUNCTIONS, 표시는 calc.FORMATS 만 쓴다 (eval/exec 없음).
 
@@ -17,7 +17,11 @@ from pathlib import Path
 
 from . import calc, figures
 
-ALLOWED_KEYS = ("basis", "inputs", "derive", "scenes")
+ALLOWED_KEYS = ("basis", "inputs", "derive", "series", "scenes")
+SERIES_KEYS = ("name", "episode", "next")
+# 원문자는 ⑩ 까지만 쓴다 (⑪ 이상은 번들 폰트에서 확인되지 않음, research 가정 A3)
+CIRCLED = "①②③④⑤⑥⑦⑧⑨⑩"
+NEXT_PREFIX = "<s>다음 편:"
 PLACEHOLDER = re.compile(r"\{\{\s*([A-Za-z0-9_.]+)\s*\|\s*([a-z0-9_]+)\s*\}\}")
 NAME_RE = re.compile(r"^[a-z0-9_]+$")
 LABEL_MARKS = ("예시", "가정", "가상")
@@ -149,6 +153,64 @@ def _expand_field(text, where, scene, vals, ledger):
     return out
 
 
+def _series_text(value, where):
+    if not isinstance(value, str) or not value.strip():
+        raise ExpandError(f"{where}: 비어 있지 않은 문자열이어야 함")
+    for bad in ("{{", "}}", "<"):
+        if bad in value:
+            raise ExpandError(f"{where}: {bad!r} 는 쓸 수 없음")
+
+
+def _check_series(series):
+    if not isinstance(series, dict):
+        raise ExpandError("series: 객체여야 함")
+    unknown = [k for k in series if k not in SERIES_KEYS]
+    if unknown:
+        raise ExpandError(f"series: 알 수 없는 키 {', '.join(map(str, unknown))} (허용: {', '.join(SERIES_KEYS)})")
+    _series_text(series.get("name"), "series.name")
+    if "episode" in series:
+        ep = series["episode"]
+        if isinstance(ep, bool) or not isinstance(ep, int) or not 1 <= ep <= len(CIRCLED):
+            raise ExpandError(f"series.episode: 1~{len(CIRCLED)} 정수여야 함 (원문자 ①~⑩) — {ep!r}")
+    if "next" in series:
+        _series_text(series["next"], "series.next")
+
+
+def series_top(series):
+    """장면 1 top 과 게시글 첫 줄에 쓰는 `시리즈명 ①` 문자열."""
+    if "episode" in series:
+        return f"{series['name']} {CIRCLED[series['episode'] - 1]}"
+    return series["name"]
+
+
+def next_line(series):
+    """마지막(CTA) 장면에 넣는 `<s>다음 편: X</s>` 줄. next 가 없으면 None."""
+    if "next" not in series:
+        return None
+    return f"{NEXT_PREFIX} {series['next']}</s>"
+
+
+def _apply_series(scenes, series):
+    """시리즈 값을 장면 1 top 과 마지막 장면 줄에 반영한다 (자리표시자 해석 전이라 장부 줄 번호가 확정된다)."""
+    want = series_top(series)
+    first = scenes[0]
+    if first["top"] == "":
+        first["top"] = want
+    elif first["top"] != want:
+        raise ExpandError(f"scene 1 top: 시리즈 지정 시 비워 두거나 {want!r} 와 같아야 함 (덮어쓰지 않음)")
+    teaser = next_line(series)
+    if teaser is None:
+        return
+    last = scenes[-1]
+    for line in last["lines"]:
+        if line == teaser:
+            return
+        if line.startswith(NEXT_PREFIX):
+            raise ExpandError(f"scene {len(scenes)}: 다음 편 줄이 series.next 와 다름 — {line!r} (기대: {teaser!r})")
+    at = next((i for i, line in enumerate(last["lines"]) if "프로필 링크" in line), len(last["lines"]))
+    last["lines"].insert(at, teaser)
+
+
 def _check_scenes(scenes):
     if not isinstance(scenes, list) or not scenes:
         raise ExpandError("scenes: 비어 있지 않은 목록이어야 함")
@@ -176,6 +238,11 @@ def expand_source(src, registry):
     if "basis" in src and not isinstance(src["basis"], str):
         raise ExpandError("basis: 문자열이어야 함")
     _check_scenes(src.get("scenes"))
+    series = None
+    if "series" in src:
+        _check_series(src["series"])
+        series = src["series"]
+        _apply_series(src["scenes"], series)
 
     inputs_raw = src.get("inputs", {})
     vals = _Values(registry, _check_inputs(inputs_raw))
@@ -183,6 +250,8 @@ def expand_source(src, registry):
 
     ledger = []
     out = {"version": SPEC_VERSION}
+    if series is not None:
+        out["series"] = dict(series)
     if "basis" in src:
         out["basis"] = _expand_field(src["basis"], "basis", None, vals, ledger)
     scenes = src["scenes"]

@@ -136,7 +136,7 @@ class NegativeCases(unittest.TestCase):
         self.expect_error(mini(scenes=[{"top": "t", "lines": ["{{r}} 남음"]}]), "scene 1 line 1", "자리표시자")
 
     def test_unknown_top_level_key(self):
-        self.expect_error(mini(series={"name": "x"}), "series")
+        self.expect_error(mini(motion="x"), "motion")
 
     def test_non_finite_input_value_rejected(self):
         src = mini(inputs={"amt": {"value": "NaN", "unit": "원", "label": "예시"}})
