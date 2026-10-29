@@ -21,8 +21,8 @@ CROSS = 0.30        # 장면 크로스페이드(초)
 COUNT = 0.80        # 숫자 세어 올라가기(카운트업) 시간(초)
 READ_BASE = 0.6     # 읽기 시간 = READ_BASE + 글자 수 / READ_CPS
 READ_CPS = 16
-DWELL_MIN = 1.5     # 장면 길이 경고 기준(초)
-DWELL_MAX = 6.0
+DWELL_MIN = 1.5     # 장면 길이 경고 기준(초). 비교 대상은 장면 길이 dur = settle + read (+ 마지막이 아닌 장면은 나가는 크로스페이드 CROSS).
+DWELL_MAX = 6.0     # 그래서 같은 기준이라도 마지막이 아닌 장면은 읽을 시간이 CROSS(0.3초)만큼 덜 남는다 — 의도한 비대칭 (IN-05)
 EASE = "cubic-bezier(.2,.7,.2,1)"
 FPS = constants.FPS
 
@@ -103,7 +103,10 @@ def schedule(spec):
 
 
 def dwell_warnings(spec, sched):
-    """장면 길이가 DWELL_MIN 보다 짧거나 DWELL_MAX 보다 길면 장면 단위 경고 (line 은 ""). 값은 자르지 않는다 (D-06)."""
+    """장면 길이가 DWELL_MIN 보다 짧거나 DWELL_MAX 보다 길면 장면 단위 경고 (line 은 ""). 값은 자르지 않는다 (D-06).
+
+    장면 길이 dur 는 마지막이 아닌 장면에서 나가는 크로스페이드 0.3초를 포함한다 (기준은 게시된 10편에 맞춘 값, IN-05).
+    """
     out = []
     for sc, scene in zip(sched.scenes, spec["scenes"]):
         text = TAG_RE.sub("", scene["lines"][0])[:30] if scene["lines"] else ""
