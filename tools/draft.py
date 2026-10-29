@@ -4,7 +4,7 @@
       python3 tools/draft.py convert CARD [--out JSON]
       python3 tools/draft.py caption SPEC SRC --out TXT [--config PATH] [--registry PATH]
       python3 tools/draft.py slot [--date YYYY-MM-DD] [--slug 영문-슬러그] [--reels-dir DIR] [--create]
-      python3 tools/draft.py bundle DIR [--card CARD] [--request-start EPOCH] [--rules PATH] [--registry PATH] [--config PATH]
+      python3 tools/draft.py bundle DIR [--card CARD] [--request-start EPOCH] [--rules PATH] [--registry PATH] [--config PATH] [--bgm 음원 --bgm-license 메모]
       python3 tools/draft.py compliance SPEC [--caption TXT] [--check JSON] [--rules PATH] [--out JSON]
       python3 tools/draft.py redteam [--rules PATH] [--corpus PATH] [--heldout PATH] [--json]
       python3 tools/draft.py approve DIR --by 이름   (사람 전용 — Claude 는 실행 금지)
@@ -39,7 +39,9 @@
           `위험 표현 n건 발견` 또는 `패턴상 발견 없음 — 사람 검수 필요` 둘 중 하나로만 낸다. 발견이 있어도 종료 코드는 바뀌지 않는다.
           원고 소스를 고친 뒤에도 같은 명령으로 전부 다시 만든다. record.json(광고 해당 여부·심의 기록)은 없을 때만 만들고 고치지 않는다.
           --request-start 는 요청 시각(epoch 초)으로, 주어지면 bundle.json 에 요청부터 걸린 시간을 남긴다 (없으면 slot --create 가 남긴 created.json).
-          종료 코드: 0 완료, 1 입력 오류(점검 오류 포함), 2 렌더·파일 환경 오류, 3 레이아웃 경고, 4 업로드 규격 FAIL (4 우선).
+          --bgm 과 --bgm-license 는 함께 줄 때만 배경음을 섞는다: 사용자가 가진 음원 파일 경로와 이용 권리 메모 (빈 값·한쪽만은 거부, 종료 코드 1).
+          음원은 초안 폴더에 bgm.<확장자> 로 복사되고 bgm.json 에 해시·메모가 남으며 review.md 가 사람 확인을 요청한다. 음악을 찾거나 내려받지 않는다.
+          종료 코드: 0 완료, 1 입력 오류(점검 오류·음원 거부 포함), 2 렌더·파일 환경 오류, 3 레이아웃 경고, 4 업로드 규격 FAIL (4 우선).
   compliance  원고(SPEC)와 게시글(--caption)을 금소법 표현 규칙(tools/data/compliance_rules.json, 초안·준법 검토 전)으로 점검한다.
           결과 머리말은 `위험 표현 n건 발견` 또는 `패턴상 발견 없음 — 사람 검수 필요` 둘 중 하나이며 규칙 버전·기준일이 붙는다.
           발견마다 위치·문제 표현·사유·대체 표현 제안을 보이고 원고·게시글 파일은 고치지 않는다 (제안만). 발견이 있어도 종료 0.
@@ -116,6 +118,8 @@ def build_parser():
     p.add_argument("--request-start", help="요청 시각 epoch 초 — bundle.json 에 요청부터 걸린 시간을 남김")
     p.add_argument("--rules", help="표현 점검 규칙 파일 (기본 tools/data/compliance_rules.json)")
     p.add_argument("--config", help="게시글 설정 경로 (기본 tools/data/caption_config.json)")
+    p.add_argument("--bgm", help="배경음 음원 파일 — --bgm-license 와 함께만")
+    p.add_argument("--bgm-license", help="음원 이용 권리 메모 (빈 값 거부)")
     _registry_arg(p)
 
     p = sub.add_parser("approve", help="[사람 전용 — Claude 는 실행 금지] 대화형 터미널에서 묶음을 승인 기록한다",
@@ -394,7 +398,7 @@ def cmd_redteam(args):
 def cmd_bundle(args):
     from reelkit import bundle   # 렌더러를 쓰는 명령에서만 읽는다 (다른 명령은 Playwright 를 읽지 않음)
     return bundle.run_cli(args.dir, card=args.card, request_start=args.request_start, rules=args.rules,
-                          registry=args.registry, config=args.config)
+                          registry=args.registry, config=args.config, bgm=args.bgm, bgm_license=args.bgm_license)
 
 
 def cmd_approve(args):

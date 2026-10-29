@@ -56,6 +56,7 @@ class RenderResult:
     spec_checks: list = field(default_factory=list)
     motion: str = "none"
     countups: int = 0
+    bgm: str = None   # 섞은 음원 파일 이름 (없으면 None)
 
 
 def _read_spec(spec_path):
@@ -125,7 +126,7 @@ def _write_overlay(page, make_html, basis, st, prog, path):
     page.evaluate("()=>{const o=document.getElementById('rk-ov'); if(o) o.remove()}")
 
 
-def _render_motion(spec, out_path, *, keep_work, overlay_all, frame_sink):
+def _render_motion(spec, out_path, *, keep_work, overlay_all, frame_sink, bgm=None):
     """motion basic: 장면 최종 상태 정적 검사 -> 모션 레이어 -> 프레임마다 시간 탐색·스크린샷 -> PNG 파이프 인코딩.
 
     측정과 경고는 정적 새 배치 그대로 하고 (모션 DOM 에서는 측정하지 않는다), 모션 DOM 이 그 배치와 같다는 것은 시험이 지킨다.
@@ -174,7 +175,7 @@ def _render_motion(spec, out_path, *, keep_work, overlay_all, frame_sink):
                         warnings.append(LayoutWarning(c["s"] + 1, str(c["j"] + 1), "COUNTUP_WRAP",
                                                       f"{want['n']}줄 -> {c['n']}줄", text))
                 warnings.extend(motion_mod.dwell_warnings(spec, sched))
-                with PipeEncoder(out_path) as enc:
+                with PipeEncoder(out_path, bgm=bgm, total=sched.total) as enc:
                     for f in range(sched.nframes):
                         motion_mod.seek(page, sched, f / FPS, motion_mod.countup_texts(sched, cu_items, f / FPS))
                         png = page.screenshot(type="png")
@@ -196,14 +197,15 @@ def _render_motion(spec, out_path, *, keep_work, overlay_all, frame_sink):
             shutil.rmtree(work, ignore_errors=True)
     return RenderResult(out=out_path, total=sched.total, cover_ms=round(sched.scenes[0].final_t * 1000),
                         launch=used, warnings=warnings, overlays=overlays, spec_checks=spec_checks, motion="basic",
-                        countups=len(cu_items))
+                        countups=len(cu_items), bgm=None if bgm is None else Path(bgm).name)
 
 
 def render_reel(spec_path, out_path, *, layout="legacy", keep_work=False, overlay_all=False, frame_sink=None,
-                motion=None):
+                motion=None, bgm=None):
     """frame_sink(장면 번호 0부터, PNG 경로): 장면 최종 상태 프레임을 쓴 직후 한 번 부른다. 작업 폴더는 끝나면 지워지므로 바로 복사한다.
 
     motion: None 이면 원고의 motion 필드(없으면 none), 'none'/'basic' 이면 그 값. basic 은 새 배치에서만 쓸 수 있다.
+    bgm: 이미 검증된 음원 파일 경로(bgm.validate 거친 것)이면 그 소리를 섞고, None 이면 무음 트랙.
     """
     _check_layout_name(layout)
     spec = _read_spec(spec_path)
@@ -211,7 +213,8 @@ def render_reel(spec_path, out_path, *, layout="legacy", keep_work=False, overla
     if mode == "basic":
         if layout != "new":
             raise SpecError("motion basic 은 --layout new 에서만 쓸 수 있음")
-        return _render_motion(spec, out_path, keep_work=keep_work, overlay_all=overlay_all, frame_sink=frame_sink)
+        return _render_motion(spec, out_path, keep_work=keep_work, overlay_all=overlay_all, frame_sink=frame_sink,
+                              bgm=bgm)
     if layout == "legacy":
         check_legacy_markup(spec)  # 작업 폴더·Chromium 보다 먼저: 거부된 원고는 브라우저도 MP4도 만들지 않는다
     basis = spec.get("basis", "")
@@ -257,7 +260,7 @@ def render_reel(spec_path, out_path, *, layout="legacy", keep_work=False, overla
                         overlays.append(path)
             finally:
                 b.close()
-        encode_concat(files, total, out_path, work)
+        encode_concat(files, total, out_path, work, bgm=bgm)
         spec_checks = specprobe.probe(out_path)  # 읽기 전용: 파일을 다시 인코딩하거나 고치지 않는다
     finally:
         if keep_work:
@@ -265,7 +268,8 @@ def render_reel(spec_path, out_path, *, layout="legacy", keep_work=False, overla
         else:
             shutil.rmtree(work, ignore_errors=True)
     return RenderResult(out=out_path, total=total, cover_ms=timeline.cover_ms(spec), launch=used,
-                        warnings=warnings, overlays=overlays, spec_checks=spec_checks)
+                        warnings=warnings, overlays=overlays, spec_checks=spec_checks,
+                        bgm=None if bgm is None else Path(bgm).name)
 
 
 def check_layout(spec_path, layout="new"):

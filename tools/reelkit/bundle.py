@@ -5,7 +5,8 @@
 record.json, bundle.json 이 생긴다. 표현 점검(D-06)이 완성된 게시글을 읽어야 하므로 게시글을 먼저 만든다.
 각 단계는 라이브러리 함수를 같은 프로세스에서 부르며 점검 로직을 다시 만들지 않는다.
 표현 점검의 발견은 종료 코드를 바꾸지 않는다 (발견이 이 도구의 산출물이다).
-종료 코드: 0 완료, 1 초안·원고·규칙 입력 오류, 2 렌더·파일 환경 오류, 3 레이아웃 경고(항상 엄격), 4 업로드 규격 FAIL (4 가 우선).
+음원은 `--bgm` 과 `--bgm-license` 를 함께 줄 때만 섞는다 (둘 중 하나만 있거나 메모가 비면 거부, 종료 코드 1, 아무것도 지우기 전).
+종료 코드: 0 완료, 1 초안·원고·규칙·음원 입력 오류, 2 렌더·파일 환경 오류, 3 레이아웃 경고(항상 엄격), 4 업로드 규격 FAIL (4 가 우선).
 """
 import hashlib
 import json
@@ -18,6 +19,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+from . import bgm as bgm_mod
 from . import calc, caption, check, compliance, convert, expand, figures, review, slot, stills
 from .render import PLAYWRIGHT_MISSING, env_error_message, render_reel  # noqa: F401 - render_reel 은 시험이 바꿔 끼운다
 from .spec import SpecError, load_spec
@@ -82,13 +84,17 @@ def sha256_file(path):
     return h.hexdigest()
 
 
-def output_hashes(paths):
-    """{파일 이름: sha256} — OUTPUT_KEYS 중 있는 보통 파일만 (심볼릭 링크 제외)."""
+def output_hashes(paths, extra=()):
+    """{파일 이름: sha256} — OUTPUT_KEYS 중 있는 보통 파일만 (심볼릭 링크 제외). extra: 초안 폴더 안의 배경음 파일 이름들."""
     out = {}
     for key in OUTPUT_KEYS:
         p = Path(paths[key])
         if p.is_file() and not p.is_symlink():
             out[p.name] = sha256_file(p)
+    for n in extra:
+        p = Path(paths["bundle"]).parent / n
+        if p.is_file() and not p.is_symlink():
+            out[n] = sha256_file(p)
     return out
 
 
@@ -132,6 +138,8 @@ def purge_outputs(d, name):
     victims += [d / f"{name}.mp4", d / f"{name}.mp4.part.mp4", d / f"{name}-cover.png", d / f"{name}-cover.png.part",
                 d / f"{name}-scenes.png", d / f"{name}-scenes.png.part"]
     victims += sorted(d.glob(f"{name}.safe-s*.png"))
+    # 배경음: --bgm 없이 다시 묶으면 낡은 음원 복사본이 이월되지 않는다 (D-09, T-04-15). 사용자 음원(song.mp3 등)은 건드리지 않는다
+    victims += [d / bgm_mod.META] + [d / n for n in bgm_mod.COPY_NAMES] + [d / f"{n}.part" for n in bgm_mod.COPY_NAMES]
     for p in victims:
         if p.is_file() or p.is_symlink():
             p.unlink()
@@ -188,7 +196,8 @@ class _Stop(Exception):
         self.code = code
 
 
-def run_cli(draft_dir, *, card=None, request_start=None, rules=None, registry=None, config=None):
+def run_cli(draft_dir, *, card=None, request_start=None, rules=None, registry=None, config=None,
+            bgm=None, bgm_license=None):
     """묶음을 만들고 종료 코드를 돌려준다. 메시지는 이 함수가 직접 stdout/stderr 에 낸다."""
     try:
         d, date_text, name = validate_draft_dir(draft_dir)
@@ -208,6 +217,15 @@ def run_cli(draft_dir, *, card=None, request_start=None, rules=None, registry=No
     except BundleError as e:
         print(f"초안 오류: {e}", file=sys.stderr)
         return 1
+    # 음원은 아무것도 지우거나 렌더하기 전에 검사한다: 거부되면 이전 산출물이 그대로 남는다 (D-08, T-04-09)
+    try:
+        bgm_src = bgm_mod.validate(bgm, bgm_license, d)
+    except bgm_mod.BgmError as e:
+        print(f"음원 오류: {e}", file=sys.stderr)
+        return 1
+    except OSError as e:
+        print(f"환경 오류: 음원을 검사하지 못함: {e.__class__.__name__}: {e}", file=sys.stderr)
+        return 2
     paths = draft_paths(d)
     started = time.time()
     t_start = time.monotonic()
@@ -223,7 +241,7 @@ def run_cli(draft_dir, *, card=None, request_start=None, rules=None, registry=No
             exit_code = 2
         else:
             exit_code = _build(d, date_text, name, paths, frames, steps, state, started, t_start,
-                               card, request, rules, registry, config)
+                               card, request, rules, registry, config, bgm_src)
     except _Stop as stop:
         exit_code = stop.code
     except BaseException:
@@ -238,12 +256,14 @@ def run_cli(draft_dir, *, card=None, request_start=None, rules=None, registry=No
 def _write_bundle_json(paths, name, steps, state, started, t_start, request, exit_code):
     data = {"schema": 1, "name": name, "status": "failed" if state["failed"] else "complete",
             "failed_step": state["failed"], "exit_code": exit_code,
-            "motion": state.get("motion"), "countups": state.get("countups")}   # 렌더 전에 멈췄으면 null
+            "motion": state.get("motion"), "countups": state.get("countups"),   # 렌더 전에 멈췄으면 null
+            "bgm": state.get("bgm")}
     data.update(timing_fields(started, t_start, request))
     data["steps"] = steps
     try:
         if data["status"] == "complete":
-            data["outputs"] = output_hashes(paths)
+            bgm_meta = state.get("bgm")
+            data["outputs"] = output_hashes(paths, (bgm_mod.META, bgm_meta["copy"]) if bgm_meta else ())
         _atomic_write(paths["bundle"], _json_text(data))
     except OSError as e:
         print(f"환경 오류: bundle.json 을 쓸 수 없음: {e}", file=sys.stderr)
@@ -262,7 +282,7 @@ def _timed(steps, state, name, fn):
 
 
 def _build(d, date_text, name, paths, frames, steps, state, started, t_start,
-           card, request, rules_path, registry_path, config_path):
+           card, request, rules_path, registry_path, config_path, bgm_src=None):
     registry_path = registry_path or figures.REGISTRY_PATH
     memo = {"spec": None, "result": None}
 
@@ -340,7 +360,8 @@ def _build(d, date_text, name, paths, frames, steps, state, started, t_start,
         def sink(scene, png):
             shutil.copyfile(png, frames / f"s{scene + 1:02d}.png")
 
-        return render_reel(paths["spec"], paths["mp4"], layout="new", frame_sink=sink)
+        extra = {} if bgm_src is None else {"bgm": d / state["bgm"]["copy"]}
+        return render_reel(paths["spec"], paths["mp4"], layout="new", frame_sink=sink, **extra)
 
     # 6 cover
     def do_cover():
@@ -393,6 +414,8 @@ def _build(d, date_text, name, paths, frames, steps, state, started, t_start,
         fail(HEAD_ENV, [f"{e.__class__.__name__}: {e}"], 2)
 
     try:
+        if bgm_src is not None:
+            state["bgm"] = _timed(steps, state, "bgm", lambda: bgm_mod.install(bgm_src, d))
         r = _timed(steps, state, "render", do_render)
         state["motion"] = getattr(r, "motion", None)
         state["countups"] = getattr(r, "countups", 0)
@@ -434,7 +457,7 @@ def _build(d, date_text, name, paths, frames, steps, state, started, t_start,
             "spec_total": len(r.spec_checks), "spec_ok": sum(1 for c in r.spec_checks if c.status == "PASS"),
             "spec_fail": spec_fail, "spec_warn": sum(1 for c in r.spec_checks if c.status == "WARN"),
             "layout_warnings": [str(w) for w in r.warnings],
-            "motion": state["motion"], "countups": state["countups"],
+            "motion": state["motion"], "countups": state["countups"], "bgm": state.get("bgm"),
             "caption_status": cap_cfg["status"], "steps": list(steps),
             **timing_fields(started, t_start, request),
         })

@@ -7,6 +7,8 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from . import bgm as bgm_mod
+
 
 class EncodeError(RuntimeError):
     """ffmpeg 를 실행하지 못했거나 인코딩에 실패했다 (환경 오류). 메시지는 한국어."""
@@ -17,8 +19,11 @@ def _last_line(text):
     return lines[-1] if lines else ""
 
 
-def encode_concat(files, total, out, work_dir):
+def encode_concat(files, total, out, work_dir, bgm=None):
     """files: [(png 경로, 지속 시간(초)), ...]. 셸을 쓰지 않고 인자 목록으로만 실행한다.
+
+    bgm 이 None 이면 인자 목록이 예전과 똑같다(무음 트랙, golden 장면 경계 보호). 경로를 주면 무음 입력과 `-vf` 대신
+    `-i <bgm>` 과 필터 그래프(반복·자르기, 1초 페이드, 음량 정규화)로 섞는다.
 
     임시 파일(`<출력>.part.mp4`)에 먼저 쓰고 성공했을 때만 출력 경로로 교체한다.
     그래서 인코딩이 중간에 실패해도 이미 있던 MP4 는 잘리거나 지워지지 않는다.
@@ -30,9 +35,13 @@ def encode_concat(files, total, out, work_dir):
     tmp = out.with_name(out.name + ".part.mp4")
     try:
         try:
+            if bgm is None:
+                inputs = ["-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo", "-vf", "fps=30,format=yuv420p"]
+            else:
+                inputs = ["-i", str(bgm), "-filter_complex", "[0:v]fps=30,format=yuv420p[v];" + bgm_mod.filter_graph(total),
+                          "-map", "[v]", "-map", "[a]"]
             r = subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-f", "concat", "-safe", "0", "-i", str(seq),
-                                "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo",
-                                "-vf", "fps=30,format=yuv420p", "-c:v", "libx264", "-crf", "20", "-c:a", "aac",
+                                *inputs, "-c:v", "libx264", "-crf", "20", "-c:a", "aac",
                                 "-shortest", "-t", f"{total:.2f}", "-movflags", "+faststart", str(tmp)],
                                capture_output=True, text=True)
         except OSError as e:  # ffmpeg 없음(FileNotFoundError), 실행 권한 없음 등
@@ -58,14 +67,21 @@ class PipeEncoder:
     stderr 는 임시 파일로 받아(읽지 않는 파이프로 인한 교착 방지) 실패 시 마지막 줄만 메시지에 쓴다.
     """
 
-    def __init__(self, out):
+    def __init__(self, out, *, bgm=None, total=None):
         self.out = Path(out)
         self.tmp = self.out.with_name(self.out.name + ".part.mp4")
         self._err = tempfile.TemporaryFile()
         self._proc = None
         self._done = False
+        if bgm is None:
+            inputs = ["-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo", "-vf", "format=yuv420p"]
+        else:
+            if total is None:
+                raise ValueError("bgm 을 섞으려면 영상 길이(total)가 필요함")
+            inputs = ["-i", str(bgm), "-filter_complex", "[0:v]format=yuv420p[v];" + bgm_mod.filter_graph(total),
+                      "-map", "[v]", "-map", "[a]"]
         argv = ["ffmpeg", "-loglevel", "error", "-y", "-f", "image2pipe", "-framerate", "30", "-c:v", "png",
-                "-i", "-", "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo", "-vf", "format=yuv420p",
+                "-i", "-", *inputs,
                 "-c:v", "libx264", "-crf", "20", "-c:a", "aac", "-shortest", "-movflags", "+faststart",
                 str(self.tmp)]
         try:

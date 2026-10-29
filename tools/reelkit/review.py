@@ -44,6 +44,14 @@ def _cell(text):
     return str(text).replace("|", "\\|").replace("\n", " ").strip()
 
 
+CONTROL_RE = re.compile(r"[\x00-\x1f\x7f-\x9f\u2028\u2029]")
+
+
+def _safe_text(text):
+    """사용자가 준 음원 이름·라이선스 메모를 한 줄 안전한 글자로: 제어 문자(줄바꿈 포함)는 공백, 백틱은 ', | 는 이스케이프 (T-04-11)."""
+    return _cell(CONTROL_RE.sub(" ", str(text)).replace("`", "'"))
+
+
 def _findings_table(findings):
     if not findings:
         return ["(없음)", ""]
@@ -126,7 +134,22 @@ def _motion_line(ctx):
     return "- 모션: none (기존 형식)"
 
 
-def _checklist_section(check, countups=0):
+def _bgm_overview_line(bgm):
+    if not bgm:
+        return "- 배경음: 없음 (무음 트랙)"
+    return f"- 배경음: `{_safe_text(bgm['file'])}` — 페이드 인·아웃 1초, 음량 정규화"
+
+
+def _license_lines(bgm):
+    """음원 라이선스 확인 줄(들). 배경음이 없으면 예전 문구 그대로 (D-11)."""
+    if not bgm:
+        return ["- [ ] 음원 라이선스 — 배경음 없음 = 무음 (음원을 넣었다면 이용 권리 확인)"]
+    return [f"- [ ] 음원 라이선스 — 파일 `{_safe_text(bgm['file'])}` (sha256 {str(bgm['sha256'])[:12]}) · "
+            f"메모: {_safe_text(bgm['license'])} — 사업자 계정 상업 사용 권리를 사람이 확인",
+            "- [ ] 배경음 음량 — 영상을 들어 보고 너무 크거나 작지 않은지 확인 (목표 약 -16 LUFS, 실제 음악은 다를 수 있음)"]
+
+
+def _checklist_section(check, countups=0, bgm=None):
     out = ["## 3. 사람 확인 목록", "",
            "- [ ] 수치 재확인 — 등록부 수치를 1차 출처로 다시 확인 (확인 처리는 사람만)"]
     out += _figure_lines(check)
@@ -134,7 +157,7 @@ def _checklist_section(check, countups=0):
         out.append("- [ ] 카운트업 — 영상 마지막 프레임의 숫자가 원고 숫자와 같은지 확인")
     out += ["- [ ] 기준일 — basis 의 기준 시점과 등록부 valid_until 이 게시일에도 맞는지",
             "- [ ] 표지 크롭 — 인스타 프로필 그리드 미리보기에서 글자가 잘리지 않는지 확인",
-            "- [ ] 음원 라이선스 — 배경음 없음 = 무음 (음원을 넣었다면 이용 권리 확인)",
+            *_license_lines(bgm),
             "- [ ] 개인정보 — 고객 실명·연락처·계좌 등이 영상·게시글에 없는지",
             "- [ ] 대체 표현 반영 여부 — 위 제안은 참고용이며 원고 수정은 사람이 결정", ""]
     return out
@@ -205,6 +228,7 @@ def write_review(draft_dir, ctx):
     out += ["## 2. 한눈에 보기", "",
             f"- 영상: `{ctx['mp4_name']}` ({ctx['duration']:.1f}초)",
             _motion_line(ctx),
+            _bgm_overview_line(ctx.get("bgm")),
             f"- 표지: ![표지]({ctx['cover_name']})",
             f"- 장면 모음: ![장면 모음]({ctx['scenes_name']})",
             *_crop_lines(ctx["cover_warnings"]),
@@ -217,7 +241,7 @@ def write_review(draft_dir, ctx):
         out.append(f"| {i} | {t:.2f} | {_cell(_strip_tags(first))} |")
     out.append("")
 
-    out += _checklist_section(ctx.get("check") or {}, ctx.get("countups") or 0)
+    out += _checklist_section(ctx.get("check") or {}, ctx.get("countups") or 0, ctx.get("bgm"))
     out += _record_section(ctx["record"], ctx.get("record_problem"), ctx["caption_status"])
     out += _timing_section(ctx)
     return _write_atomic(draft_dir, out)
@@ -238,7 +262,7 @@ def write_failure_review(draft_dir, ctx):
     out += [f"- {_cell(e)}" for e in ctx["errors"]]
     out.append("")
     out += _compliance_section(result)
-    out += _checklist_section(ctx.get("check") or {})
+    out += _checklist_section(ctx.get("check") or {}, 0, ctx.get("bgm"))
     out += _record_section(ctx["record"], ctx.get("record_problem"), None)
     out += _timing_section(ctx)
     return _write_atomic(draft_dir, out)
