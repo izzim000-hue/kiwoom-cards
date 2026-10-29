@@ -7,6 +7,8 @@
       python3 tools/draft.py bundle DIR [--card CARD] [--request-start EPOCH] [--rules PATH] [--registry PATH] [--config PATH]
       python3 tools/draft.py compliance SPEC [--caption TXT] [--check JSON] [--rules PATH] [--out JSON]
       python3 tools/draft.py redteam [--rules PATH] [--corpus PATH] [--heldout PATH] [--json]
+      python3 tools/draft.py approve DIR --by 이름 [--rules PATH]   (사람 전용 — Claude 는 실행 금지)
+      python3 tools/draft.py promote DIR [--rules PATH]
       python3 tools/draft.py figures {list [--grep 글자] | show ID | add ... | confirm ID --by 이름 [--date YYYY-MM-DD]}
   expand  자리표시자 `{{이름|서식}}` 가 든 원고 소스(SRC)를 등록부·계산 모듈로 채워 v1 호환 원고(OUT)로 쓴다.
           OUT 에는 숫자마다 출처를 적은 `figures` 장부와 쓰인 등록부 항목 `basis_items` 가 함께 들어간다.
@@ -53,7 +55,7 @@
                    실행한다. Claude 는 이 명령을 실행하면 안 된다. 대화형 터미널에서만 실행되고 id 를 다시 입력해야 한다.
                    확인일은 발견일 이후·오늘 이전이어야 한다. 빈 이름과 Claude/AI 이름도 거부되지만 이 이름 검사는
                    실수 방지일 뿐이다. figures.json 을 직접 고친 `확인` 의 기록 문제는 check 와 figures list 가 오류로 알린다.
-종료 코드: 0 정상, 1 원고·등록부 입력 오류(파일 없음, JSON 오류, 규칙 위반, check 의 오류), 2 환경 오류(파일 쓰기 실패 등)
+종료 코드: 0 정상, 1 원고·등록부 입력 오류(파일 없음, JSON 오류, 규칙 위반, check 의 오류) 또는 approve·promote 거부, 2 환경 오류(파일 쓰기 실패 등)
 """
 import argparse
 import json
@@ -115,6 +117,17 @@ def build_parser():
     p.add_argument("--rules", help="표현 점검 규칙 파일 (기본 tools/data/compliance_rules.json)")
     p.add_argument("--config", help="게시글 설정 경로 (기본 tools/data/caption_config.json)")
     _registry_arg(p)
+
+    p = sub.add_parser("approve", help="[사람 전용 — Claude 는 실행 금지] 대화형 터미널에서 묶음을 승인 기록한다",
+                       description="[사람 전용 — Claude 는 실행 금지] 대화형 터미널에서 묶음을 승인 기록한다")
+    p.add_argument("dir", help="초안 폴더 경로 (2026/reels/drafts/<게시일>-<슬러그>)")
+    p.add_argument("--by", required=True, help="승인하는 사람 이름 (Claude/AI 이름 거부)")
+    p.add_argument("--rules", help="표현 점검 규칙 파일 (기본 tools/data/compliance_rules.json)")
+
+    p = sub.add_parser("promote", help="사람 승인 기록이 있을 때만 정식 경로로 옮긴다 (덮어쓰지 않음)",
+                       description="사람 승인 기록이 있을 때만 정식 경로로 옮긴다 (덮어쓰지 않음)")
+    p.add_argument("dir", help="초안 폴더 경로 (2026/reels/drafts/<게시일>-<슬러그>)")
+    p.add_argument("--rules", help="표현 점검 규칙 파일 (기본 tools/data/compliance_rules.json)")
 
     p = sub.add_parser("convert", help="카드뉴스 원고를 릴스 골격 JSON 으로 바꾼다")
     p.add_argument("card", help="카드뉴스 원고 JSON 경로 (2026/NN-이름/spec.json)")
@@ -385,6 +398,16 @@ def cmd_bundle(args):
                           registry=args.registry, config=args.config)
 
 
+def cmd_approve(args):
+    from reelkit import approve   # 승인·옮기기 명령에서만 읽는다
+    return approve.approve_cli(args.dir, args.by, rules=args.rules)
+
+
+def cmd_promote(args):
+    from reelkit import approve
+    return approve.promote_cli(args.dir, rules=args.rules)
+
+
 def cmd_slot(args):
     try:
         if args.create and not (args.date and args.slug):
@@ -498,6 +521,10 @@ def main(argv=None):
         return cmd_convert(args)
     if args.command == "bundle":
         return cmd_bundle(args)
+    if args.command == "approve":
+        return cmd_approve(args)
+    if args.command == "promote":
+        return cmd_promote(args)
     if args.command == "compliance":
         return cmd_compliance(args)
     if args.command == "redteam":
