@@ -142,6 +142,18 @@ class TempDirProposal(unittest.TestCase):
             if (REPO / "2026" / "reels" / "drafts").exists() else []
         self.assertEqual(before, after)
 
+    def test_failed_stamp_leaves_no_folder(self):
+        # IN-07: created.json 쓰기 실패 뒤 빈 폴더가 남아 다시 만들 수 없게 되지 않는다
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as t:
+            reels = make_reels(t)
+            with mock.patch.object(slot, "stamp_created", side_effect=PermissionError("시험용 실패")):
+                with self.assertRaises(slot.SlotError):
+                    slot.create_draft_dir(reels, "2026-11-08", "retry-topic")
+            self.assertFalse((reels / "drafts" / "2026-11-08-retry-topic").exists())
+            d = slot.create_draft_dir(reels, "2026-11-08", "retry-topic")
+            self.assertTrue((d / "created.json").is_file())
+
     def test_existing_draft_folder_conflicts(self):
         with tempfile.TemporaryDirectory() as t:
             reels = make_reels(t)

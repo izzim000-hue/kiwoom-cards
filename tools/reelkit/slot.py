@@ -120,7 +120,15 @@ def create_draft_dir(reels_dir, date, slug):  # noqa: A002
         target.mkdir(parents=True, exist_ok=False)
     except FileExistsError:
         raise SlotError(f"이미 있는 폴더: {target}") from None
-    stamp_created(target)
+    try:
+        stamp_created(target)
+    except OSError as e:
+        # 방금 만든 빈 폴더를 지워 다시 시도할 수 있게 한다 (IN-07). 무엇이든 들어 있으면 지우지 않는다.
+        try:
+            target.rmdir()
+        except OSError:
+            pass
+        raise SlotError(f"created.json 을 쓸 수 없어 초안 폴더를 만들지 않음: {target} ({e})") from None
     return target
 
 
