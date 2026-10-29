@@ -371,6 +371,7 @@ class Cli(unittest.TestCase):
             r = self.run_draft("caption", spec, src, "--out", self.tmp / "o.txt")
             self.assertEqual(r.returncode, 1)
             self.assertNotIn("Traceback", r.stderr)
+            self.assertIn("게시글 문구 원본 파일을 열 수 없음", r.stderr)   # IN-05: '원고 소스' 가 아님
         broken = self.tmp / "broken.json"
         broken.write_text("{", encoding="utf-8")
         r = self.run_draft("caption", spec, broken, "--out", self.tmp / "o.txt")

@@ -130,7 +130,7 @@ def _read_json(path, label="원고 소스"):
         text = Path(path).read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError) as e:
         reason = getattr(e, "strerror", None) or str(e)
-        raise ValueError(f"{label}를 열 수 없음: {path} ({reason})") from e
+        raise ValueError(f"{label} 파일을 열 수 없음: {path} ({reason})") from e
     try:
         return json.loads(text)
     except json.JSONDecodeError as e:
@@ -263,7 +263,7 @@ def cmd_convert(args):
 def cmd_caption(args):
     try:
         spec = load_spec(args.spec)
-        src = _read_json(args.src)
+        src = _read_json(args.src, "게시글 문구 원본")
         config = caption.load_config(args.config)
         registry = figures.load_registry(args.registry)
         report = check.check_spec(spec, registry)
