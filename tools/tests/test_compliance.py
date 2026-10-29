@@ -321,6 +321,12 @@ class Requires(unittest.TestCase):
         spec["scenes"][0]["lines"].append("미래 보장 아님")
         self.assertNotIn("R-01", ids(self.run_spec(spec)))
 
+    def test_r05_location_without_basis_across_scenes(self):
+        # IN-06: 장면 경계에 걸친 매치도 매치가 시작한 필드로 위치를 정한다
+        spec = mk(["안녕"], ["둘째 장면 끝에 3"], ["만 원을 모아요"], basis="")
+        f = [x for x in compliance.run(spec, None, RULES).findings if "R-05" in x["rule"]]
+        self.assertEqual([x["where"] for x in f], ["scene 2 line 1"])
+
     def test_r05_reel_only(self):
         spec = mk(["연 5% 수익률", "20년 모으면"], basis="")
         self.assertIn("R-05", ids(self.run_spec(spec)))

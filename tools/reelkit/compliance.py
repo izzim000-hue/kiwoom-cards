@@ -552,12 +552,19 @@ def _structural(doc, rule):
         return {**base, "where": owner.where, "text": _one_line(trigger), "line": owner.text}
     if doc.kind != "reel":
         return None
-    body = "\n".join(sp.text for sp in doc.spans if sp.where != "basis")
+    body, offsets = "", []
+    for sp in doc.spans:
+        if sp.where == "basis":
+            continue
+        body += "\n" if body else ""
+        offsets.append((len(body), sp))
+        body += sp.text
     basis = next((sp for sp in doc.spans if sp.where == "basis"), None)
     m = rule.when.search(body)
     if not m or rule.must_have.search(basis.text if basis else ""):
         return None
-    where = basis.where if basis else doc.span_at(doc.text.find(m.group(0))).where
+    # basis 가 없으면 매치가 시작한 필드 (body 를 만들 때 쓴 위치로 찾는다, IN-06)
+    where = basis.where if basis else [sp for off, sp in offsets if off <= m.start()][-1].where
     return {**base, "where": where, "text": _one_line(m.group(0)), "line": basis.text if basis else ""}
 
 
