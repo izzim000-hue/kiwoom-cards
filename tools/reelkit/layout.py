@@ -37,14 +37,15 @@ def markup_new(text):
              .replace(f"{lt}s{gt}", f'<span style="{_S_STYLE}">').replace(f"{lt}/s{gt}", "</span>"))
 
 
-def new_inner_html(top, lines, k, prog, basis):
-    """근거(36px, 최대 2줄)를 본문 바로 아래, 계정명을 그 아래에 두고 전부 안전영역 안에 쌓는다.
+def stack_html(top, lines, k, basis, line_html=None):
+    """`#rk-stack` 한 덩어리(위 라벨, 본문 줄, 근거, 계정명). 모션 레이어도 같은 마크업을 쓴다.
 
-    줄은 모두 배치에 참여한다(opacity 만 바뀜). 텍스트는 줄이거나 줄여 맞추지 않고 원고 그대로 그린다.
+    line_html 이 있으면 줄마다 markup_new(line) 대신 이 이미 만들어 둔 마크업 문자열을 쓴다 (카운트업 span 용).
     """
+    texts = line_html if line_html is not None else [markup_new(l) for l in lines]
     body = "".join(
-        f'<div class="rk-ln" data-i="{i}" style="opacity:{1 if i < k else 0}">{markup_new(l)}</div>'
-        for i, l in enumerate(lines))
+        f'<div class="rk-ln" data-i="{i}" style="opacity:{1 if i < k else 0}">{t}</div>'
+        for i, t in enumerate(texts))
     basis_block = ""
     if basis and basis.strip():
         basis_block = (f'<div class="rk-basis" style="font-size:{BASIS_PX}px;font-weight:400;line-height:1.3;'
@@ -53,17 +54,31 @@ def new_inner_html(top, lines, k, prog, basis):
              f"height:{SAFE['warn_y'] - SAFE['top']}px;display:flex;flex-direction:column;"
              "justify-content:center;gap:40px;word-break:keep-all")
     return (
-        f'<div id="rk-root" style="width:{W}px;height:{H}px;background:{SAGE};position:relative;'
-        "overflow:hidden;font-family:'Noto Sans KR',sans-serif\">"
-        f'<div id="rk-bar" style="position:absolute;left:0;top:0;height:14px;width:{prog * 100:.1f}%;'
-        f'background:{DG}"></div>'
         f'<div id="rk-stack" style="{stack}">'
         f'<div class="rk-top" style="font-size:50px;font-weight:700;color:{DG};min-height:60px">{markup_new(top)}</div>'
         f'<div class="rk-body" style="font-size:100px;font-weight:900;line-height:1.3;letter-spacing:-.03em;'
         f'color:{DG};display:flex;flex-direction:column">{body}</div>'
         f"{basis_block}"
         f'<div class="rk-acct" style="font-size:{ACCT_PX}px;font-weight:700;color:{MUT}">{ACCOUNT}</div>'
-        "</div></div>")
+        "</div>")
+
+
+def root_html(prog, inner):
+    """`#rk-root`(1080x1920 배경) 안에 진행 막대(#rk-bar)와 inner 를 둔다."""
+    return (
+        f'<div id="rk-root" style="width:{W}px;height:{H}px;background:{SAGE};position:relative;'
+        "overflow:hidden;font-family:'Noto Sans KR',sans-serif\">"
+        f'<div id="rk-bar" style="position:absolute;left:0;top:0;height:14px;width:{prog * 100:.1f}%;'
+        f'background:{DG}"></div>'
+        f"{inner}</div>")
+
+
+def new_inner_html(top, lines, k, prog, basis):
+    """근거(36px, 최대 2줄)를 본문 바로 아래, 계정명을 그 아래에 두고 전부 안전영역 안에 쌓는다.
+
+    줄은 모두 배치에 참여한다(opacity 만 바뀜). 텍스트는 줄이거나 줄여 맞추지 않고 원고 그대로 그린다.
+    """
+    return root_html(prog, stack_html(top, lines, k, basis))
 
 
 LAYOUTS = {"legacy": legacy_inner_html, "new": new_inner_html}

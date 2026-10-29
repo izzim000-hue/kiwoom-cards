@@ -4,6 +4,7 @@
 """
 import os
 import subprocess
+import tempfile
 from pathlib import Path
 
 
@@ -48,3 +49,90 @@ def encode_concat(files, total, out, work_dir):
             tmp.unlink()
         except OSError:
             pass
+
+
+class PipeEncoder:
+    """PNG 프레임을 ffmpeg 표준입력으로 흘려 보내 MP4 를 만든다 (motion basic 경로).
+
+    encode_concat 처럼 `<출력>.part.mp4` 에 먼저 쓰고 종료 코드 0 일 때만 출력 경로로 교체한다.
+    stderr 는 임시 파일로 받아(읽지 않는 파이프로 인한 교착 방지) 실패 시 마지막 줄만 메시지에 쓴다.
+    """
+
+    def __init__(self, out):
+        self.out = Path(out)
+        self.tmp = self.out.with_name(self.out.name + ".part.mp4")
+        self._err = tempfile.TemporaryFile()
+        self._proc = None
+        self._done = False
+        argv = ["ffmpeg", "-loglevel", "error", "-y", "-f", "image2pipe", "-framerate", "30", "-c:v", "png",
+                "-i", "-", "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo", "-vf", "format=yuv420p",
+                "-c:v", "libx264", "-crf", "20", "-c:a", "aac", "-shortest", "-movflags", "+faststart",
+                str(self.tmp)]
+        try:
+            self._proc = subprocess.Popen(argv, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=self._err)
+        except OSError as e:
+            self._err.close()
+            raise EncodeError(f"ffmpeg 를 실행하지 못했습니다: {e}") from e
+
+    def _stderr_tail(self):
+        try:
+            self._err.seek(0)
+            return _last_line(self._err.read().decode("utf-8", "replace"))
+        except (OSError, ValueError):
+            return ""
+
+    def write(self, png):
+        try:
+            self._proc.stdin.write(png)
+        except (BrokenPipeError, OSError) as e:
+            tail = self._stderr_tail()
+            self.abort()
+            raise EncodeError(f"ffmpeg 인코딩 실패 (입력 파이프 끊김): {tail or e}") from e
+
+    def close(self):
+        """입력을 닫고 ffmpeg 가 끝나길 기다린 뒤 성공했을 때만 출력 경로로 교체한다."""
+        try:
+            try:
+                self._proc.stdin.close()
+            except (BrokenPipeError, OSError):
+                pass
+            rc = self._proc.wait()
+            if rc != 0:
+                raise EncodeError(f"ffmpeg 인코딩 실패 (종료 코드 {rc}): {self._stderr_tail() or '오류 메시지 없음'}")
+            try:
+                os.replace(self.tmp, self.out)
+            except OSError as e:
+                raise EncodeError(f"출력 파일을 쓸 수 없습니다: {self.out} ({e.strerror or e})") from e
+            self._done = True
+        finally:
+            self._cleanup()
+
+    def abort(self):
+        if self._proc is not None and self._proc.poll() is None:
+            self._proc.kill()
+        if self._proc is not None:
+            try:
+                self._proc.stdin.close()
+            except (BrokenPipeError, OSError):
+                pass
+            self._proc.wait()
+        self._cleanup()
+
+    def _cleanup(self):
+        try:
+            self._err.close()
+        except OSError:
+            pass
+        if not self._done:
+            try:
+                self.tmp.unlink()
+            except OSError:
+                pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        if exc_type is not None:
+            self.abort()
+        return False

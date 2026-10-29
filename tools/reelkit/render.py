@@ -7,9 +7,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import browser, specprobe, timeline
-from .encode import EncodeError, encode_concat
-from .layout import LAYOUTS, MEASURE_JS, TAG_JS, LayoutWarning, evaluate_layout, overlay_html
-from .spec import check_legacy_markup, load_spec
+from . import motion as motion_mod
+from .constants import FPS
+from .encode import EncodeError, PipeEncoder, encode_concat
+from .layout import LAYOUTS, MEASURE_JS, TAG_JS, LayoutWarning, evaluate_layout, new_inner_html, overlay_html
+from .spec import SpecError, check_legacy_markup, load_spec
 
 
 PLAYWRIGHT_MISSING = "playwright 미설치: python3 -m pip install --user -r tools/requirements.txt"
@@ -52,6 +54,7 @@ class RenderResult:
     warnings: list = field(default_factory=list)
     overlays: list = field(default_factory=list)
     spec_checks: list = field(default_factory=list)
+    motion: str = "none"
 
 
 def _read_spec(spec_path):
@@ -121,10 +124,83 @@ def _write_overlay(page, make_html, basis, st, prog, path):
     page.evaluate("()=>{const o=document.getElementById('rk-ov'); if(o) o.remove()}")
 
 
-def render_reel(spec_path, out_path, *, layout="legacy", keep_work=False, overlay_all=False, frame_sink=None):
-    """frame_sink(장면 번호 0부터, PNG 경로): 장면 최종 상태 프레임을 쓴 직후 한 번 부른다. 작업 폴더는 끝나면 지워지므로 바로 복사한다."""
+def _render_motion(spec, out_path, *, keep_work, overlay_all, frame_sink):
+    """motion basic: 장면 최종 상태 정적 검사 -> 모션 레이어 -> 프레임마다 시간 탐색·스크린샷 -> PNG 파이프 인코딩.
+
+    측정과 경고는 정적 새 배치 그대로 하고 (모션 DOM 에서는 측정하지 않는다), 모션 DOM 이 그 배치와 같다는 것은 시험이 지킨다.
+    """
+    basis = spec.get("basis", "")
+    states = timeline.build_states(spec)
+    progs = timeline.progress_values(states)
+    sched = motion_mod.schedule(spec)
+    finals_at = {sc.final_frame: sc.index for sc in sched.scenes}
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    from playwright.sync_api import sync_playwright  # 미설치 시 ImportError 는 CLI 가 안내한다
+
+    work = tempfile.mkdtemp(prefix="reelkit-")
+    warnings, overlays = [], []
+    try:
+        with sync_playwright() as pw:
+            b, used = browser.launch(pw)
+            try:
+                page = _open_checked_page(b, work)
+                finals, measures = {}, {}
+                for st, prog in zip(states, progs):
+                    if st.k != len(st.lines):
+                        continue
+                    page.evaluate("h=>{document.body.innerHTML=h}", new_inner_html(st.top, st.lines, st.k, prog, basis))
+                    page.evaluate("document.fonts.ready.then(()=>0)")
+                    scene = st.scene + 1
+                    ws, measured = _scene_checks(page, "new", scene)
+                    warnings.extend(ws)
+                    finals[scene] = (st, prog)
+                    measures[scene] = measured
+                wanted = sorted(finals) if overlay_all else sorted({1, _tallest_scene(measures) or 1} & set(finals))
+                for scene in wanted:
+                    st, prog = finals[scene]
+                    path = out_path.with_name(out_path.stem + f".safe-s{scene:02d}.png")
+                    _write_overlay(page, new_inner_html, basis, st, prog, path)
+                    overlays.append(path)
+                motion_mod.build(page, spec, sched)
+                with PipeEncoder(out_path) as enc:
+                    for f in range(sched.nframes):
+                        motion_mod.seek(page, sched, f / FPS)
+                        png = page.screenshot(type="png")
+                        idx = finals_at.get(f)
+                        if idx is not None:
+                            still = Path(work) / f"s{idx:02d}.png"
+                            still.write_bytes(png)
+                            if frame_sink is not None:
+                                frame_sink(idx, str(still))
+                        enc.write(png)
+                    enc.close()
+            finally:
+                b.close()
+        spec_checks = specprobe.probe(out_path)  # 읽기 전용: 파일을 다시 인코딩하거나 고치지 않는다
+    finally:
+        if keep_work:
+            print(f"작업 폴더 보존: {work}", file=sys.stderr)
+        else:
+            shutil.rmtree(work, ignore_errors=True)
+    return RenderResult(out=out_path, total=sched.total, cover_ms=round(sched.scenes[0].final_t * 1000),
+                        launch=used, warnings=warnings, overlays=overlays, spec_checks=spec_checks, motion="basic")
+
+
+def render_reel(spec_path, out_path, *, layout="legacy", keep_work=False, overlay_all=False, frame_sink=None,
+                motion=None):
+    """frame_sink(장면 번호 0부터, PNG 경로): 장면 최종 상태 프레임을 쓴 직후 한 번 부른다. 작업 폴더는 끝나면 지워지므로 바로 복사한다.
+
+    motion: None 이면 원고의 motion 필드(없으면 none), 'none'/'basic' 이면 그 값. basic 은 새 배치에서만 쓸 수 있다.
+    """
     _check_layout_name(layout)
     spec = _read_spec(spec_path)
+    mode = motion_mod.resolve(spec, motion)
+    if mode == "basic":
+        if layout != "new":
+            raise SpecError("motion basic 은 --layout new 에서만 쓸 수 있음")
+        return _render_motion(spec, out_path, keep_work=keep_work, overlay_all=overlay_all, frame_sink=frame_sink)
     if layout == "legacy":
         check_legacy_markup(spec)  # 작업 폴더·Chromium 보다 먼저: 거부된 원고는 브라우저도 MP4도 만들지 않는다
     basis = spec.get("basis", "")
