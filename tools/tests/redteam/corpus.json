@@ -45,6 +45,9 @@
  {"id": "B44", "label": "bad", "category": "단정·보장", "tier": "explicit", "lines": ["무조건 오릅니다", "걱정하지 마세요"]},
  {"id": "B45", "label": "bad", "category": "단정·보장", "tier": "explicit", "lines": ["원금 보장되는 상품이라 손해 보지 않아요"]},
  {"id": "B46", "label": "bad", "category": "상품 권유", "tier": "explicit", "lines": ["지금 가입하세요", "망설이지 마세요"]},
+ {"id": "B47", "label": "bad", "category": "세무 단정", "tier": "explicit", "lines": ["이 계좌로 옮기면", "세금은 하나도 안 냅니다"]},
+ {"id": "B48", "label": "bad", "category": "세무 단정", "tier": "obfuscated", "lines": ["절 세 보 장 계좌"]},
+ {"id": "B49", "label": "bad", "category": "단정·보장", "tier": "explicit", "lines": ["이 상품은 손해 날 일은 없어요"]},
  {"id": "G01", "label": "good", "lines": ["원금 보장 아님", "원금 손실 가능"], "basis": "예시"},
  {"id": "G02", "label": "good", "lines": ["수익을 보장하지 않습니다"]},
  {"id": "G03", "label": "good", "lines": ["원금이 보장되지 않는", "상품도 있어요"]},
@@ -74,5 +77,6 @@
  {"id": "G27", "label": "good", "lines": ["달러를 사기 전에", "환율부터 보세요"]},
  {"id": "G28", "label": "good", "lines": ["채무조건 조정 제도와", "근무 조건에 따라 달라요"]},
  {"id": "G29", "label": "good", "lines": ["고객님, 오늘은", "강사님 추천 도서 이야기"]},
- {"id": "G30", "label": "good", "lines": ["손해 없는 상품은 없어요"]}
+ {"id": "G30", "label": "good", "lines": ["손해 없는 상품은 없어요"]},
+ {"id": "G31", "label": "good", "lines": ["세금을 안 내면", "가산세가 붙어요"]}
 ]

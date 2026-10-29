@@ -18,7 +18,7 @@ from reelkit import compliance, redteam   # noqa: E402
 DRAFT = [sys.executable, str(TOOLS / "draft.py")]
 CORPUS = TOOLS / "tests" / "redteam" / "corpus.json"
 HELDOUT = TOOLS / "tests" / "redteam" / "heldout.json"
-LAST_LINE = re.compile(r"^redteam: 표본 내 탐지 \d+/46 · 오탐 \d+/30 · 따로 쓴 문장 탐지 \d+/\d+ · 오탐 \d+/\d+ · 기존 10편 수정 필요 \d+건$")
+LAST_LINE = re.compile(r"^redteam: 표본 내 탐지 \d+/49 · 오탐 \d+/31 · 따로 쓴 문장 탐지 \d+/\d+ · 오탐 \d+/\d+ · 기존 10편 수정 필요 \d+건$")
 
 BAD_OK = {"id": "X01", "label": "bad", "category": "단정·보장", "tier": "explicit", "lines": ["원금 보장"]}
 GOOD_OK = {"id": "X02", "label": "good", "lines": ["안녕하세요"]}
@@ -90,8 +90,8 @@ class LoadCorpus(unittest.TestCase):
 class Counts(unittest.TestCase):
     def test_seed_and_heldout_sizes(self):
         seed = redteam.load_corpus(CORPUS)
-        self.assertEqual(sum(e["label"] == "bad" for e in seed), 46)
-        self.assertEqual(sum(e["label"] == "good" for e in seed), 30)
+        self.assertEqual(sum(e["label"] == "bad" for e in seed), 49)
+        self.assertEqual(sum(e["label"] == "good" for e in seed), 31)
         held = redteam.load_corpus(HELDOUT)
         self.assertGreaterEqual(sum(e["label"] == "bad" for e in held), 12)
         self.assertGreaterEqual(sum(e["label"] == "good" for e in held), 6)
@@ -163,11 +163,11 @@ class SeedThresholds(unittest.TestCase):
     def test_explicit_and_obfuscated_all_detected(self):
         d = sum(self.seed["by_tier"][t][0] for t in ("explicit", "obfuscated"))
         n = sum(self.seed["by_tier"][t][1] for t in ("explicit", "obfuscated"))
-        self.assertEqual((d, n), (43, 43), [e["id"] for e in self.seed["entries"]
+        self.assertEqual((d, n), (46, 46), [e["id"] for e in self.seed["entries"]
                                            if e["label"] == "bad" and e["tier"] != "implicit" and not e["detected"]])
 
     def test_good_set_has_no_fix_needed_false_positive(self):
-        self.assertEqual((self.seed["good_fp_fix"], self.seed["good_total"]), (0, 30),
+        self.assertEqual((self.seed["good_fp_fix"], self.seed["good_total"]), (0, 31),
                          [e["id"] for e in self.seed["entries"] if e["label"] == "good" and e["findings"]])
 
 
@@ -226,7 +226,7 @@ class Cli(unittest.TestCase):
         self.assertEqual(js.returncode, 0, js.stderr)
         data = json.loads(js.stdout)
         self.assertEqual(data["last_line"], last)
-        self.assertEqual(data["seed"]["bad_total"], 46)
+        self.assertEqual(data["seed"]["bad_total"], 49)
 
     def test_bad_corpus_exits_one(self):
         p = write_tmp([BAD_OK, BAD_OK])

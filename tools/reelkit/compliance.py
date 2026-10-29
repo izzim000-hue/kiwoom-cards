@@ -251,9 +251,7 @@ def load_rules(path=RULES_PATH):
         raise RuleError("macros: 문자열 값의 객체여야 함")
     if not isinstance(data["rules"], list):
         raise RuleError("rules: 목록이어야 함")
-    terms = data.get("compact_terms") or []
-    if not isinstance(terms, list) or not all(isinstance(t, str) and t for t in terms):
-        raise RuleError("compact_terms: 비어 있지 않은 문자열 목록이어야 함")
+    terms = _compact_terms(data.get("compact_terms") or [])
     for key in ("status", "version", "negators", "mention_markers", "macros", "compact_terms"):
         _check_strings(data.get(key), key)
     negators = _compile(data["negators"], macros, "negators", "negators") if data.get("negators") else None
@@ -268,10 +266,28 @@ def load_rules(path=RULES_PATH):
         rules.append(rule)
     loaded = Rules(path=path, sha256=hashlib.sha256(raw).hexdigest(), version=data["version"],
                    as_of=data["as_of"], status=data["status"], rules=rules, negators=negators,
-                   mention_markers=markers, compact_terms=[normalize(t) for t in terms])
+                   mention_markers=markers, compact_terms=terms)
     for rule in rules:
         _run_examples(rule, loaded)
     return loaded
+
+
+def _compact_terms(items):
+    """compact_terms: 문자열(분류 단정·보장) 또는 {term, category} 객체의 목록 -> [(정규화한 표현, 분류)] (CR-04)."""
+    if not isinstance(items, list):
+        raise RuleError("compact_terms: 목록이어야 함")
+    out = []
+    for item in items:
+        if isinstance(item, str):
+            term, category = item, SPECIFIC_FIRST
+        elif isinstance(item, dict) and set(item) <= {"term", "category"}:
+            term, category = item.get("term"), item.get("category", SPECIFIC_FIRST)
+        else:
+            raise RuleError("compact_terms: 문자열 또는 {term, category} 객체만 쓸 수 있음")
+        if not isinstance(term, str) or not normalize(term).strip() or not isinstance(category, str) or not category.strip():
+            raise RuleError(f"compact_terms: 표현과 분류는 비어 있지 않은 문자열이어야 함: {item!r}")
+        out.append((re.sub(r"\s+", "", normalize(term)), category))
+    return out
 
 
 def _load_rule(item, macros):
@@ -484,19 +500,24 @@ def _structural(doc, rule):
 
 
 def _compact_matches(text, terms):
-    """공백을 지운 글에서 찾은 쪼갠 표현 [(원래 글의 시작, 끝, 표현)]. 표현의 첫 글자가 원래 글에서 낱말 첫머리일 때만 센다
-    (CR-02: '근무 조건'·'채무조건' 의 '무조건' 은 낱말 중간이라 제외)."""
+    """공백을 지운 글에서 찾은 쪼갠 표현 [(원래 글의 시작, 끝, 표현, 분류)]. 표현의 첫 글자가 원래 글에서 낱말 첫머리일 때만
+    센다 (CR-02: '근무 조건'·'채무조건' 의 '무조건' 은 낱말 중간이라 제외). 겹치면 더 긴 표현 하나만 남긴다
+    ('무조건절세' 가 '무조건' 보다 우선, CR-04)."""
     keep = [i for i, ch in enumerate(text) if not ch.isspace()]
     squeezed = "".join(text[i] for i in keep)
-    out = []
-    for term in terms:
-        pos = squeezed.find(term) if term else -1
+    found = []
+    for term, category in terms:
+        pos = squeezed.find(term)
         while pos >= 0:
             o_start, o_end = keep[pos], keep[pos + len(term) - 1] + 1
             if o_start == 0 or not text[o_start - 1].isalnum():
-                out.append((o_start, o_end, term))
+                found.append((o_start, o_end, term, category))
             pos = squeezed.find(term, pos + 1)
-    return out
+    out = []
+    for cand in sorted(found, key=lambda c: (-len(c[2]), c[0])):
+        if not any(cand[0] < o[1] and o[0] < cand[1] for o in out):
+            out.append(cand)
+    return sorted(out)
 
 
 def scan(doc, rules):
@@ -536,9 +557,9 @@ def scan(doc, rules):
     for span in doc.spans:
         if span.where in touched or not rules.compact_terms:
             continue
-        for _o_start, _o_end, term in _compact_matches(span.text, rules.compact_terms):
+        for _o_start, _o_end, term, category in _compact_matches(span.text, rules.compact_terms):
             found.append((span.start, {
-                "rule": ["X-compact"], "category": SPECIFIC_FIRST, "severity": "수정 필요", "kind": "compact",
+                "rule": ["X-compact"], "category": category, "severity": "수정 필요", "kind": "compact",
                 "doc": doc.kind, "where": span.where, "text": term, "line": span.text,
                 "reason": COMPACT_REASON, "suggest": COMPACT_SUGGEST}))
     found.sort(key=lambda p: p[0])

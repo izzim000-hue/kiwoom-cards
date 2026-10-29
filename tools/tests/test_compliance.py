@@ -195,6 +195,47 @@ class CorrectWordingIsNotMustFix(unittest.TestCase):
                 self.assertIn("P-02", ids(scan_reel(mk([line]))[0]))
 
 
+class TaxAndLossClaims(unittest.TestCase):
+    """CR-04 회귀: 활용형(냅/낸/낼), 강조어(한 푼도), 조사(일은)가 끼어도 세무 단정·손실 부정을 잡는다."""
+
+    def must_fix(self, line, category):
+        res = compliance.run(mk([line]), None, RULES)
+        cats = {f["category"] for f in res.findings if f["severity"] == "수정 필요"}
+        self.assertIn(category, cats, (line, res.findings))
+
+    def test_tax_conjugations_and_intensifier(self):
+        for line in ("세금 안 냅니다", "이렇게 하면 세금 한 푼도 안 냅니다", "세금은 하나도 안 낸다", "세금 안 낼 거예요",
+                     "세금 내실 필요 없어요"):
+            with self.subTest(line=line):
+                self.must_fix(line, "세무 단정")
+
+    def test_tax_conditionals_are_not_claims(self):
+        for line in ("세금을 안 내면 가산세가 붙어요", "세금을 안 낸 사람은 가산세 대상이에요"):
+            with self.subTest(line=line):
+                self.assertNotIn("T-01", ids(scan_reel(mk([line]))[0]))
+
+    def test_loss_denial_with_particles(self):
+        for line in ("가입만 하면 손해 볼 일은 없습니다", "손실이 날 일은 없습니다", "이 상품은 손해 보지 않아요"):
+            with self.subTest(line=line):
+                self.must_fix(line, "단정·보장")
+        self.assertNotIn("G-05", ids(scan_reel(mk(["손해 보지 않도록 조건을 확인하세요"]))[0]))
+
+    def test_compact_terms_carry_their_category(self):
+        found, _ = scan_reel(mk(["무 조 건 절 세"]))
+        self.assertEqual([(f["rule"], f["category"], f["text"]) for f in found], [(["X-compact"], "세무 단정", "무조건절세")])
+        found, _ = scan_reel(mk(["무 조 건 오릅니다"]))
+        self.assertEqual([(f["category"], f["text"]) for f in found], [("단정·보장", "무조건")])
+
+    def test_compact_terms_loader(self):
+        data = json.loads(compliance.RULES_PATH.read_text(encoding="utf-8"))
+        data["compact_terms"].append({"term": "x", "bogus": 1})
+        with tempfile.TemporaryDirectory() as t:
+            p = Path(t) / "rules.json"
+            p.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+            with self.assertRaises(compliance.RuleError):
+                compliance.load_rules(p)
+
+
 class CompactAndDedupe(unittest.TestCase):
     def test_spaced_term(self):
         found, _ = scan_reel(mk(["이건 원 금 보 장 상품"]))
