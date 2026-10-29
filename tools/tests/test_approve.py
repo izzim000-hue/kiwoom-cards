@@ -439,6 +439,38 @@ class Promote(ApproveBase):
         self.assertNothingPublished()
         self.assertFalse((self.reels / "captions").exists())
 
+    def test_stale_part_file_refuses_and_is_kept(self):
+        # IN-03: 남은 .part 는 '이미 게시된 파일' 로 잘못 알리지 않고, 되돌리기에서 지우지도 않는다
+        self.approved()
+        stale = self.reels / f".{NAME}.mp4.part"
+        stale.write_bytes(b"left over")
+        code, _o, err = self.promote()
+        self.assertEqual(code, 1)
+        self.assertIn("임시 파일", err)
+        self.assertNotIn("이미 게시된 파일", err)
+        self.assertEqual(stale.read_bytes(), b"left over")
+        for t in self.targets:
+            self.assertFalse(os.path.lexists(t), str(t))
+
+    def test_interrupt_midway_rolls_back_and_reraises(self):
+        self.approved()
+        real_link = os.link
+        calls = []
+
+        def interrupted(src, dst):
+            calls.append(dst)
+            if len(calls) == 2:
+                raise KeyboardInterrupt
+            return real_link(src, dst)
+
+        with mock.patch.object(approve.os, "link", interrupted), \
+                mock.patch.object(compliance, "RULES_PATH", compliance.RULES_PATH), \
+                contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            with self.assertRaises(KeyboardInterrupt):
+                draft.main(["promote", str(self.d)])
+        self.assertNothingPublished()
+        self.assertFalse((self.reels / "captions").exists())
+
     def test_year_mismatch_refuses(self):
         made = make_draft(self.root / "2027" / "reels", "2027-01-05", "new-year-reel")
         d = self.reels / "drafts" / made.name

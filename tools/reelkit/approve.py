@@ -290,6 +290,8 @@ def promote_cli(draft_dir):
         for _src, target in pairs:
             if os.path.lexists(target):
                 raise ApproveError(f"이미 게시된 파일 — 덮어쓰지 않음: {target}")
+            if os.path.lexists(_part(target)):
+                raise ApproveError(f"이전 옮기기가 남긴 임시 파일이 있음: {_part(target)} — 내용을 확인해 지운 뒤 다시 실행 (IN-03)")
     except (ApproveError, compliance.RuleError, SpecError, ValueError, OSError) as e:
         print(f"옮기기 오류: {e}", file=sys.stderr)
         return 1
@@ -301,10 +303,12 @@ def promote_cli(draft_dir):
                 (reels / sub).mkdir()
                 made_dirs.append(reels / sub)
         for src, target in pairs:
-            part = target.with_name(f".{target.name}.part")
-            parts.append(part)
-            with open(src, "rb") as fin, open(part, "xb") as fout:
-                fout.write(fin.read())
+            part = _part(target)
+            with open(src, "rb") as fin:
+                fout = open(part, "xb")   # 이미 있으면 FileExistsError — 남의 임시 파일은 되돌리기에서도 지우지 않는다
+                parts.append(part)
+                with fout:
+                    fout.write(fin.read())
             if sha256_file(part) != files[src.name]:
                 raise ApproveError(f"복사본 지문이 승인 기록과 다름: {src.name}")
             os.link(part, target)   # 이미 있으면 FileExistsError — 교체하지 않는다
@@ -312,17 +316,29 @@ def promote_cli(draft_dir):
             part.unlink()
     except (ApproveError, FileExistsError) as e:
         _rollback(linked, parts, made_dirs)
-        text = f"이미 게시된 파일 — 덮어쓰지 않음: {e.filename}" if isinstance(e, FileExistsError) else str(e)
+        if not isinstance(e, FileExistsError):
+            text = str(e)
+        elif str(e.filename).endswith(".part"):
+            text = f"임시 파일이 이미 있음 (다른 옮기기가 실행 중일 수 있음): {e.filename}"
+        else:
+            text = f"이미 게시된 파일 — 덮어쓰지 않음: {e.filename}"
         print(f"옮기기 오류: {text}", file=sys.stderr)
         return 1
     except OSError as e:
         _rollback(linked, parts, made_dirs)
         print(f"환경 오류: {e.__class__.__name__}: {e}", file=sys.stderr)
         return 2
+    except BaseException:   # Ctrl-C 등: 이번에 만든 것을 되돌리고 그대로 다시 던진다 (IN-03)
+        _rollback(linked, parts, made_dirs)
+        raise
     for _src, target in pairs:
         print(f"git add {target}")
     print(f"promote: {name} → 4개 파일 (커밋은 사람이 직접)")
     return 0
+
+
+def _part(target):
+    return target.with_name(f".{target.name}.part")
 
 
 def _rollback(linked, parts, made_dirs):
