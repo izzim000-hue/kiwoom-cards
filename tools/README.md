@@ -13,7 +13,7 @@
 ## 릴스 만들기: `reel.py`
 
 ```
-python3 tools/reel.py SPEC OUT [--layout legacy|new] [--motion none|basic] [--strict] [--overlay-all] [--bgm 음원 --bgm-license 메모]
+python3 tools/reel.py SPEC OUT [--layout legacy|new] [--motion none|basic] [--strict] [--overlay-all]
 ```
 
 - `SPEC`: 원고 JSON (`2026/reels/specs/` 의 게시된 10편이 예시). `OUT`: 출력 MP4 경로.
@@ -23,6 +23,7 @@ python3 tools/reel.py SPEC OUT [--layout legacy|new] [--motion none|basic] [--st
   줄바꿈·넘침·안전영역 침범을 `scene N line M: KIND (값) "글자"` 로 알린다. 글자는 줄이거나 자르지 않는다.
 - `--strict`: 레이아웃 경고가 있으면 MP4 를 쓴 뒤 종료 코드 3.
 - `--overlay-all`: 모든 장면의 안전영역 미리보기를 쓴다 (new 배치).
+- 배경음은 넣지 않는다: `--bgm`·`--bgm-license` 를 주면 `음원 오류` 로 거부한다 (종료 코드 1, MP4 없음). 배경음은 `draft.py bundle` 로만 넣는다 (아래 "배경음").
 - 안전영역 미리보기 파일 이름: `<출력이름>.safe-s01.png` (1장면), 가장 높은 장면은 `<출력이름>.safe-sNN.png`, `--overlay-all` 이면 장면마다 하나. MP4 에는 들어가지 않는다.
 
 종료 코드: **0** 정상 / **1** 원고 오류 (파일 없음, JSON 오류, 허용되지 않은 마크업) / **2** 환경 오류 (playwright 미설치, Chromium 실행 실패, 번들 폰트 로드 실패) / **3** `--strict` 인데 레이아웃 경고 있음 / **4** 출력 MP4 의 업로드 규격 FAIL (3 과 4 모두 MP4 는 이미 써 둠, 4 가 우선).
@@ -156,9 +157,10 @@ python3 tools/draft.py promote 폴더
 
 ```
 python3 tools/draft.py bundle 폴더 --bgm 음원파일 --bgm-license "이용 권리 메모"
-python3 tools/reel.py SPEC OUT --layout new --bgm 음원파일 --bgm-license "이용 권리 메모"
 ```
 
+- 배경음은 `bundle` 로만 넣는다. 라이선스 메모가 `bgm.json`·`review.md`·승인 지문에 남고 `approve`/`promote` 를 거치는 경로는 이것뿐이라,
+  메모를 남기지 못하고 출력 경로(게시 폴더 `2026/reels/` 포함)를 막지 못하던 `reel.py --bgm` 은 뺐다 (주면 종료 코드 1 로 거부, WR-01).
 - 기본은 무음이다. 음원 파일과 라이선스 메모를 **둘 다** 줘야 한다. 하나만 주거나 메모가 비어 있으면(공백만 포함) 아무것도 지우거나 렌더하기 전에 `음원 오류` 로 거부한다 (종료 코드 1).
   메모는 500자까지 자유 글이다. 라이선스 증빙을 어떤 형식으로 받을지는 소유자 결정이 남아 있어 형식을 정하지 않았다.
 - 음원 규칙: 일반 파일(심볼릭 링크 거부), 확장자 `.mp3 .m4a .wav .aac .ogg .opus .flac`, 오디오 스트림이 있고(앨범 그림은 허용, 영상이 든 파일은 거부) 3초 이상.

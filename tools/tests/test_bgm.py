@@ -459,7 +459,7 @@ def integrated_lufs_or_silence(path):
 
 
 class ReelFlags(unittest.TestCase):
-    """reel.py --bgm / --bgm-license: 단독 렌더는 복사본·bgm.json 없이 사인파를 섞는다."""
+    """reel.py 는 배경음을 받지 않는다 (WR-01): --bgm/--bgm-license 는 렌더 전에 종료 코드 1, 출력 없음. 배경음은 bundle 로만."""
 
     @classmethod
     def setUpClass(cls):
@@ -472,31 +472,26 @@ class ReelFlags(unittest.TestCase):
     def reel(self, out, *args):
         return run_text(REEL + [str(OK_LAYOUT), str(out), "--layout", "new", *map(str, args)])
 
-    def test_mix_prints_bgm_line(self):
-        out = self.tmp / "mix.mp4"
-        r = self.reel(out, "--bgm", Audio.s35, "--bgm-license", "자체 제작 음원")
-        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        self.assertIn("bgm=s35.mp3", r.stdout.splitlines())
-        self.assertIn("spec: PASS 9/9", r.stderr)
-        self.assertTrue(-17.5 <= integrated_lufs(out) <= -14.5)
-        self.assertEqual(sorted(p.name for p in self.tmp.glob("bgm*")), [])
-
     def test_no_bgm_has_no_line(self):
         out = self.tmp / "plain.mp4"
         r = self.reel(out)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertNotIn("bgm=", r.stdout)
 
-    def test_refusals_before_render(self):
-        for args in (("--bgm", Audio.s35), ("--bgm-license", "자체 제작"), ("--bgm", Audio.s35, "--bgm-license", "  "),
+    def test_bgm_flags_refused_and_point_to_bundle(self):
+        for args in (("--bgm", Audio.s35, "--bgm-license", "자체 제작 음원"), ("--bgm", Audio.s35),
+                     ("--bgm-license", "자체 제작"), ("--bgm", Audio.s35, "--bgm-license", "  "),
                      ("--bgm", Audio.fake, "--bgm-license", "자체 제작")):
             with self.subTest(args=args):
                 out = self.tmp / "refused.mp4"
                 r = self.reel(out, *args)
                 self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
                 self.assertIn("음원 오류", r.stderr)
+                self.assertIn("draft.py bundle", r.stderr)
                 self.assertNotIn("duration=", r.stdout)
                 self.assertFalse(out.exists())
+                self.assertEqual(sorted(p.name for p in self.tmp.iterdir() if p.name != "plain.mp4"
+                                        and not p.name.startswith("plain.")), [])
 
 
 if __name__ == "__main__":
