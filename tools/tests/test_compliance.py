@@ -251,6 +251,18 @@ class BandeusiResult(unittest.TestCase):
                 self.assertNotIn("G-04", ids(scan_reel(mk([line]))[0]))
 
 
+class ImplicitCheckOnly(unittest.TestCase):
+    """WR-08: 한쪽만 보는 비교, '하나면 끝', '따 놓은 당상' 은 확인 필요로만 표시한다 (옮기기를 막지 않음)."""
+
+    def test_flagged_as_check_only(self):
+        for line, rid in (("다른 상품엔 단점만 있어요", "C-02"), ("노후 준비는 이 계좌 하나면 끝", "G-08"),
+                          ("환급은 따 놓은 당상", "G-08")):
+            with self.subTest(line=line):
+                res = compliance.run(mk([line]), None, RULES)
+                self.assertIn(rid, ids(res.findings))
+                self.assertEqual(res.counts["수정 필요"], 0)
+
+
 class CompactAndDedupe(unittest.TestCase):
     def test_spaced_term(self):
         found, _ = scan_reel(mk(["이건 원 금 보 장 상품"]))
