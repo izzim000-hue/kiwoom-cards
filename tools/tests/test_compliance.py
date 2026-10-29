@@ -430,6 +430,20 @@ class Loader(unittest.TestCase):
 
     def test_forbidden_strings(self):
         self.expect_error(lambda d: d["rules"].append(self.rule(reason="제 17 조에 따라")), "U-01")
+        self.expect_error(lambda d: d["rules"].append(self.rule(reason="금융소비자보호법 22조 기준")), "U-01")
+        self.expect_error(lambda d: d["rules"].append(self.rule(suggest="Article 22 참고")), "U-01")
+        self.assertIsNone(compliance.forbidden_text("국민연금 기금 1,000조 원, 가입 3조건"))
+
+    def test_caption_config_is_screened_too(self):
+        from reelkit import caption
+        cfg = json.loads(caption.CONFIG_PATH.read_text(encoding="utf-8"))
+        cfg["disclaimer"] += " (금융소비자보호법 22조)"
+        with tempfile.TemporaryDirectory() as t:
+            p = Path(t) / "cfg.json"
+            p.write_text(json.dumps(cfg, ensure_ascii=False), encoding="utf-8")
+            with self.assertRaises(caption.CaptionError) as cm:
+                caption.load_config(p)
+        self.assertIn("disclaimer", str(cm.exception))
         self.expect_error(lambda d: d["rules"].append(self.rule(suggest="점검 통과")), "U-01")
 
     def test_missing_top_fields(self):

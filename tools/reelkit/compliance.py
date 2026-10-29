@@ -51,7 +51,8 @@ _ZERO_WIDTH_CHARS = "​‌‍⁠­﻿"
 _ZERO_WIDTH = dict.fromkeys(map(ord, _ZERO_WIDTH_CHARS))
 _MARKUP_RE = re.compile(r"</?[gs]>")
 _HASHTAG_TOKEN_RE = re.compile(r"^#\S+$")
-_STATUTE_RE = re.compile(r"제\s*\d+\s*조")
+# 조문 번호 꼴: 제22조, 22조, 22조의2, Article 22. 금액 단위 '1조 원' 과 '3조건' 은 빼고 본다 (IN-01)
+_STATUTE_RE = re.compile(r"(?:제\s*)?\d+\s*조(?!\s*(?:원|달러|억|만|개)|건)(?:\s*의\s*\d+)?|(?i:article)\s*\d+")
 _REPEATS = (_sre_c.MAX_REPEAT, _sre_c.MIN_REPEAT, _sre_c.POSSESSIVE_REPEAT)
 REDOS_BUDGET_S = 0.1          # 규칙 하나가 긴 시험 글 하나를 훑는 데 쓸 수 있는 시간 (WR-05)
 _REDOS_PROBES = ("가", " ", "가 ", "a", "0", "가\n", "원금 ")
@@ -251,13 +252,21 @@ def _risky_repeat(sub):
     return False
 
 
+def forbidden_text(text):
+    """글에 '통과' 나 조문 번호 꼴이 있으면 사유, 없으면 None (D-05, D-08). 게시글 설정 검사도 같이 쓴다."""
+    if "통과" in text:
+        return "'통과' 라는 말은 쓸 수 없음"
+    if _STATUTE_RE.search(text):
+        return "조문 번호 형태는 쓸 수 없음 (D-05)"
+    return None
+
+
 def _check_strings(value, rid):
     """어떤 글에도 '통과' 나 조문 번호 형태를 쓰지 않는다 (D-05, D-08)."""
     if isinstance(value, str):
-        if "통과" in value:
-            raise RuleError(f"규칙 {rid}: '통과' 라는 말은 쓸 수 없음")
-        if _STATUTE_RE.search(value):
-            raise RuleError(f"규칙 {rid}: 조문 번호 형태는 쓸 수 없음 (D-05)")
+        why = forbidden_text(value)
+        if why:
+            raise RuleError(f"규칙 {rid}: {why}")
     elif isinstance(value, dict):
         for k, v in value.items():
             _check_strings(k, rid)

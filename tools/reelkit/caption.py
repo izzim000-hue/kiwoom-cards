@@ -10,7 +10,7 @@ import json
 import re
 from pathlib import Path
 
-from . import constants, numscan
+from . import compliance, constants, numscan
 from .check import PROPOSAL_MARK_RE
 from .expand import LABEL_MARK_RE, next_line, series_top
 
@@ -49,6 +49,10 @@ def load_config(path=CONFIG_PATH):
     brand = cfg.get("brand_hashtags")
     if not isinstance(brand, list) or not all(isinstance(t, str) and HASHTAG_RE.match(t) for t in brand):
         raise CaptionError("게시글 설정 brand_hashtags: '#태그' 형식 문자열 목록이어야 함")
+    for key, value in [(k, cfg[k]) for k in ("status", "disclaimer", "cta")] + [("brand_hashtags", t) for t in brand]:
+        why = compliance.forbidden_text(value)   # 게시글에 그대로 들어가는 글도 '통과'·조문 번호 금지 (IN-01)
+        if why:
+            raise CaptionError(f"게시글 설정 {key}: {why}")
     return cfg
 
 
