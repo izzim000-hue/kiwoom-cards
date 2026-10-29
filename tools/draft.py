@@ -5,6 +5,7 @@
       python3 tools/draft.py caption SPEC SRC --out TXT [--config PATH] [--registry PATH]
       python3 tools/draft.py slot [--date YYYY-MM-DD] [--slug 영문-슬러그] [--reels-dir DIR] [--create]
       python3 tools/draft.py bundle DIR [--card CARD] [--request-start EPOCH] [--rules PATH] [--registry PATH] [--config PATH]
+      python3 tools/draft.py compliance SPEC [--caption TXT] [--check JSON] [--rules PATH] [--out JSON]
       python3 tools/draft.py figures {list [--grep 글자] | show ID | add ... | confirm ID --by 이름 [--date YYYY-MM-DD]}
   expand  자리표시자 `{{이름|서식}}` 가 든 원고 소스(SRC)를 등록부·계산 모듈로 채워 v1 호환 원고(OUT)로 쓴다.
           OUT 에는 숫자마다 출처를 적은 `figures` 장부와 쓰인 등록부 항목 `basis_items` 가 함께 들어간다.
@@ -36,6 +37,11 @@
           원고 소스를 고친 뒤에도 같은 명령으로 전부 다시 만든다. record.json(광고 해당 여부·심의 기록)은 없을 때만 만들고 고치지 않는다.
           --request-start 는 요청 시각(epoch 초)으로, 주어지면 bundle.json 에 요청부터 걸린 시간을 남긴다.
           종료 코드: 0 완료, 1 입력 오류(점검 오류 포함), 2 렌더·파일 환경 오류, 3 레이아웃 경고, 4 업로드 규격 FAIL (4 우선).
+  compliance  원고(SPEC)와 게시글(--caption)을 금소법 표현 규칙(tools/data/compliance_rules.json, 초안·준법 검토 전)으로 점검한다.
+          결과 머리말은 `위험 표현 n건 발견` 또는 `패턴상 발견 없음 — 사람 검수 필요` 둘 중 하나이며 규칙 버전·기준일이 붙는다.
+          발견마다 위치·문제 표현·사유·대체 표현 제안을 보이고 원고·게시글 파일은 고치지 않는다 (제안만). 발견이 있어도 종료 0.
+          --check 는 draft.py check 의 check.json 으로, 확인 필요·가정·경고를 그대로 옮겨 싣는다. --out 은 compliance.json 을 쓴다.
+          종료 코드: 0 정상, 1 규칙 파일·입력 오류(규칙 id 를 밝힘), 2 --out 쓰기 실패.
   figures 수치 등록부(tools/data/figures.json) 조회·추가·확인.
           add      새 수치를 추가한다. 확인 상태는 항상 `미확인` 이고 지정하는 옵션이 없다 (D-02).
           confirm  사람 확인자 전용이다 (D-02). 1차 출처(law.go.kr 등)를 직접 열어 값을 맞춰 본 사람이 확인자 이름으로
@@ -83,6 +89,13 @@ def build_parser():
     p.add_argument("--out", required=True, help="caption.txt 를 쓸 경로")
     p.add_argument("--config", default=str(caption.CONFIG_PATH), help="게시글 설정 경로 (기본 tools/data/caption_config.json)")
     _registry_arg(p)
+
+    p = sub.add_parser("compliance", help="원고·게시글을 금소법 표현 규칙으로 점검한다 (제안만, 파일은 고치지 않음)")
+    p.add_argument("spec", help="확장된 원고 JSON 경로")
+    p.add_argument("--caption", help="게시글 caption.txt 경로")
+    p.add_argument("--check", help="draft.py check 가 쓴 check.json 경로 (확인 필요·가정·경고를 옮김)")
+    p.add_argument("--rules", help="규칙 파일 (기본 tools/data/compliance_rules.json)")
+    p.add_argument("--out", help="compliance.json 을 쓸 경로")
 
     p = sub.add_parser("bundle", help="초안 폴더를 검수 묶음(MP4·표지·점검표·검수 요약)으로 만든다")
     p.add_argument("dir", help="초안 폴더 경로 (2026/reels/drafts/<게시일>-<슬러그>)")
@@ -305,6 +318,39 @@ def cmd_caption(args):
     return 0
 
 
+def cmd_compliance(args):
+    from reelkit import compliance   # 표준 라이브러리만 쓰므로 가볍지만, 점검을 안 하는 명령은 읽지 않는다
+    try:
+        spec = load_spec(args.spec)
+        text = None
+        if args.caption:
+            try:
+                text = Path(args.caption).read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError) as e:
+                raise ValueError(f"게시글 파일을 열 수 없음: {args.caption} ({getattr(e, 'strerror', None) or e})") from None
+        check_json = _read_json(args.check, "check.json") if args.check else None
+        rules = compliance.load_rules(args.rules or compliance.RULES_PATH)
+        result = compliance.run(spec, text, rules, check_json=check_json)
+    except (SpecError, compliance.RuleError, ValueError) as e:
+        print(f"초안 오류: {e}", file=sys.stderr)
+        return 1
+    for f in result.findings:
+        print(f'{f["severity"]} · {f["where"]} · "{f["text"]}" · {", ".join(f["rule"])} {f["category"]} — '
+              f'{f["reason"]} → {f["suggest"]}')
+    for s in result.suppressed:
+        print(f'예외 처리로 제외 · {s["where"]} · "{s["text"]}" · {", ".join(s["rule"])} ({s["by"]})')
+    print(compliance.LIMITS)
+    if args.out:
+        try:
+            Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+            Path(args.out).write_text(json.dumps(result.to_json(), ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+        except OSError as e:
+            print(f"환경 오류: {e.__class__.__name__}: {e}", file=sys.stderr)
+            return 2
+    print(f"compliance: {result.headline} | {result.counts_line}")
+    return 0
+
+
 def cmd_bundle(args):
     from reelkit import bundle   # 렌더러를 쓰는 명령에서만 읽는다 (다른 명령은 Playwright 를 읽지 않음)
     return bundle.run_cli(args.dir, card=args.card, request_start=args.request_start, rules=args.rules,
@@ -424,6 +470,8 @@ def main(argv=None):
         return cmd_convert(args)
     if args.command == "bundle":
         return cmd_bundle(args)
+    if args.command == "compliance":
+        return cmd_compliance(args)
     if args.command == "slot":
         return cmd_slot(args)
     return cmd_expand(args)
