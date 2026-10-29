@@ -154,7 +154,15 @@ class Validate(unittest.TestCase):
     def test_too_short(self):
         self.refused(Audio.s2, MEMO, "너무 짧음")
 
+    def git_repo(self, extra_ignore=""):
+        """임시 루트를 이 저장소의 .gitignore 를 쓴 git 저장소로 만든다 (check-ignore 가 실제 규칙으로 답하게)."""
+        r = subprocess.run(["git", "init", "-q", str(self.root)], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        text = (TOOLS.parent / ".gitignore").read_text(encoding="utf-8")
+        (self.root / ".gitignore").write_text(text + extra_ignore, encoding="utf-8")
+
     def test_repository_paths(self):
+        self.git_repo()
         tools = self.root / "tools"
         tools.mkdir()
         shutil.copy(Audio.s8, tools / "x.mp3")
@@ -163,11 +171,56 @@ class Validate(unittest.TestCase):
         src = bgm.validate(self.draft / "song.mp3", MEMO, self.draft)
         self.assertEqual(src.name, "song.mp3")
         shutil.copy(Audio.s8, self.draft / "bgm.mp3")
-        self.refused(self.draft / "bgm.mp3", MEMO, "저장소 안 음원")
+        self.refused(self.draft / "bgm.mp3", MEMO, "복사본 이름")
         other = self.root / "2026" / "reels" / "drafts" / "other"
         other.mkdir()
         shutil.copy(Audio.s8, other / "song.mp3")
         self.refused(other / "song.mp3", MEMO, "저장소 안 음원")
+
+    def test_uppercase_extensions_are_ignored_and_reserved_names_any_case(self):
+        # CR-02: Song.MP3 는 .gitignore 가 막는다(대소문자 무관). BGM.MP3 는 도구 복사본 이름이라 대소문자와 관계없이 거부
+        self.git_repo()
+        shutil.copy(Audio.s8, self.draft / "Song.MP3")
+        self.assertEqual(bgm.validate(self.draft / "Song.MP3", MEMO, self.draft).ext, ".mp3")
+        (self.draft / "Song.MP3").unlink()
+        shutil.copy(Audio.s8, self.draft / "BGM.MP3")
+        self.refused(self.draft / "BGM.MP3", MEMO, "복사본 이름")
+        # 다른 곳의 음원을 줘도, 초안 폴더에 bgm.* 와 대소문자만 다른 사용자 파일이 있으면 거부 (복사가 덮어쓰지 않게)
+        self.refused(Audio.s8, MEMO, "대소문자만 다른")
+
+    def test_in_repo_file_git_does_not_ignore_is_refused(self):
+        # 초안 폴더라도 git 이 무시하지 않는 자리면 거부: 저장소 루트의 drafts/ (무시 목록에 없음) + 파일 하나를 되살리는 규칙
+        self.git_repo("!keep.mp3\n")
+        loose = self.root / "drafts" / NAME
+        loose.mkdir(parents=True)
+        shutil.copy(Audio.s8, loose / "keep.mp3")
+        with self.assertRaises(BgmError) as cm:
+            bgm.validate(loose / "keep.mp3", MEMO, loose)
+        self.assertIn("git 에서 무시되지 않음", str(cm.exception))
+        shutil.copy(Audio.s8, loose / "Other.Mp3")
+        self.assertEqual(bgm.validate(loose / "Other.Mp3", MEMO, loose).name, "Other.Mp3")
+
+    def test_in_repo_without_git_is_refused(self):
+        shutil.copy(Audio.s8, self.draft / "song.mp3")     # 임시 루트는 git 저장소가 아님: 무시 여부를 알 수 없으면 거부
+        self.refused(self.draft / "song.mp3", MEMO, "git 에서 무시되지 않음")
+
+    def test_real_gitignore_blocks_audio_in_any_case(self):
+        # 이 저장소의 .gitignore: 파일을 만들지 않고 check-ignore 로만 묻는다
+        for rel in ("2026/reels/Song.MP3", "2026/reels/x.mp3", "drafts/n/T.M4A", "tools/a.Wav", "b.AAC", "c.OGG",
+                    "d.Opus", "e.FLAC"):
+            with self.subTest(rel):
+                r = subprocess.run(["git", "-C", str(TOOLS.parent), "check-ignore", "-q", "--", rel])
+                self.assertEqual(r.returncode, 0, rel)
+
+    def test_purge_removes_only_exact_tool_names(self):
+        # CR-02: 폴더 목록에 그 글자 그대로 있는 bgm.* 만 지운다. 사용자 파일(대소문자만 다른 이름 포함)과 이번 원본은 남는다
+        for n in ("bgm.mp3", "bgm.json", "bgm.m4a.part", "BGM.MP3", "Bgm.Json", "song.mp3"):
+            (self.draft / n).write_bytes(b"x")
+        bundle.purge_outputs(self.draft, NAME)
+        self.assertEqual(sorted(p.name for p in self.draft.iterdir()), ["BGM.MP3", "Bgm.Json", "song.mp3"])
+        (self.draft / "bgm.wav").write_bytes(b"x")
+        bundle.purge_outputs(self.draft, NAME, keep=self.draft / "bgm.wav")
+        self.assertTrue((self.draft / "bgm.wav").is_file())
 
     def test_install_and_read_meta(self):
         src = bgm.validate(Audio.s8, MEMO, self.draft)

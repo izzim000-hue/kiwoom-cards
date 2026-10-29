@@ -19,6 +19,7 @@ from . import constants
 AUDIO_EXTS = (".mp3", ".m4a", ".wav", ".aac", ".ogg", ".opus", ".flac")
 COPY_NAMES = tuple("bgm" + e for e in AUDIO_EXTS)
 META = "bgm.json"
+TOOL_NAMES = frozenset((META, *COPY_NAMES, *(n + ".part" for n in COPY_NAMES)))   # 도구가 쓰고 지우는 정확한 이름
 MIN_SECONDS = 3.0
 MEMO_MAX = 500
 FADE_S = 1.0
@@ -65,6 +66,35 @@ def _duration(data):
     return value
 
 
+def same_file(a, b):
+    """두 경로가 같은 파일·폴더인지 (대소문자를 가리지 않는 파일 시스템에서도 맞게 os.path.samefile 로)."""
+    try:
+        return os.path.samefile(a, b)
+    except OSError:
+        return False
+
+
+def _inside(path, root):
+    """path 가 root 자신이거나 그 아래에 있는지. 이름 비교가 아니라 같은 폴더인지로 본다 (경로 글자의 대소문자가 달라도 잡는다)."""
+    p = Path(path)
+    return any(same_file(q, root) for q in (p, *p.parents))
+
+
+def reserved_name(name):
+    """도구가 쓰는 배경음 이름(bgm.json, bgm.<확장자>, 그 .part)인지 — 대소문자를 가리지 않는다 (CR-02)."""
+    return str(name).lower() in TOOL_NAMES
+
+
+def _git_ignores(repo, path):
+    """git 이 path 를 무시하는지 (`git check-ignore`). 추적 중인 파일은 무시되지 않는 것으로 나온다. git 이 없거나 저장소가 아니면 False."""
+    try:
+        r = subprocess.run(["git", "-C", str(repo), "check-ignore", "-q", "--", str(path)],
+                           capture_output=True, text=True)
+    except OSError:
+        return False
+    return r.returncode == 0
+
+
 def validate(path, memo, draft_dir):
     """(--bgm, --bgm-license) 를 검사해 BgmSource 를 돌려준다. 둘 다 없으면 None (D-08, D-09).
 
@@ -88,10 +118,21 @@ def validate(path, memo, draft_dir):
     ext = src.suffix.lower()
     if ext not in AUDIO_EXTS:
         raise BgmError(f"음원 확장자는 {' '.join(AUDIO_EXTS)} 만 받음: {src.name}")
+    draft = Path(draft_dir).resolve()
+    if src.parent.is_dir() and same_file(src.parent, draft) and reserved_name(src.name):
+        # 대소문자를 가리지 않는 파일 시스템에서는 BGM.MP3 가 곧 bgm.mp3 라 다시 묶을 때 지워진다 (CR-02)
+        raise BgmError(f"음원 이름이 도구의 복사본 이름(bgm.*)과 겹침 — 이름을 바꾸세요: {src.name}")
+    clash = sorted(p.name for p in draft.iterdir() if reserved_name(p.name) and p.name not in TOOL_NAMES) \
+        if draft.is_dir() else []
+    if clash:
+        raise BgmError(f"초안 폴더에 도구의 복사본 이름(bgm.*)과 대소문자만 다른 파일이 있음 — 이름을 바꾸세요: {', '.join(clash)}")
     repo = Path(constants.REPO_ROOT).resolve()
-    if src == repo or repo in src.parents:
-        if src.parent != Path(draft_dir).resolve() or src.name in COPY_NAMES:
+    if _inside(src, repo):
+        if not same_file(src.parent, draft):
             raise BgmError("저장소 안 음원은 그 초안 폴더 안(bgm.* 이 아닌 이름)에서만 받음 — 커밋 방지")
+        if not _git_ignores(repo, src):
+            raise BgmError("저장소 안 음원이 git 에서 무시되지 않음(.gitignore 에 막혀 있지 않거나 이미 추적 중) — 커밋 방지. "
+                           "저장소 밖으로 옮겨서 주세요")
     data = _probe(src)
     streams = data.get("streams")
     streams = [s for s in streams if isinstance(s, dict)] if isinstance(streams, list) else []

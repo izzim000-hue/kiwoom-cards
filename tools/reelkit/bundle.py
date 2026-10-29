@@ -132,15 +132,21 @@ def _iso(epoch):
     return datetime.fromtimestamp(epoch).isoformat(timespec="seconds")
 
 
-def purge_outputs(d, name):
-    """이전 실행의 산출물과 승인 기록을 지운다. 이름은 검증된 폴더 이름에서만 만든다 (T-03-08, T-03-11)."""
+def purge_outputs(d, name, keep=None):
+    """이전 실행의 산출물과 승인 기록을 지운다. 이름은 검증된 폴더 이름에서만 만든다 (T-03-08, T-03-11).
+
+    keep: 이번 실행의 음원 원본 경로. 무슨 일이 있어도 지우지 않는다 (CR-02).
+    """
     victims = [d / n for n in PURGE_FIXED]
     victims += [d / f"{name}.mp4", d / f"{name}.mp4.part.mp4", d / f"{name}-cover.png", d / f"{name}-cover.png.part",
                 d / f"{name}-scenes.png", d / f"{name}-scenes.png.part"]
     victims += sorted(d.glob(f"{name}.safe-s*.png"))
-    # 배경음: --bgm 없이 다시 묶으면 낡은 음원 복사본이 이월되지 않는다 (D-09, T-04-15). 사용자 음원(song.mp3 등)은 건드리지 않는다
-    victims += [d / bgm_mod.META] + [d / n for n in bgm_mod.COPY_NAMES] + [d / f"{n}.part" for n in bgm_mod.COPY_NAMES]
+    # 배경음: --bgm 없이 다시 묶으면 낡은 음원 복사본이 이월되지 않는다 (D-09, T-04-15). 사용자 음원(song.mp3 등)은 건드리지 않는다.
+    # 폴더 목록에 그 글자 그대로 있는 이름만 지운다: 대소문자를 가리지 않는 파일 시스템에서 d / "bgm.mp3" 는 사용자의 BGM.MP3 도 가리킨다 (CR-02)
+    victims += [d / n for n in sorted(os.listdir(d)) if n in bgm_mod.TOOL_NAMES]
     for p in victims:
+        if keep is not None and bgm_mod.same_file(p, keep):
+            continue
         if p.is_file() or p.is_symlink():
             p.unlink()
 
@@ -234,7 +240,7 @@ def run_cli(draft_dir, *, card=None, request_start=None, rules=None, registry=No
     exit_code = 0
     try:
         try:
-            purge_outputs(d, name)
+            purge_outputs(d, name, keep=None if bgm_src is None else bgm_src.path)
         except OSError as e:
             print(f"환경 오류: 이전 산출물을 지울 수 없음: {e}", file=sys.stderr)
             state["failed"] = "purge"
