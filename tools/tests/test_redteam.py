@@ -18,7 +18,7 @@ from reelkit import compliance, redteam   # noqa: E402
 DRAFT = [sys.executable, str(TOOLS / "draft.py")]
 CORPUS = TOOLS / "tests" / "redteam" / "corpus.json"
 HELDOUT = TOOLS / "tests" / "redteam" / "heldout.json"
-LAST_LINE = re.compile(r"^redteam: 표본 내 탐지 \d+/46 · 오탐 \d+/24 · 따로 쓴 문장 탐지 \d+/\d+ · 오탐 \d+/\d+ · 기존 10편 수정 필요 \d+건$")
+LAST_LINE = re.compile(r"^redteam: 표본 내 탐지 \d+/46 · 오탐 \d+/30 · 따로 쓴 문장 탐지 \d+/\d+ · 오탐 \d+/\d+ · 기존 10편 수정 필요 \d+건$")
 
 BAD_OK = {"id": "X01", "label": "bad", "category": "단정·보장", "tier": "explicit", "lines": ["원금 보장"]}
 GOOD_OK = {"id": "X02", "label": "good", "lines": ["안녕하세요"]}
@@ -91,7 +91,7 @@ class Counts(unittest.TestCase):
     def test_seed_and_heldout_sizes(self):
         seed = redteam.load_corpus(CORPUS)
         self.assertEqual(sum(e["label"] == "bad" for e in seed), 46)
-        self.assertEqual(sum(e["label"] == "good" for e in seed), 24)
+        self.assertEqual(sum(e["label"] == "good" for e in seed), 30)
         held = redteam.load_corpus(HELDOUT)
         self.assertGreaterEqual(sum(e["label"] == "bad" for e in held), 12)
         self.assertGreaterEqual(sum(e["label"] == "good" for e in held), 6)
@@ -167,7 +167,7 @@ class SeedThresholds(unittest.TestCase):
                                            if e["label"] == "bad" and e["tier"] != "implicit" and not e["detected"]])
 
     def test_good_set_has_no_fix_needed_false_positive(self):
-        self.assertEqual((self.seed["good_fp_fix"], self.seed["good_total"]), (0, 24),
+        self.assertEqual((self.seed["good_fp_fix"], self.seed["good_total"]), (0, 30),
                          [e["id"] for e in self.seed["entries"] if e["label"] == "good" and e["findings"]])
 
 

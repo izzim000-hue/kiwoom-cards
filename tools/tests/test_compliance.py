@@ -151,6 +151,50 @@ class NegationScope(unittest.TestCase):
         self.assertIsNone(RULES.negators.match(" 오해 없도록"))
 
 
+class CorrectWordingIsNotMustFix(unittest.TestCase):
+    """CR-02 회귀: 바른 문장(존재 부정, 사다+기, 낱말 속 '무조건', 호칭 '님')은 수정 필요가 되지 않는다."""
+
+    def assertNoMustFix(self, line):
+        res = compliance.run(mk([line]), None, RULES)
+        self.assertEqual(res.counts["수정 필요"], 0, (line, res.findings))
+
+    def test_existential_negation(self):
+        for line in ("수익을 보장하는 상품은 없습니다", "원금 보장 상품은 없어요", "확정 수익이란 없습니다",
+                     "손실 없는 투자는 없어요", "절대 손해 안 보는 상품은 없어요", "무조건 절세는 없어요",
+                     "원금 보장 상품은 어디에도 없어요"):
+            with self.subTest(line=line):
+                self.assertNoMustFix(line)
+
+    def test_existential_needs_a_head_noun_not_any_noun(self):
+        res = compliance.run(mk(["원금 보장 걱정은 없어요"]), None, RULES)
+        self.assertGreater(res.counts["수정 필요"], 0)
+
+    def test_buying_and_fraud_prevention_are_not_slander(self):
+        for line in ("ETF를 사기 전에", "주식을 사기 위한 돈", "보이스피싱 사기 주의", "연금 사기 피하는 법", "사기 진작",
+                     "조사기관 발표"):
+            with self.subTest(line=line):
+                self.assertNoMustFix(line)
+                self.assertNotIn("C-03", ids(compliance.run(mk([line]), None, RULES).findings))
+        found, _ = scan_reel(mk(["타사 상품은 사기예요"]))
+        self.assertIn("C-03", ids(found))
+        found, _ = scan_reel(mk(["보이스피싱 사기 주의"]))
+        self.assertEqual([(f["rule"], f["severity"]) for f in found], [(["C-05"], "확인 필요")])
+
+    def test_mujogeon_inside_a_word(self):
+        for line in ("채무조건 조정 제도", "근무 조건에 따라", "가입 의무 조건 확인"):
+            with self.subTest(line=line):
+                self.assertEqual(scan_reel(mk([line]))[0], [])
+        self.assertIn("X-compact", ids(scan_reel(mk(["무 조 건 오릅니다"]))[0]))
+
+    def test_title_nouns_are_not_names(self):
+        for line in ("고객님, 오늘은 연금 이야기", "강사님 추천 도서", "신규 고객님 혜택 안내", "오늘도 고객님과 함께"):
+            with self.subTest(line=line):
+                self.assertNotIn("P-02", ids(scan_reel(mk([line]))[0]))
+        for line in ("김철수 고객님 사례를 소개합니다", "김철수 고객님께 드리는 사례", "박OO 씨는 3억을 모았습니다"):
+            with self.subTest(line=line):
+                self.assertIn("P-02", ids(scan_reel(mk([line]))[0]))
+
+
 class CompactAndDedupe(unittest.TestCase):
     def test_spaced_term(self):
         found, _ = scan_reel(mk(["이건 원 금 보 장 상품"]))

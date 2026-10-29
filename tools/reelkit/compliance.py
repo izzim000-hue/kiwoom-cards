@@ -14,6 +14,7 @@
   문장이라 다음 줄의 '놓치지 마세요' 같은 부정은 앞 줄의 주장을 덮지 않는다 (CR-01).
 - except 규칙은 따로 넓은 창(문장 끝·빈 줄·'지만' 류에서 끊음)으로 매치가 든 문장을 본다.
 - 쪼갠 표현: 발견도 제외도 없는 필드에서 공백을 모두 지운 글로 compact_terms 를 찾는다 (규칙 id X-compact).
+  표현의 첫 글자가 원래 글에서 낱말 첫머리일 때만 센다 ('근무 조건' 의 '무조건' 제외).
 - 겹친 매치는 하나로 합치고 더 구체적인 분류를 남긴다.
 - 확인 필요: requires/basis_required 규칙과 check.json·게시글 경고 옮기기(lift)로 만든다. 수치를 다시 판정하지 않는다 (D-07).
 """
@@ -482,6 +483,22 @@ def _structural(doc, rule):
     return {**base, "where": where, "text": _one_line(m.group(0)), "line": basis.text if basis else ""}
 
 
+def _compact_matches(text, terms):
+    """공백을 지운 글에서 찾은 쪼갠 표현 [(원래 글의 시작, 끝, 표현)]. 표현의 첫 글자가 원래 글에서 낱말 첫머리일 때만 센다
+    (CR-02: '근무 조건'·'채무조건' 의 '무조건' 은 낱말 중간이라 제외)."""
+    keep = [i for i, ch in enumerate(text) if not ch.isspace()]
+    squeezed = "".join(text[i] for i in keep)
+    out = []
+    for term in terms:
+        pos = squeezed.find(term) if term else -1
+        while pos >= 0:
+            o_start, o_end = keep[pos], keep[pos + len(term) - 1] + 1
+            if o_start == 0 or not text[o_start - 1].isalnum():
+                out.append((o_start, o_end, term))
+            pos = squeezed.find(term, pos + 1)
+    return out
+
+
 def scan(doc, rules):
     """(findings, suppressed). 패턴 규칙 -> 쪼갠 표현 -> 근거 누락 규칙 순서이고 글 속 위치 순으로 돌려준다."""
     hits, suppressed = [], []
@@ -519,13 +536,11 @@ def scan(doc, rules):
     for span in doc.spans:
         if span.where in touched or not rules.compact_terms:
             continue
-        squeezed = re.sub(r"\s+", "", span.text)
-        for term in rules.compact_terms:
-            if term and term in squeezed:
-                found.append((span.start, {
-                    "rule": ["X-compact"], "category": SPECIFIC_FIRST, "severity": "수정 필요", "kind": "compact",
-                    "doc": doc.kind, "where": span.where, "text": term, "line": span.text,
-                    "reason": COMPACT_REASON, "suggest": COMPACT_SUGGEST}))
+        for _o_start, _o_end, term in _compact_matches(span.text, rules.compact_terms):
+            found.append((span.start, {
+                "rule": ["X-compact"], "category": SPECIFIC_FIRST, "severity": "수정 필요", "kind": "compact",
+                "doc": doc.kind, "where": span.where, "text": term, "line": span.text,
+                "reason": COMPACT_REASON, "suggest": COMPACT_SUGGEST}))
     found.sort(key=lambda p: p[0])
     findings = [f for _, f in found]
     for rule in rules.rules:
