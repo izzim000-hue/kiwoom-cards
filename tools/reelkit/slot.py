@@ -56,7 +56,11 @@ def used_slots(reels_dir=REELS_DIR):
 
 
 def propose(reels_dir=REELS_DIR, *, date=None, slug=None, today=None):  # noqa: A002 - CLI 이름과 맞춤
-    """게시일·슬러그 제안. 충돌이 있거나 날짜를 받지 못했으면 ask 가 참이라 스킬이 사용자에게 한 번 묻는다."""
+    """게시일·슬러그 제안. 충돌이 있거나 날짜를 받지 못했으면 ask 가 참이라 스킬이 사용자에게 한 번 묻는다.
+
+    지난 날짜나 제안일보다 이른 날짜는 notices 에 적고 ask 를 참으로 한다 (WR-05: 모호한 날짜는 한 번 확인).
+    릴스 폴더가 연도 폴더(예: 2026/reels) 안에 있으면 다른 해의 날짜는 충돌이다 (--create 거부).
+    """
     reels_dir = Path(reels_dir)
     today = today or _today()
     used = used_slots(reels_dir)
@@ -70,10 +74,18 @@ def propose(reels_dir=REELS_DIR, *, date=None, slug=None, today=None):  # noqa: 
     chosen = check_date(date) if date else proposed
     if slug is not None:
         check_slug(slug)
-    conflicts = []
+    conflicts, notices = [], []
     for d, s, where in used:
         if d == chosen.isoformat():
             conflicts.append(f"날짜 사용 중: {d} ({where} {d}-{s})")
+    folder_year = reels_dir.resolve().parent.name
+    if re.fullmatch(r"\d{4}", folder_year) and int(folder_year) != chosen.year:
+        conflicts.append(f"연도 불일치: {chosen.isoformat()} 은 {folder_year}/ 폴더에 둘 수 없음 "
+                         f"(--reels-dir {chosen.year}/reels 로 지정)")
+    if chosen < today:
+        notices.append(f"지난 날짜: {chosen.isoformat()} < 오늘 {today.isoformat()} — 사용자 확인 필요")
+    elif chosen < proposed:
+        notices.append(f"제안일보다 이른 날짜: {chosen.isoformat()} < {proposed.isoformat()} — 게시 순서 사용자 확인 필요")
     if slug:
         for d, s, where in used:
             if s == slug:
@@ -87,7 +99,8 @@ def propose(reels_dir=REELS_DIR, *, date=None, slug=None, today=None):  # noqa: 
         "slug": slug,
         "dir": folder,
         "conflicts": conflicts,
-        "ask": bool(conflicts) or not date,
+        "notices": notices,
+        "ask": bool(conflicts) or bool(notices) or not date,
     }
 
 

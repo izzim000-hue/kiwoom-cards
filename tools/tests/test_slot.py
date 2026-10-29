@@ -110,6 +110,38 @@ class TempDirProposal(unittest.TestCase):
             self.assertFalse(info["ask"])
             self.assertEqual(info["conflicts"], [])
 
+    def test_past_or_early_date_asks(self):
+        # WR-05 회귀: 지난 날짜도 ask false 로 통과하던 문제
+        with tempfile.TemporaryDirectory() as t:
+            reels = make_reels(t, [("2026-11-07", "a-b")])
+            info = slot.propose(reels, date="2026-10-01", slug="new-one", today=date(2026, 10, 29))
+            self.assertTrue(info["ask"])
+            self.assertTrue(info["notices"][0].startswith("지난 날짜"), info["notices"])
+            self.assertEqual(info["conflicts"], [])
+            info = slot.propose(reels, date="2026-11-01", slug="new-one", today=date(2026, 10, 29))
+            self.assertTrue(info["ask"])
+            self.assertTrue(info["notices"][0].startswith("제안일보다 이른 날짜"), info["notices"])
+
+    def test_other_year_in_a_year_folder_conflicts(self):
+        with tempfile.TemporaryDirectory() as t:
+            reels = Path(t) / "2026" / "reels"
+            (reels / "specs").mkdir(parents=True)
+            info = slot.propose(reels, date="2020-01-01", slug="old-date", today=date(2026, 10, 29))
+            self.assertTrue(any(c.startswith("연도 불일치") for c in info["conflicts"]), info["conflicts"])
+            with self.assertRaises(slot.SlotError):
+                slot.create_draft_dir(reels, "2020-01-01", "old-date")
+            self.assertFalse((reels / "drafts").exists())
+
+    def test_real_dir_old_date_cannot_be_created(self):
+        before = sorted(p.name for p in (REPO / "2026" / "reels" / "drafts").glob("*")) \
+            if (REPO / "2026" / "reels" / "drafts").exists() else []
+        r = run_draft("slot", "--date", "2020-01-01", "--slug", "old-date", "--create")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("연도 불일치", r.stderr)
+        after = sorted(p.name for p in (REPO / "2026" / "reels" / "drafts").glob("*")) \
+            if (REPO / "2026" / "reels" / "drafts").exists() else []
+        self.assertEqual(before, after)
+
     def test_existing_draft_folder_conflicts(self):
         with tempfile.TemporaryDirectory() as t:
             reels = make_reels(t)
