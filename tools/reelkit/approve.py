@@ -13,7 +13,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from . import bundle, compliance, constants, figures, review
+from . import bgm, bundle, compliance, constants, figures, review
 from .spec import SpecError, load_spec
 
 # 옮기는 네 파일과 출처 확인용 여섯 파일. bundle.draft_paths 의 키 이름이다. 사람이 읽은 review.md 와, 묶음 산출물 지문을
@@ -27,34 +27,65 @@ class ApproveError(ValueError):
     """거부 사유. 메시지는 한국어."""
 
 
-def hashed_names(draft_dir):
-    """승인 지문을 남기는 파일 이름 (HASHED 순서)."""
+def hashed_names(draft_dir, extra=()):
+    """승인 지문을 남기는 파일 이름 (HASHED 순서, 뒤에 배경음 파일 이름 extra)."""
     p = bundle.draft_paths(draft_dir)
-    return [p[k].name for k in HASHED]
+    return [p[k].name for k in HASHED] + list(extra)
 
 
 sha256_file = bundle.sha256_file
 
 
+def bgm_names(draft_dir, info):
+    """배경음 파일 이름 목록을 bundle.json 의 `bgm` 과 디스크 양쪽에서 대조해 돌려준다 (D-09, D-11, Pitfall 7).
+
+    bundle.json 에 bgm 이 있으면 bgm.json 이 같은 내용으로 있고 복사본이 하나만 있어야 한다. 없으면(null) bgm.json 도 bgm.* 복사본도
+    디스크에 없어야 한다: 손으로 음원을 끼워 넣거나 빼는 것을 막는다.
+    """
+    d = Path(draft_dir)
+    entry = info.get("bgm")
+    on_disk = [n for n in (bgm.META, *bgm.COPY_NAMES) if os.path.lexists(d / n)]
+    if entry is None:
+        if on_disk:
+            raise ApproveError(f"bundle.json 에 배경음 기록이 없는데 폴더에 있음: {', '.join(on_disk)} — "
+                               "bundle 을 다시 실행하세요")
+        return []
+    try:
+        meta = bgm.read_meta(d)
+    except bgm.BgmError as e:
+        raise ApproveError(f"{e} — bundle 을 다시 실행하세요") from None
+    if meta is None:
+        raise ApproveError(f"배경음 기록 파일 없음: {bgm.META} — bundle 을 다시 실행하세요")
+    if meta != entry:
+        raise ApproveError(f"{bgm.META} 가 bundle.json 의 배경음 기록과 다름 — 손으로 고치지 말고 bundle 을 다시 실행하세요")
+    copies = [n for n in bgm.COPY_NAMES if os.path.lexists(d / n)]
+    if copies != [meta["copy"]]:
+        raise ApproveError(f"배경음 복사본이 기록({meta['copy']})과 다름: {', '.join(copies) or '없음'} — bundle 을 다시 실행하세요")
+    return [bgm.META, meta["copy"]]
+
+
 def check_outputs(paths, info):
-    """bundle.json 의 outputs 지문과 지금 파일을 대조한다. 묶음 뒤 손으로 고친 파일이 있으면 거부한다 (WR-02)."""
+    """bundle.json 의 outputs 지문과 지금 파일을 대조한다. 묶음 뒤 손으로 고친 파일이 있으면 거부한다 (WR-02).
+    배경음이 있는 묶음이면 bgm.json 과 복사본도 같은 방식으로 대조한다."""
     outputs = info.get("outputs")
-    names = {paths[k].name for k in bundle.OUTPUT_KEYS}
+    d = Path(paths["bundle"]).parent
+    extra = bgm_names(d, info)
+    names = {paths[k].name for k in bundle.OUTPUT_KEYS} | set(extra)
     if not isinstance(outputs, dict) or set(outputs) != names:
         raise ApproveError("bundle.json 에 산출물 지문이 없거나 목록이 다름 — bundle 을 다시 실행하세요")
-    for key in bundle.OUTPUT_KEYS:
-        p = paths[key]
+    for p in [paths[k] for k in bundle.OUTPUT_KEYS] + [d / n for n in extra]:
         if p.is_symlink() or not p.is_file() or sha256_file(p) != outputs[p.name]:
             raise ApproveError(f"묶음을 만든 뒤 바뀜: {p.name} — 손으로 고치지 말고 bundle 을 다시 실행하세요")
+    if extra and sha256_file(d / extra[1]) != info["bgm"]["sha256"]:
+        raise ApproveError(f"묶음을 만든 뒤 바뀜: {extra[1]} — 손으로 고치지 말고 bundle 을 다시 실행하세요")
 
 
-def file_hashes(draft_dir):
-    """{파일 이름: sha256} (HASHED 순서). 없거나 심볼릭 링크이거나 폴더 밖으로 풀리면 거부한다 (T-03-15)."""
+def file_hashes(draft_dir, extra=()):
+    """{파일 이름: sha256} (HASHED 순서, 뒤에 extra). 없거나 심볼릭 링크이거나 폴더 밖으로 풀리면 거부한다 (T-03-15)."""
     d = Path(draft_dir).resolve()
     paths = bundle.draft_paths(d)
     out = {}
-    for key in HASHED:
-        p = paths[key]
+    for p in [paths[key] for key in HASHED] + [d / n for n in extra]:
         if p.is_symlink():
             raise ApproveError(f"심볼릭 링크는 쓸 수 없음: {p.name}")
         if not p.is_file():
@@ -138,8 +169,9 @@ def approve_cli(draft_dir, by):
     try:
         info = bundle_ok(paths)
         check_outputs(paths, info)
+        extra = bgm_names(d, info)
         loaded = _load_rules()
-        hashes = file_hashes(d)
+        hashes = file_hashes(d, extra)
         result = live_scan(d, loaded)
     except (compliance.RuleError, ApproveError, SpecError, ValueError, OSError) as e:
         print(f"승인 오류: {e}", file=sys.stderr)
@@ -164,6 +196,8 @@ def approve_cli(draft_dir, by):
     code = info.get("exit_code")
     if code == 3:
         print("  주의: bundle 종료 코드 3 — 레이아웃·표지 경고가 있었음 (review.md 확인)", file=sys.stderr)
+    if info.get("bgm"):
+        print(f"  배경음: {_one_line(info['bgm']['file'])} · 라이선스 메모: {_one_line(info['bgm']['license'])}", file=sys.stderr)
     print("  지문을 기록할 파일:", file=sys.stderr)
     for fname in hashes:
         print(f"    {fname}", file=sys.stderr)
@@ -175,7 +209,7 @@ def approve_cli(draft_dir, by):
         print("승인 오류: 입력한 폴더 이름이 다름 — 승인하지 않음", file=sys.stderr)
         return 1
     try:
-        again = file_hashes(d)
+        again = file_hashes(d, extra)
     except ApproveError as e:
         print(f"승인 오류: {e}", file=sys.stderr)
         return 1
@@ -184,7 +218,7 @@ def approve_cli(draft_dir, by):
         return 1
     data = {"schema": 1, "name": name, "approved_by": who, "approved_at": _now_iso(),
             "rules": {"version": loaded.version, "sha256": loaded.sha256},
-            "counts": result.counts, "record": record, "files": hashes}
+            "counts": result.counts, "record": record, "files": hashes, "bgm": info.get("bgm")}
     try:
         bundle._atomic_write(paths["approval"], bundle._json_text(data))
     except OSError as e:
@@ -192,6 +226,11 @@ def approve_cli(draft_dir, by):
         return 2
     print(f"approve: {name} 승인 기록 ({who}) — 옮기기: python3 tools/draft.py promote {draft_dir}")
     return 0
+
+
+def _one_line(text):
+    """터미널에 보일 한 줄 글자: 제어 문자는 공백으로."""
+    return review.CONTROL_RE.sub(" ", str(text))
 
 
 def _read_approval(paths, name):
@@ -259,8 +298,9 @@ def promote_cli(draft_dir):
     try:
         approval = _read_approval(paths, name)
         files = approval["files"]
-        expected = set(hashed_names(d))
-        if set(files) != expected:
+        base = set(hashed_names(d))
+        allowed = {bgm.META, *bgm.COPY_NAMES}
+        if not base <= set(files) or not set(files) - base <= allowed:
             raise ApproveError("승인 기록의 파일 목록이 맞지 않음 — 사람이 approve 를 다시 실행해야 함")
         current = {}
         for fname in files:
@@ -270,8 +310,12 @@ def promote_cli(draft_dir):
             current[fname] = sha256_file(d / fname)
             if current[fname] != digest:
                 raise ApproveError(f"승인 뒤 바뀜: {fname} — bundle 을 다시 실행하고 다시 승인 받으세요")
-        file_hashes(d)   # 심볼릭 링크·폴더 밖 경로 거부
-        check_outputs(paths, bundle_ok(paths))   # bundle.json 은 승인 지문 안에 있으므로 승인 때의 묶음 상태 그대로 (WR-03)
+        info = bundle_ok(paths)   # bundle.json 은 승인 지문 안에 있으므로 이제부터 승인 때의 묶음 상태 그대로 (WR-03)
+        extra = bgm_names(d, info)
+        if set(files) != base | set(extra) or approval.get("bgm") != info.get("bgm"):
+            raise ApproveError("승인 기록의 파일 목록이 맞지 않음 — 사람이 approve 를 다시 실행해야 함")
+        file_hashes(d, extra)   # 심볼릭 링크·폴더 밖 경로 거부
+        check_outputs(paths, info)
         loaded = _load_rules()
         if approval["rules"].get("sha256") != loaded.sha256:
             raise ApproveError("승인 때와 점검 규칙 파일이 다름 — bundle 을 다시 실행하고 사람이 approve 를 다시 실행해야 함")

@@ -229,8 +229,9 @@ class Purge(unittest.TestCase):
             d = make_folder(t)
             gone = ["spec.json", "check.json", "caption.txt", "compliance.json", "review.md", "bundle.json",
                     "approval.json", f"{NAME}.mp4", f"{NAME}.mp4.part.mp4", f"{NAME}-cover.png",
-                    f"{NAME}-scenes.png", f"{NAME}.safe-s01.png", f"{NAME}.safe-s05.png"]
-            kept = ["record.json", "created.json", "skeleton.json", "notes.txt", "other.png"]
+                    f"{NAME}-scenes.png", f"{NAME}.safe-s01.png", f"{NAME}.safe-s05.png",
+                    "bgm.json", "bgm.mp3", "bgm.m4a", "bgm.wav", "bgm.mp3.part", "bgm.flac.part"]
+            kept = ["record.json", "created.json", "skeleton.json", "notes.txt", "other.png", "song.mp3", "bgm.txt"]
             for n in gone + kept:
                 (d / n).write_bytes(b"x")
             bundle.purge_outputs(d, NAME)

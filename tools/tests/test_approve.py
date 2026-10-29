@@ -510,5 +510,131 @@ class Promote(ApproveBase):
         self.assertFalse((self.root / f"{NAME}.mp4").exists())
 
 
+AUDIO_BYTES = b"ID3-placeholder-audio-bytes-not-a-real-track"
+BGM_MEMO = "자체 제작 음원 · 상업 사용 가능 (시험용 메모)"
+
+
+def add_bgm(d, copy="bgm.mp3", **meta_over):
+    """bundle 이 --bgm 으로 만든 것과 같은 모양: 복사본(대체 바이트) + bgm.json + bundle.json 의 bgm·outputs."""
+    (d / copy).write_bytes(AUDIO_BYTES)
+    meta = {"schema": 1, "file": "own-track.mp3", "copy": copy, "sha256": approve.sha256_file(d / copy),
+            "license": BGM_MEMO, "duration_s": 8.0}
+    meta.update(meta_over)
+    (d / "bgm.json").write_text(json.dumps(meta, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    paths = bundle.draft_paths(d)
+    write_bundle_json(d, bgm=meta, outputs=bundle.output_hashes(paths, ("bgm.json", copy)))
+    return meta
+
+
+class ApproveBgm(ApproveBase):
+    """배경음이 든 묶음: 승인 지문이 오디오까지 덮고, 묶음 기록과 디스크가 양쪽으로 맞아야 한다 (D-09, D-11)."""
+
+    def setUp(self):
+        super().setUp()
+        self.meta = add_bgm(self.d)
+
+    def test_approve_records_audio_hashes(self):
+        code, _out, err = self.approve()
+        self.assertEqual(code, 0, err)
+        self.assertIn("own-track.mp3", err)
+        self.assertIn(BGM_MEMO, err)
+        data = json.loads((self.d / "approval.json").read_text(encoding="utf-8"))
+        self.assertEqual(len(data["files"]), 12)
+        self.assertEqual(data["files"]["bgm.mp3"], approve.sha256_file(self.d / "bgm.mp3"))
+        self.assertEqual(data["files"]["bgm.json"], approve.sha256_file(self.d / "bgm.json"))
+        self.assertEqual(data["bgm"], self.meta)
+
+    def test_no_bgm_approval_unchanged(self):
+        (self.d / "bgm.json").unlink()
+        (self.d / "bgm.mp3").unlink()
+        write_bundle_json(self.d)
+        self.approved()
+        data = json.loads((self.d / "approval.json").read_text(encoding="utf-8"))
+        self.assertEqual(len(data["files"]), 10)
+        self.assertIsNone(data["bgm"])
+
+    def test_meta_deleted_after_bundle_refuses(self):
+        (self.d / "bgm.json").unlink()
+        code, _o, err = self.approve()
+        self.assertEqual(code, 1)
+        self.assertIn("bgm.json", err)
+        self.assertFalse((self.d / "approval.json").exists())
+
+    def test_audio_on_disk_without_bundle_entry_refuses(self):
+        write_bundle_json(self.d)   # bundle.json 의 bgm 은 없음(null) 인데 폴더에 음원이 있음
+        for name in ("bgm.json", "bgm.mp3"):
+            with self.subTest(keep=name):
+                other = "bgm.mp3" if name == "bgm.json" else "bgm.json"
+                backup = (self.d / other).read_bytes()
+                (self.d / other).unlink()
+                code, _o, err = self.approve()
+                self.assertEqual(code, 1)
+                self.assertIn(name, err)
+                (self.d / other).write_bytes(backup)
+        (self.d / "bgm.json").unlink()
+        (self.d / "bgm.mp3").unlink()
+        (self.d / "bgm.m4a").write_bytes(AUDIO_BYTES)
+        code, _o, err = self.approve()
+        self.assertEqual(code, 1)
+        self.assertIn("bgm.m4a", err)
+        self.assertFalse((self.d / "approval.json").exists())
+
+    def test_meta_differs_from_bundle_refuses(self):
+        text = (self.d / "bgm.json").read_text(encoding="utf-8").replace(BGM_MEMO, "다른 메모")
+        (self.d / "bgm.json").write_text(text, encoding="utf-8")
+        code, _o, err = self.approve()
+        self.assertEqual(code, 1)
+        self.assertIn("bgm.json", err)
+        self.assertFalse((self.d / "approval.json").exists())
+
+    def test_audio_changed_before_approve_refuses(self):
+        (self.d / "bgm.mp3").write_bytes(AUDIO_BYTES + b"x")
+        code, _o, err = self.approve()
+        self.assertEqual(code, 1)
+        self.assertIn("bgm.mp3", err)
+        self.assertFalse((self.d / "approval.json").exists())
+
+    def test_second_copy_refuses(self):
+        (self.d / "bgm.m4a").write_bytes(AUDIO_BYTES)
+        code, _o, err = self.approve()
+        self.assertEqual(code, 1)
+        self.assertIn("bgm.m4a", err)
+
+    def test_promote_refuses_audio_tampering(self):
+        for what in ("change", "drop-meta", "second-copy"):
+            with self.subTest(what=what):
+                self.approved()
+                audio, meta = self.d / "bgm.mp3", (self.d / "bgm.json").read_bytes()
+                if what == "change":
+                    audio.write_bytes(AUDIO_BYTES + b"y")
+                    want = "bgm.mp3"
+                elif what == "drop-meta":
+                    (self.d / "bgm.json").unlink()
+                    want = "bgm.json"
+                else:
+                    (self.d / "bgm.m4a").write_bytes(AUDIO_BYTES)
+                    want = "bgm.m4a"
+                code, _o, err = self.promote()
+                self.assertEqual(code, 1, err)
+                self.assertIn(want, err)
+                self.assertNothingPublished()
+                audio.write_bytes(AUDIO_BYTES)
+                (self.d / "bgm.json").write_bytes(meta)
+                if (self.d / "bgm.m4a").exists():
+                    (self.d / "bgm.m4a").unlink()
+
+    def test_promote_moves_only_four_files_never_audio(self):
+        self.approved()
+        code, out, err = self.promote()
+        self.assertEqual(code, 0, err)
+        self.assertEqual(sum(1 for line in out.splitlines() if line.startswith("git add ")), 4)
+        self.assertEqual(sorted(p.name for p in self.reels.rglob("*") if p.is_file() and "drafts" not in p.parts),
+                         sorted(t.name for t in self.targets))
+        audio = [p for p in self.reels.rglob("*") if p.suffix.lower() in (".mp3", ".m4a", ".wav", ".aac", ".ogg", ".opus", ".flac")
+                 and "drafts" not in p.parts]
+        self.assertEqual(audio, [])
+        self.assertTrue((self.d / "bgm.mp3").is_file())
+
+
 if __name__ == "__main__":
     unittest.main()
