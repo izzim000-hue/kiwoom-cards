@@ -17,12 +17,12 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from . import calc, caption, check, compliance, convert, expand, figures, review, slot
+from . import calc, caption, check, compliance, convert, expand, figures, review, slot, stills
 from .browser import BrowserLaunchError, FontLoadError
 from .encode import EncodeError
 from .spec import SpecError, load_spec
 
-STEPS = ("expand", "check", "caption", "compliance", "render", "cover", "review")
+STEPS = ("expand", "check", "caption", "compliance", "render", "cover", "scenes", "review")
 TEN_MINUTES = 600
 PLAYWRIGHT_MISSING = "playwright 미설치: python3 -m pip install --user -r tools/requirements.txt"
 
@@ -60,7 +60,7 @@ def draft_paths(draft_dir):
     return {
         "spec_src": d / "spec.src.json", "spec": d / "spec.json", "check": d / "check.json",
         "caption_src": d / "caption.src.json", "caption": d / "caption.txt",
-        "compliance": d / "compliance.json", "mp4": d / f"{name}.mp4", "cover": d / f"{name}-cover.png",
+        "compliance": d / "compliance.json", "mp4": d / f"{name}.mp4", "cover": d / f"{name}-cover.png", "scenes": d / f"{name}-scenes.png",
         "review": d / "review.md", "record": d / "record.json", "bundle": d / "bundle.json",
         "approval": d / "approval.json",
     }
@@ -228,6 +228,13 @@ def _build(d, date_text, name, paths, frames, steps, state, started, t_start,
         tmp = paths["cover"].with_name(paths["cover"].name + ".part")
         shutil.copyfile(src, tmp)
         os.replace(tmp, paths["cover"])
+        return stills.cover_crop_warnings(paths["cover"])
+
+    # 7 scenes
+    def do_scenes():
+        found = sorted(frames.glob("s[0-9][0-9].png"))
+        stills.contact_sheet(found, paths["scenes"])
+        return len(found)
 
     try:
         spec = _timed(steps, state, "expand", do_expand)
@@ -258,7 +265,8 @@ def _build(d, date_text, name, paths, frames, steps, state, started, t_start,
 
     try:
         r = _timed(steps, state, "render", do_render)
-        _timed(steps, state, "cover", do_cover)
+        cover_warnings = _timed(steps, state, "cover", do_cover)
+        _timed(steps, state, "scenes", do_scenes)
     except SpecError as e:
         print(f"원고 오류: {e}", file=sys.stderr)
         raise _Stop(1) from None
@@ -267,7 +275,7 @@ def _build(d, date_text, name, paths, frames, steps, state, started, t_start,
             raise
         print(PLAYWRIGHT_MISSING, file=sys.stderr)
         raise _Stop(2) from None
-    except (FontLoadError, BrowserLaunchError, EncodeError) as e:
+    except (FontLoadError, BrowserLaunchError, EncodeError, stills.StillsError) as e:
         print(f"렌더 환경 오류: {e}", file=sys.stderr)
         raise _Stop(2) from None
     except (*_playwright_error_types(), OSError, subprocess.SubprocessError) as e:
@@ -279,6 +287,8 @@ def _build(d, date_text, name, paths, frames, steps, state, started, t_start,
         print(str(w), file=sys.stderr)
     if r.warnings:
         print(f"레이아웃 경고 {len(r.warnings)}건", file=sys.stderr)
+    for w in cover_warnings:
+        print(w, file=sys.stderr)
     for path in r.overlays:
         print(f"안전영역 미리보기: {path}", file=sys.stderr)
     from .specprobe import format_report
@@ -290,7 +300,9 @@ def _build(d, date_text, name, paths, frames, steps, state, started, t_start,
         spec_fail = sum(1 for c in r.spec_checks if c.status == "FAIL")
         ctx.update({
             "name": name, "result": result, "check": check_data, "record": record, "record_problem": problem,
-            "mp4_name": paths["mp4"].name, "cover_name": paths["cover"].name, "duration": r.total,
+            "mp4_name": paths["mp4"].name, "cover_name": paths["cover"].name, "scenes_name": paths["scenes"].name,
+            "cover_warnings": list(cover_warnings), "scene_times": stills.scene_times(spec),
+            "scene_firsts": [sc["lines"][0] for sc in spec["scenes"]], "duration": r.total,
             "spec_total": len(r.spec_checks), "spec_ok": sum(1 for c in r.spec_checks if c.status == "PASS"),
             "spec_fail": spec_fail, "layout_warnings": [str(w) for w in r.warnings],
             "caption_status": cap_cfg["status"], "steps": list(steps),
@@ -308,6 +320,6 @@ def _build(d, date_text, name, paths, frames, steps, state, started, t_start,
     print(f"bundle: {name} · {result.headline} · 확인 필요 {result.counts['확인 필요']}건 · {elapsed:.1f}초")
     if any(c.status == "FAIL" for c in r.spec_checks):
         return 4
-    if r.warnings:
+    if r.warnings or cover_warnings:
         return 3
     return 0

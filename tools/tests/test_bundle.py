@@ -51,13 +51,13 @@ class Bundle(unittest.TestCase):
     def test_exit_zero_and_files(self):
         self.assertEqual(self.r.returncode, 0, self.r.stdout + self.r.stderr)
         for n in ("spec.json", "check.json", "caption.txt", "compliance.json", f"{NAME}.mp4", f"{NAME}-cover.png",
-                  "review.md", "record.json", "bundle.json"):
+                  f"{NAME}-scenes.png", "review.md", "record.json", "bundle.json"):
             self.assertTrue((self.d / n).is_file(), n)
 
     def test_steps_in_order_with_timing(self):
         b = json.loads(self.read("bundle.json"))
         self.assertEqual([s["name"] for s in b["steps"]],
-                         ["expand", "check", "caption", "compliance", "render", "cover", "review"])
+                         ["expand", "check", "caption", "compliance", "render", "cover", "scenes", "review"])
         self.assertTrue(all(s["status"] == "ok" for s in b["steps"]), b["steps"])
         self.assertEqual(b["status"], "complete")
         self.assertLess(b["elapsed_s"], 600)
@@ -84,6 +84,18 @@ class Bundle(unittest.TestCase):
             t += st.dur
         else:
             self.fail("scene 1 final state not found")
+
+    def test_scene_sheet_and_crop_audit(self):
+        r = run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height",
+                 "-of", "csv=p=0", str(self.d / f"{NAME}-scenes.png")])
+        self.assertEqual(r.stdout.strip(), "1500,1316")
+        self.assertNotIn("COVER_CROP", self.r.stderr)
+        text = self.read("review.md")
+        for need in ("![장면 모음](", "표지 크롭 검사", "예외 처리로 제외된 표현", "| 장면 | 시점(초) | 첫 줄 |"):
+            self.assertIn(need, text)
+        table = text.split("| 장면 | 시점(초) | 첫 줄 |", 1)[1].split("\n\n", 1)[0]
+        self.assertEqual(len([ln for ln in table.splitlines() if re.match(r"\| \d+ \|", ln)]), 7)
+        self.assertNotIn("<", table)
 
     def test_review_md(self):
         text = self.read("review.md")

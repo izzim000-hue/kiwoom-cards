@@ -6,6 +6,7 @@ review.md 는 묶음 명령이 돌 때마다 새로 쓰는 읽기용 문서다. 
 """
 import json
 import os
+import re
 import tempfile
 from datetime import datetime
 from pathlib import Path
@@ -52,6 +53,20 @@ def _findings_table(findings):
     return rows
 
 
+TAG_RE = re.compile(r"</?[a-z]+>")
+
+
+def _strip_tags(text):
+    return TAG_RE.sub("", str(text))
+
+
+def _crop_lines(cover_warnings):
+    if not cover_warnings:
+        return ["- 표지 크롭 검사: 그리드 크롭(가운데 1080×1440) 밖 글자 없음 — 최종 크롭은 인스타 그리드 미리보기에서 사람이 확인"]
+    return [f"- 표지 크롭 검사: {_cell(w)}" for w in cover_warnings] + [
+        "  - 최종 크롭은 인스타 그리드 미리보기에서 사람이 확인"]
+
+
 def _figure_lines(check):
     """수치 재확인 목록: check.json 의 figures_used/needs_check 에서 등록부 id 와 확인 상태를 읽는다."""
     unverified = []
@@ -91,22 +106,31 @@ def write_review(draft_dir, ctx):
     out += _findings_table(by_sev["수정 필요"])
     out += ["### 확인 필요", ""]
     out += _findings_table(by_sev["확인 필요"])
+    out += ["### 예외 처리로 제외된 표현 (사람 확인)", ""]
     if result.suppressed:
-        out += ["### 예외 처리로 제외됨 (사람 확인)", "", "| 위치 | 표현 | 규칙 | 제외 사유 |", "|---|---|---|---|"]
+        out += ["| 위치 | 표현 | 규칙 | 사유: 부정·인용·예외 |", "|---|---|---|---|"]
         for s in result.suppressed:
             rule = s.get("rule", "")
             rule = ", ".join(rule) if isinstance(rule, list) else rule
             out.append(f"| {_cell(s.get('where', ''))} | {_cell(s.get('text', ''))} | {_cell(rule)} | "
                        f"{_cell(s.get('by', ''))} |")
         out.append("")
+    else:
+        out += ["없음", ""]
 
     out += ["## 2. 한눈에 보기", "",
             f"- 영상: `{ctx['mp4_name']}` ({ctx['duration']:.1f}초)",
             f"- 표지: ![표지]({ctx['cover_name']})",
+            f"- 장면 모음: ![장면 모음]({ctx['scenes_name']})",
+            *_crop_lines(ctx["cover_warnings"]),
             f"- 업로드 규격 검사: {ctx['spec_ok']}/{ctx['spec_total']} 항목 충족"
             + (f" (실패 {ctx['spec_fail']})" if ctx["spec_fail"] else ""),
             "- " + (f"레이아웃 경고 {len(ctx['layout_warnings'])}건" if ctx["layout_warnings"] else "레이아웃 경고 없음")]
     out += [f"  - {_cell(w)}" for w in ctx["layout_warnings"]]
+    out.append("")
+    out += ["| 장면 | 시점(초) | 첫 줄 |", "|---|---|---|"]
+    for i, (t, first) in enumerate(zip(ctx["scene_times"], ctx["scene_firsts"]), 1):
+        out.append(f"| {i} | {t:.2f} | {_cell(_strip_tags(first))} |")
     out.append("")
 
     out += ["## 3. 사람 확인 목록", "",
