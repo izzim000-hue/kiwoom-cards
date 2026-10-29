@@ -42,16 +42,39 @@ class NoneUnchanged(unittest.TestCase):
         cls.base = json.loads(none_guard.GOLDEN.read_text(encoding="utf-8"))
 
     def check_spec(self, name):
+        # 환경과 관계없는 항목(시간·경고·마크업·ffmpeg 인자)을 먼저, 픽셀 해시를 나중에 본다. 둘 다 정확히 같아야 한다 (WR-03).
         want = self.base["specs"][name]
         got = none_guard.capture(FIX / name)
-        for key in ("states", "total", "cover_ms", "warnings", "overlays", "new_inner_html", "argv"):
-            self.assertEqual(got[key], want[key], f"{name}: {key} 가 기준선과 다름")
+        exact = {"durations": ([s["dur"] for s in got["states"]], [s["dur"] for s in want["states"]])}
+        exact.update({key: (got[key], want[key]) for key in ("total", "cover_ms", "warnings", "new_inner_html", "argv")})
+        for key, (g, w) in exact.items():
+            self.assertEqual(g, w, f"{name}: {key} 가 기준선과 다름 — {none_guard.CODE_REGRESSION}")
+        pixels = {"frames": ([s["sha256"] for s in got["states"]], [s["sha256"] for s in want["states"]]),
+                  "overlays": (got["overlays"], want["overlays"])}
+        for key, (g, w) in pixels.items():
+            self.assertEqual(g, w, f"{name}: {key} 픽셀 해시가 기준선과 다름 — {none_guard.REGENERATE}")
 
     def test_ok_layout(self):
         self.check_spec("ok-layout.json")
 
     def test_bad_layout(self):
         self.check_spec("bad-layout.json")
+
+
+class NoneGuardTool(unittest.TestCase):
+    def test_write_from_current_code_is_refused(self):
+        r = subprocess.run([sys.executable, str(TESTS / "none_guard.py"), "--write"], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn(none_guard.BASE_COMMIT, r.stderr)
+        self.assertIn("--regenerate-from-base", r.stderr)
+
+    def test_base_commit_is_the_baseline_commit(self):
+        # 기준선 파일을 처음 넣은 커밋이 BASE_COMMIT 이어야 다시 찍는 코드가 소스 수정 전 코드다
+        r = subprocess.run(["git", "-C", str(TOOLS.parent), "log", "--format=%h", "--diff-filter=A", "--",
+                            "tools/tests/golden/none-new.json"], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertTrue(any(h.startswith(none_guard.BASE_COMMIT) or none_guard.BASE_COMMIT.startswith(h)
+                            for h in r.stdout.split()), r.stdout)
 
 
 class Schedule(unittest.TestCase):

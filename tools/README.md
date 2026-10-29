@@ -153,6 +153,15 @@ python3 tools/draft.py promote 폴더
   상수는 `tools/reelkit/motion.py` 한 곳에만 있다. 계수는 게시된 10편의 길이에 맞춰 잡은 값이며 사람이 영상을 본 확인은 아직 남아 있다.
 - 렌더 시간: 프레임마다 시각을 맞춰 찍고 ffmpeg 에 흘려 보내므로 26.3초 `basic` 릴스(카운트업 2곳)의 묶음 전체가 이 환경에서 79.6초 걸렸다 (측정값, 10분 목표 안).
 
+### 모션 none 기준선 (`tools/tests/golden/none-new.json`)
+
+- `NoneUnchanged` 시험이 `motion: none` 새 배치 렌더를 Phase 4 소스 수정 전에 찍은 기준선과 비교한다. 시간·경고·마크업 해시·ffmpeg 인자는 환경과 관계없이
+  정확히 같아야 하고(다르면 코드 회귀 — 기준선을 다시 만들지 말고 코드를 고친다), 디코딩 프레임·안전영역 미리보기의 픽셀 해시도 정확히 같아야 한다.
+- 픽셀 해시는 Chromium·폰트·ffmpeg 가 바뀌면 코드가 그대로여도 달라진다. 그럴 때 **지금 코드로 다시 만들지 않는다** (그러면 지금 코드끼리 비교해 아무것도 지키지 못한다).
+  `python3 tools/tests/none_guard.py --regenerate-from-base` 가 단계 전 커밋 `3fde951` 의 코드를 임시 git worktree 에 꺼내 그 코드로 이 환경에서
+  기준선을 다시 찍고, JSON 만 복사한 뒤 worktree 를 지운다. 그 다음 시험이 지금 코드와 비교한다. 지금 코드에서 `--write` 는 거부한다 (종료 코드 1).
+  다시 찍은 기준선은 사람이 `git diff` 로 픽셀 해시만 바뀌었는지 확인하고 커밋한다.
+
 ### 배경음: `--bgm`, `--bgm-license`
 
 ```
