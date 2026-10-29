@@ -311,6 +311,8 @@ def load_rules(path=RULES_PATH):
         raise RuleError("macros: 문자열 값의 객체여야 함")
     if not isinstance(data["rules"], list):
         raise RuleError("rules: 목록이어야 함")
+    if not data["rules"]:
+        raise RuleError("rules: 비어 있음 — 규칙이 하나도 없는 파일로는 점검할 수 없음 (CR-03)")
     terms = _compact_terms(data.get("compact_terms") or [])
     for key in ("status", "version", "negators", "mention_markers", "macros", "compact_terms"):
         _check_strings(data.get(key), key)

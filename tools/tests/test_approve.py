@@ -84,10 +84,12 @@ class ApproveBase(unittest.TestCase):
         p.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
         return p
 
-    def call(self, argv, typed=None):
+    def call(self, argv, typed=None, rules_path=None):
+        """rules_path: 저장소 규칙 파일이 바뀐 상황을 흉내 낸다 (CLI 에는 --rules 가 없음, CR-03)."""
         out, err = io.StringIO(), io.StringIO()
         with mock.patch.object(draft.sys, "stdin", FakeTty()), \
                 mock.patch("builtins.input", return_value=NAME if typed is None else typed), \
+                mock.patch.object(compliance, "RULES_PATH", rules_path or compliance.RULES_PATH), \
                 contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
             code = draft.main(argv)
         self.check_words(out.getvalue() + err.getvalue())
@@ -98,12 +100,10 @@ class ApproveBase(unittest.TestCase):
         self.assertIsNone(STATUTE_RE.search(text), text)
 
     def approve(self, typed=None, by="홍길동", rules=None):
-        argv = ["approve", str(self.d), "--by", by] + (["--rules", str(rules)] if rules else [])
-        return self.call(argv, typed)
+        return self.call(["approve", str(self.d), "--by", by], typed, rules_path=rules)
 
     def promote(self, rules=None, d=None):
-        argv = ["promote", str(d or self.d)] + (["--rules", str(rules)] if rules else [])
-        return self.call(argv)
+        return self.call(["promote", str(d or self.d)], rules_path=rules)
 
     def approved(self):
         code, _out, err = self.approve()
@@ -233,13 +233,52 @@ class Promote(ApproveBase):
         self.assertIn("spec.src.json", err)
         self.assertNothingPublished()
 
-    def test_live_rescan_with_stricter_rules_refuses(self):
+    def test_rules_changed_since_approval_refuses(self):
+        # CR-03: 규칙 파일이 승인 때와 다르면 (더 엄격하든 느슨하든) 다시 승인 받아야 한다
         self.approved()
         code, _o, err = self.promote(rules=self.rules_file())
         self.assertEqual(code, 1)
-        self.assertIn("수정 필요", err)
-        self.assertIn("규칙 파일이 달라짐", err)
+        self.assertIn("규칙 파일이 다름", err)
         self.assertNothingPublished()
+
+    def test_rules_flag_removed_from_approve_and_promote(self):
+        # CR-03: 호출하는 쪽(Claude 포함)이 수정 필요 판정 규칙을 고를 수 없다
+        self.approved()
+        empty = self.root / "empty.json"
+        data = json.loads(compliance.RULES_PATH.read_text(encoding="utf-8"))
+        data["rules"] = []
+        empty.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+        for argv in (["promote", str(self.d), "--rules", str(empty)],
+                     ["approve", str(self.d), "--by", "홍길동", "--rules", str(empty)]):
+            with self.subTest(argv=argv[0]):
+                r = run(DRAFT + argv, stdin=subprocess.DEVNULL)
+                self.assertEqual(r.returncode, 2, r.stderr)   # argparse: 알 수 없는 인자
+                self.assertIn("--rules", r.stderr)
+        self.assertNothingPublished()
+
+    def test_empty_rule_list_is_refused_at_load(self):
+        data = json.loads(compliance.RULES_PATH.read_text(encoding="utf-8"))
+        data["rules"] = []
+        p = self.root / "empty.json"
+        p.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+        with self.assertRaises(compliance.RuleError):
+            compliance.load_rules(p)
+        self.approved()
+        code, _o, err = self.promote(rules=p)
+        self.assertEqual(code, 1)
+        self.assertIn("rules", err)
+        self.assertNothingPublished()
+
+    def test_bundle_checked_with_other_rules_refuses_approval(self):
+        # CR-03: bundle --rules 로 느슨한 규칙을 쓴 묶음은 승인하지 않는다
+        path = self.d / "compliance.json"
+        data = json.loads(path.read_text(encoding="utf-8"))
+        data["rules"]["sha256"] = "0" * 64
+        path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+        code, _o, err = self.approve()
+        self.assertEqual(code, 1)
+        self.assertIn("다른 규칙", err)
+        self.assertFalse((self.d / "approval.json").exists())
 
     def test_missing_approval_refuses(self):
         code, _o, err = self.promote()

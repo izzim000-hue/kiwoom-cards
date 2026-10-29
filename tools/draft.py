@@ -7,8 +7,8 @@
       python3 tools/draft.py bundle DIR [--card CARD] [--request-start EPOCH] [--rules PATH] [--registry PATH] [--config PATH]
       python3 tools/draft.py compliance SPEC [--caption TXT] [--check JSON] [--rules PATH] [--out JSON]
       python3 tools/draft.py redteam [--rules PATH] [--corpus PATH] [--heldout PATH] [--json]
-      python3 tools/draft.py approve DIR --by 이름 [--rules PATH]   (사람 전용 — Claude 는 실행 금지)
-      python3 tools/draft.py promote DIR [--rules PATH]
+      python3 tools/draft.py approve DIR --by 이름   (사람 전용 — Claude 는 실행 금지)
+      python3 tools/draft.py promote DIR
       python3 tools/draft.py figures {list [--grep 글자] | show ID | add ... | confirm ID --by 이름 [--date YYYY-MM-DD]}
   expand  자리표시자 `{{이름|서식}}` 가 든 원고 소스(SRC)를 등록부·계산 모듈로 채워 v1 호환 원고(OUT)로 쓴다.
           OUT 에는 숫자마다 출처를 적은 `figures` 장부와 쓰인 등록부 항목 `basis_items` 가 함께 들어간다.
@@ -122,12 +122,11 @@ def build_parser():
                        description="[사람 전용 — Claude 는 실행 금지] 대화형 터미널에서 묶음을 승인 기록한다")
     p.add_argument("dir", help="초안 폴더 경로 (2026/reels/drafts/<게시일>-<슬러그>)")
     p.add_argument("--by", required=True, help="승인하는 사람 이름 (Claude/AI 이름 거부)")
-    p.add_argument("--rules", help="표현 점검 규칙 파일 (기본 tools/data/compliance_rules.json)")
 
     p = sub.add_parser("promote", help="사람 승인 기록이 있을 때만 정식 경로로 옮긴다 (덮어쓰지 않음)",
                        description="사람 승인 기록이 있을 때만 정식 경로로 옮긴다 (덮어쓰지 않음)")
     p.add_argument("dir", help="초안 폴더 경로 (2026/reels/drafts/<게시일>-<슬러그>)")
-    p.add_argument("--rules", help="표현 점검 규칙 파일 (기본 tools/data/compliance_rules.json)")
+    # 승인·옮기기에는 --rules 가 없다: 수정 필요 판정은 언제나 저장소 규칙 파일로 한다 (CR-03)
 
     p = sub.add_parser("convert", help="카드뉴스 원고를 릴스 골격 JSON 으로 바꾼다")
     p.add_argument("card", help="카드뉴스 원고 JSON 경로 (2026/NN-이름/spec.json)")
@@ -400,12 +399,12 @@ def cmd_bundle(args):
 
 def cmd_approve(args):
     from reelkit import approve   # 승인·옮기기 명령에서만 읽는다
-    return approve.approve_cli(args.dir, args.by, rules=args.rules)
+    return approve.approve_cli(args.dir, args.by)
 
 
 def cmd_promote(args):
     from reelkit import approve
-    return approve.promote_cli(args.dir, rules=args.rules)
+    return approve.promote_cli(args.dir)
 
 
 def cmd_slot(args):

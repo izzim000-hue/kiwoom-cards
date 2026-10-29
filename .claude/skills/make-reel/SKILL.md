@@ -79,6 +79,7 @@ description: 키움멘토 릴스 초안을 만든다. "이 주제로 릴스 만�
 
 - `figures confirm` 은 1차 출처를 직접 확인한 **사람 전용**이다. Claude 는 실행 금지. 등록부의 어떤 수치도 `확인` 으로 바꾸지 않는다.
 - `draft.py approve` 는 사람 전용이다. Claude 는 실행 금지. `approval.json` 을 직접 쓰지 않는다.
+- `bundle`·`promote` 에 `--rules`·`--registry`·`--config` 같은 대체 파일을 넘기지 않는다. 표현 점검은 언제나 저장소의 `tools/data/compliance_rules.json` 으로 한다 (approve·promote 에는 `--rules` 가 없고, 다른 규칙으로 만든 묶음은 승인되지 않는다).
 - 사용자 승인 없이 `figures add` 를 하지 않는다. 추가한 수치는 항상 미확인이다.
 - 사용자 OK 없이 표현 점검의 대체 표현을 적용하지 않는다.
 - 기억하거나 추정한 숫자, 등록부에 없는 숫자를 쓰지 않는다.

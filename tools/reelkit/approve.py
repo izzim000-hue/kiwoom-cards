@@ -64,10 +64,18 @@ def file_hashes(draft_dir):
     return out
 
 
-def _load_rules(rules):
-    if isinstance(rules, compliance.Rules):
-        return rules
-    return compliance.load_rules(rules or compliance.RULES_PATH)
+def _load_rules():
+    """승인·옮기기의 수정 필요 판정은 언제나 저장소의 규칙 파일로 한다. 호출하는 쪽이 규칙을 고를 수 없다 (CR-03)."""
+    return compliance.load_rules(compliance.RULES_PATH)
+
+
+def _bundle_rules_sha(paths):
+    """묶음을 만들 때 쓴 규칙 파일의 sha256 (compliance.json 기록). 읽을 수 없으면 None."""
+    try:
+        data = json.loads(paths["compliance"].read_text(encoding="utf-8"))
+        return data["rules"]["sha256"]
+    except (OSError, UnicodeDecodeError, ValueError, KeyError, TypeError):
+        return None
 
 
 def live_scan(d, rules):
@@ -91,7 +99,7 @@ def _bundle_complete(paths):
     return data if isinstance(data, dict) and data.get("status") == "complete" else None
 
 
-def approve_cli(draft_dir, by, *, rules=None):
+def approve_cli(draft_dir, by):
     """D-15: 사람만 승인한다. 대화형 터미널이 아니면 어떤 일도 하기 전에 거부한다."""
     if not sys.stdin.isatty():
         print("승인 오류: approve 는 사람이 대화형 터미널에서만 실행할 수 있음 (Claude 실행 금지)", file=sys.stderr)
@@ -114,7 +122,7 @@ def approve_cli(draft_dir, by, *, rules=None):
         print("승인 오류: bundle.json 이 없거나 완료(complete) 상태가 아님 — bundle 을 다시 실행하세요", file=sys.stderr)
         return 1
     try:
-        loaded = _load_rules(rules)
+        loaded = _load_rules()
         hashes = file_hashes(d)
         result = live_scan(d, loaded)
     except (compliance.RuleError, ApproveError, SpecError, ValueError, OSError) as e:
@@ -123,6 +131,9 @@ def approve_cli(draft_dir, by, *, rules=None):
     n_fix = result.counts["수정 필요"]
     if n_fix > 0:
         print(f"승인 오류: 수정 필요 {n_fix}건 — spec.src.json·caption.src.json 을 고치고 bundle 을 다시 실행", file=sys.stderr)
+        return 1
+    if _bundle_rules_sha(paths) != loaded.sha256:
+        print("승인 오류: 묶음이 저장소 규칙 파일과 다른 규칙으로 점검됨 — --rules 없이 bundle 을 다시 실행", file=sys.stderr)
         return 1
     record, problem = review.ensure_record(d)
     print(f"[{name}]", file=sys.stderr)
@@ -191,7 +202,7 @@ def _targets(d, name):
     ]
 
 
-def promote_cli(draft_dir, *, rules=None):
+def promote_cli(draft_dir):
     """D-16: 승인된, 그대로인, 수정 필요 0건인 네 파일만 게시 경로로 옮긴다. 덮어쓰지 않고 git 도 부르지 않는다."""
     try:
         d, _date, name = bundle.validate_draft_dir(draft_dir)
@@ -214,9 +225,9 @@ def promote_cli(draft_dir, *, rules=None):
             if current[fname] != digest:
                 raise ApproveError(f"승인 뒤 바뀜: {fname} — bundle 을 다시 실행하고 다시 승인 받으세요")
         file_hashes(d)   # 심볼릭 링크·폴더 밖 경로 거부
-        loaded = _load_rules(rules)
+        loaded = _load_rules()
         if approval["rules"].get("sha256") != loaded.sha256:
-            print("알림: 승인 때와 점검 규칙 파일이 달라짐 — 지금 규칙으로 다시 훑음", file=sys.stderr)
+            raise ApproveError("승인 때와 점검 규칙 파일이 다름 — bundle 을 다시 실행하고 사람이 approve 를 다시 실행해야 함")
         result = live_scan(d, loaded)
         if result.counts["수정 필요"] > 0:
             raise ApproveError(f"수정 필요 {result.counts['수정 필요']}건 — spec.src.json·caption.src.json 을 고치고 "
