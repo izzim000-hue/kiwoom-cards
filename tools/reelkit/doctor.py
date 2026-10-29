@@ -104,6 +104,31 @@ def check_font_files(fonts_dir=constants.FONTS_DIR):
     return Check("font-files", "ok", "3/3 sha256 일치")
 
 
+def check_note_font(fonts_dir=constants.FONTS_DIR):
+    """노트 배치 손글씨 폰트(Gaegu Bold)의 존재와 sha256. 문제 문장 목록을 돌려주고 빈 목록이면 정상.
+
+    노트 배치에서만 쓰는 폰트라 기존 점검의 수준(fail)을 올리지 않고 경고로만 합친다 (run_checks).
+    """
+    path = Path(fonts_dir) / constants.NOTE_FONT_FILE
+    if not path.is_file():
+        return [f"{path} 없음"]
+    if _sha256(path) != constants.NOTE_FONT_SHA256:
+        return [f"{path} 내용이 바뀜 (sha256 불일치)"]
+    return []
+
+
+def _with_note_font(files_check, fonts_dir):
+    """font-files 점검에 노트 폰트 결과를 덧붙인다. 기본 폰트가 실패이면 그대로 두고, 정상일 때만 한 줄 더한다."""
+    if files_check.level == "fail":
+        return files_check
+    problems = check_note_font(fonts_dir)
+    if not problems:
+        return Check(files_check.name, files_check.level,
+                     f"{files_check.detail} · 노트 폰트 {constants.NOTE_FONT_FILE} 일치")
+    return Check(files_check.name, "warn",
+                 f"{files_check.detail} · 노트 배치 폰트 문제(노트 형식 렌더 불가): {' / '.join(problems)}")
+
+
 def check_font_load(b, fonts_dir=constants.FONTS_DIR):
     """렌더러와 같은 코드 경로(open_page + font_problems)로 3개 면 로드와 시스템 폰트 대체 여부를 본다."""
     work = tempfile.mkdtemp(prefix="doctor-")
@@ -197,7 +222,7 @@ def run_checks(fonts_dir=constants.FONTS_DIR, requirements=constants.REQUIREMENT
                 chromium = Check("chromium", "fail", f"Playwright 시작 실패: {browser._first_line(e)}")
             if font_load is None:
                 font_load = Check("font-load", "fail", "Playwright 를 시작하지 못해 점검 불가")
-    checks = [pw_check, chromium, check_font_files(fonts_dir), font_load, check_ffmpeg(), check_ffprobe()]
+    checks = [pw_check, chromium, _with_note_font(check_font_files(fonts_dir), fonts_dir), font_load, check_ffmpeg(), check_ffprobe()]
     return Report(checks, installed, launch_used)
 
 

@@ -55,6 +55,13 @@ FONT_SHA256 = {
     "NotoSansKR-Black.otf": "a9977a588488d2a7f544bb2b589b01bed071dca64a4655d438696301b527884b",
 }
 
+# 노트 배치(layout "note") 전용 손글씨 폰트. FONT_FILES 에 넣지 않는다: browser.font_problems 가 기본 틀(frame.html)의
+# @font-face 3개를 기대하므로 노트 페이지(note.py)가 따로 불러오고 doctor 가 파일만 따로 본다.
+NOTE_FONT_FAMILY = "Gaegu"
+NOTE_FONT_FILE = "Gaegu-Bold.ttf"
+NOTE_FONT_WEIGHT = 700
+NOTE_FONT_SHA256 = "cc38a4af9506a45254d1ce07c589ec473d9e5f0be319e5a77b17c214903f8c1c"
+
 # 원고 글자 패턴 (IN-06: check·motion·expand 가 같은 식을 쓴다)
 TAG_RE = re.compile(r"</?[gs]>")                            # 원고 마크업 <g>, </g>, <s>, </s>
 LINE_WHERE_RE = re.compile(r"^scene (\d+) line (\d+)$")    # 장부 where 의 장면 줄 자리 (카운트업은 여기에만)
