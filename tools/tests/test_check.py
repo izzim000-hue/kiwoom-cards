@@ -625,6 +625,18 @@ class CliModes(TracerBase):
         r = self.run_cli(REPO / "2026" / "reels" / "specs" / "2026-10-26-tax-deduction.json", "--legacy")
         self.assertIn("등록부 없음 11개", r.stdout)
 
+    def test_legacy_refused_for_v2_drafts(self):
+        # WR-03 회귀: v2 초안에 손으로 쓴 숫자가 있어도 --legacy 로 종료 0 이 나던 문제
+        bad = self.write("bad.json", hand_typed(self.spec))
+        r = self.run_cli(bad, "--legacy")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("--legacy", r.stderr)
+        no_version = hand_typed(self.spec)
+        del no_version["version"]          # version 만 지워도 장부가 남아 있으면 거부
+        r = self.run_cli(self.write("nov.json", no_version), "--legacy")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("figures", r.stderr)
+
     def test_legacy_writes_nothing_without_out(self):
         before = sorted(p.name for p in (REPO / "2026" / "reels" / "specs").iterdir())
         self.run_cli(REPO / "2026" / "reels" / "specs" / "2026-10-29-ebook-event.json", "--legacy")

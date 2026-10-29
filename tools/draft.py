@@ -16,6 +16,7 @@
           --out 을 주면 오류가 있어도 check.json 을 쓴다. --strict 는 경고가 있으면 종료 3.
           --date 는 게시 예정일(기본 오늘): 등록부 valid_until 이 이보다 이르면 EXPIRED 경고.
           --legacy 는 게시된 v1 원고(장부 없음)용 보고 전용: 등록부 없는 수치 숫자 개수만 알리고 종료 0, 원고는 고치지 않는다.
+          version·series·inputs·derive·figures·basis_items 중 하나라도 있는 원고(v2 초안)에는 --legacy 를 쓸 수 없다.
           --card 는 카드뉴스 원고(spec.json)와 대조한다: 릴스에만 있는 숫자는 NOT_IN_CARD, 릴스에 옮겨지지 않은 카드 note 는
           CARD_NOTE_DROPPED 경고(--strict 규칙은 다른 경고와 같음). --legacy 와 함께 쓸 수 있다.
   convert  카드뉴스 원고(CARD)를 릴스 골격 JSON(시리즈, 장면 역할, 카드 재료, note, 카드 숫자)으로 바꿔 stdout 또는 --out 에 쓴다.
@@ -165,6 +166,10 @@ def _write_check_json(args, report, registry_path):
     return 0
 
 
+# 게시된 v1 원고에는 없는 v2 초안 필드. 하나라도 있으면 --legacy(보고 전용, 종료 0)로 점검을 건너뛸 수 없다 (WR-03).
+LEGACY_FORBIDDEN_KEYS = ("version", "series", "inputs", "derive", "figures", "basis_items")
+
+
 def cmd_check(args):
     publish_date = None
     if args.date:
@@ -190,6 +195,11 @@ def cmd_check(args):
         print(f"등록부 오류: {e}", file=sys.stderr)
         return 1
     if args.legacy:
+        v2_keys = [k for k in LEGACY_FORBIDDEN_KEYS if k in spec]
+        if v2_keys:
+            print(f"원고 오류: --legacy 는 게시된 v1 원고 전용 — v2 초안 필드({', '.join(v2_keys)})가 있는 원고에는 쓸 수 없음",
+                  file=sys.stderr)
+            return 1
         report = check.legacy_report(spec)
         if card is not None:
             for issue in check.apply_card(report, card, spec, args.card):
