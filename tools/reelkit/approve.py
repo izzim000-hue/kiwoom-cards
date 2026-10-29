@@ -6,7 +6,6 @@ approval.json 으로 남긴다. promote 는 그 승인 기록이 있고, 지문�
 다시 만든 묶음(bundle)은 시작할 때 approval.json 을 지우므로 이전 승인은 자동으로 무효가 된다.
 종료 코드: 0 정상, 1 거부·입력 오류, 2 파일 환경 오류.
 """
-import hashlib
 import json
 import os
 import sys
@@ -16,9 +15,10 @@ from pathlib import Path
 from . import bundle, compliance, constants, figures, review
 from .spec import SpecError, load_spec
 
-# 옮기는 네 파일과 출처 확인용 네 파일. bundle.draft_paths 의 키 이름이다 (review.md, bundle.json, record.json 은 지문 대상 아님).
+# 옮기는 네 파일과 출처 확인용 여섯 파일. bundle.draft_paths 의 키 이름이다. 사람이 읽은 review.md 와, 묶음 산출물 지문을
+# 담은 bundle.json 도 승인 지문에 넣는다 (WR-02). record.json 은 사람이 고치는 파일이라 넣지 않는다 (사본을 approval.json 에 둠).
 PROMOTED_KEYS = ("mp4", "cover", "spec", "caption")
-PROVENANCE_KEYS = ("spec_src", "caption_src", "check", "compliance")
+PROVENANCE_KEYS = ("spec_src", "caption_src", "check", "compliance", "review", "bundle")
 
 
 def _names(draft_dir):
@@ -38,12 +38,19 @@ PROMOTED = PROMOTED_KEYS
 HASHED = PROMOTED_KEYS + PROVENANCE_KEYS
 
 
-def sha256_file(path):
-    h = hashlib.sha256()
-    with open(path, "rb") as f:
-        for chunk in iter(lambda: f.read(1 << 20), b""):
-            h.update(chunk)
-    return h.hexdigest()
+sha256_file = bundle.sha256_file
+
+
+def check_outputs(paths, info):
+    """bundle.json 의 outputs 지문과 지금 파일을 대조한다. 묶음 뒤 손으로 고친 파일이 있으면 거부한다 (WR-02)."""
+    outputs = info.get("outputs")
+    names = {paths[k].name for k in bundle.OUTPUT_KEYS}
+    if not isinstance(outputs, dict) or set(outputs) != names:
+        raise ApproveError("bundle.json 에 산출물 지문이 없거나 목록이 다름 — bundle 을 다시 실행하세요")
+    for key in bundle.OUTPUT_KEYS:
+        p = paths[key]
+        if p.is_symlink() or not p.is_file() or sha256_file(p) != outputs[p.name]:
+            raise ApproveError(f"묶음을 만든 뒤 바뀜: {p.name} — 손으로 고치지 말고 bundle 을 다시 실행하세요")
 
 
 def file_hashes(draft_dir):
@@ -122,6 +129,7 @@ def approve_cli(draft_dir, by):
         print("승인 오류: bundle.json 이 없거나 완료(complete) 상태가 아님 — bundle 을 다시 실행하세요", file=sys.stderr)
         return 1
     try:
+        check_outputs(paths, info)
         loaded = _load_rules()
         hashes = file_hashes(d)
         result = live_scan(d, loaded)

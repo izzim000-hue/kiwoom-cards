@@ -111,9 +111,10 @@ python3 tools/draft.py promote 폴더
 
 - `approve` 는 **사람이 자기 터미널에서만** 실행한다 (Claude 실행 금지). 터미널이 아니면 아무 일도 하기 전에 거부한다. 빈 이름과 Claude/AI 이름도 거부한다.
   지금 규칙으로 다시 훑어 수정 필요가 있으면 거부하고, 아니면 머리말·건수·`record.json` 값(미확인 항목 표시)·지문을 기록할 파일 목록을 보인 뒤 폴더 이름을 다시 입력받는다.
-  맞으면 `approval.json` 에 승인자, 시각, 규칙 버전·sha256, 건수, `record.json` 사본, 여덟 파일의 sha256 을 쓴다. 지문 대상: `<이름>.mp4`, `<이름>-cover.png`, `spec.json`, `caption.txt`, `spec.src.json`, `caption.src.json`, `check.json`, `compliance.json`.
+  맞으면 `approval.json` 에 승인자, 시각, 규칙 버전·sha256, 건수, `record.json` 사본, 열 파일의 sha256 을 쓴다. 지문 대상: `<이름>.mp4`, `<이름>-cover.png`, `spec.json`, `caption.txt`, `spec.src.json`, `caption.src.json`, `check.json`, `compliance.json`, `review.md`, `bundle.json`.
+  완료된 `bundle` 은 `bundle.json` 의 `outputs` 에 원고 소스·산출물·`review.md`·장면 모음의 sha256 을 남기고, `approve` 는 지금 파일이 그와 같지 않으면(묶음 뒤 손으로 고침) 거부한다. 고치려면 소스를 고치고 `bundle` 을 다시 실행한다.
 - `promote` 는 아래가 모두 맞을 때만, 네 파일을 그 초안의 릴스 폴더로 옮긴다: `<이름>.mp4` 와 `<이름>-cover.png` 는 `2026/reels/`, `spec.json` 은 `2026/reels/specs/<이름>.json`, `caption.txt` 는 `2026/reels/captions/<이름>.txt`.
-  조건: `approval.json` 이 있고 폴더 이름과 같다 / 승인 뒤 여덟 파일이 하나도 바뀌지 않았다 / 저장소 규칙 파일이 승인 때와 같고(다르면 거부 — 다시 승인) 그 규칙으로 다시 훑어도 수정 필요 0건 / 네 목적지가 모두 비어 있다.
+  조건: `approval.json` 이 있고 폴더 이름과 같다 / 승인 뒤 열 파일이 하나도 바뀌지 않았다 / 저장소 규칙 파일이 승인 때와 같고(다르면 거부 — 다시 승인) 그 규칙으로 다시 훑어도 수정 필요 0건 / 네 목적지가 모두 비어 있다.
 - 규칙 파일은 고를 수 없다: `approve`·`promote` 에는 `--rules` 가 없고 언제나 `tools/data/compliance_rules.json` 으로 판정한다. 규칙이 하나도 없는 파일은 읽을 때 거부한다.
   `bundle --rules` 로 다른 규칙을 써서 만든 묶음(`compliance.json` 의 규칙 sha256 이 다름)은 `approve` 가 거부한다.
   하나라도 어긋나면 파일 이름을 밝히는 한국어 사유로 거부하고 아무것도 만들지 않는다. 중간에 실패하면 이번에 만든 것을 전부 되돌린다.

@@ -7,6 +7,7 @@ record.json, bundle.json 이 생긴다. 표현 점검(D-06)이 완성된 게시�
 표현 점검의 발견은 종료 코드를 바꾸지 않는다 (발견이 이 도구의 산출물이다).
 종료 코드: 0 완료, 1 초안·원고·규칙 입력 오류, 2 렌더·파일 환경 오류, 3 레이아웃 경고(항상 엄격), 4 업로드 규격 FAIL (4 가 우선).
 """
+import hashlib
 import json
 import math
 import os
@@ -29,6 +30,9 @@ HEAD_ENV = "환경 오류 — 영상 미생성"
 # 묶음을 다시 만들 때 맨 처음 지우는 산출물 (D-11). 사람이 쓴 spec.src.json, caption.src.json, skeleton.json,
 # record.json, created.json 과 그 밖의 파일은 건드리지 않는다.
 PURGE_FIXED = ("spec.json", "check.json", "caption.txt", "compliance.json", "review.md", "bundle.json", "approval.json")
+# 묶음이 읽고 만든 파일 (draft_paths 의 키). 완료된 묶음은 bundle.json 의 outputs 에 sha256 을 남기고, approve 는
+# 지금 파일이 그대로인지 대조한다 (WR-02: 묶음 뒤 손으로 고친 caption.txt·spec.json·review.md 를 승인하지 않음).
+OUTPUT_KEYS = ("spec_src", "caption_src", "spec", "check", "caption", "compliance", "mp4", "cover", "scenes", "review")
 
 
 class BundleError(ValueError):
@@ -68,6 +72,24 @@ def draft_paths(draft_dir):
         "review": d / "review.md", "record": d / "record.json", "bundle": d / "bundle.json",
         "approval": d / "approval.json",
     }
+
+
+def sha256_file(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def output_hashes(paths):
+    """{파일 이름: sha256} — OUTPUT_KEYS 중 있는 보통 파일만 (심볼릭 링크 제외)."""
+    out = {}
+    for key in OUTPUT_KEYS:
+        p = Path(paths[key])
+        if p.is_file() and not p.is_symlink():
+            out[p.name] = sha256_file(p)
+    return out
 
 
 def _read_json(path, label):
@@ -211,6 +233,8 @@ def _write_bundle_json(paths, name, steps, state, started, t_start, request, exi
     data.update(timing_fields(started, t_start, request))
     data["steps"] = steps
     try:
+        if data["status"] == "complete":
+            data["outputs"] = output_hashes(paths)
         _atomic_write(paths["bundle"], _json_text(data))
     except OSError as e:
         print(f"환경 오류: bundle.json 을 쓸 수 없음: {e}", file=sys.stderr)

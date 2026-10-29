@@ -18,7 +18,7 @@ DRAFT = [sys.executable, str(TOOLS / "draft.py")]
 sys.path.insert(0, str(TOOLS))
 
 import draft  # noqa: E402
-from reelkit import approve, caption, check, compliance, constants, expand, figures, slot  # noqa: E402
+from reelkit import approve, bundle, caption, check, compliance, constants, expand, figures, slot  # noqa: E402
 
 DATE, SLUG = "2026-11-08", "pension-credit-limit"
 NAME = f"{DATE}-{SLUG}"
@@ -61,8 +61,18 @@ def make_draft(reels, date_text=DATE, slug=SLUG):
     (d / "compliance.json").write_text(json.dumps(result.to_json(), ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     (d / f"{name}.mp4").write_bytes(MP4_BYTES)
     (d / f"{name}-cover.png").write_bytes(PNG_BYTES)
-    (d / "bundle.json").write_text(json.dumps({"schema": 1, "name": name, "status": "complete", "exit_code": 0}), encoding="utf-8")
+    (d / f"{name}-scenes.png").write_bytes(PNG_BYTES + b"-scenes")
+    (d / "review.md").write_text(f"# {name} 검수 요약 (시험용)\n\n{result.headline}\n", encoding="utf-8")
+    write_bundle_json(d)
     return d
+
+
+def write_bundle_json(d, **extra):
+    """bundle 이 완료 때 쓰는 것과 같은 bundle.json (산출물 지문 포함)."""
+    data = {"schema": 1, "name": d.name, "status": "complete", "exit_code": 0,
+            "outputs": bundle.output_hashes(bundle.draft_paths(d))}
+    data.update(extra)
+    (d / "bundle.json").write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
 
 
 class ApproveBase(unittest.TestCase):
@@ -158,6 +168,27 @@ class Approve(ApproveBase):
         self.assertIn("수정 필요", err)
         self.assertFalse((self.d / "approval.json").exists())
 
+    def test_hand_edit_after_bundle_refuses(self):
+        # WR-02: bundle 뒤 approve 전에 손으로 고친 파일(사람이 읽는 review.md 포함)은 승인하지 않는다
+        for fname in ("caption.txt", "spec.json", "review.md", f"{NAME}-scenes.png"):
+            with self.subTest(fname=fname):
+                path = self.d / fname
+                before = path.read_bytes()
+                path.write_bytes(before + b"\n")
+                code, _o, err = self.approve()
+                self.assertEqual(code, 1)
+                self.assertIn(fname, err)
+                self.assertFalse((self.d / "approval.json").exists())
+                path.write_bytes(before)
+        self.assertEqual(self.approve()[0], 0)
+
+    def test_bundle_json_without_output_hashes_refuses(self):
+        (self.d / "bundle.json").write_text(json.dumps({"schema": 1, "status": "complete", "exit_code": 0}),
+                                            encoding="utf-8")
+        code, _o, err = self.approve()
+        self.assertEqual(code, 1)
+        self.assertIn("지문", err)
+
     def test_incomplete_bundle_refuses(self):
         (self.d / "bundle.json").write_text(json.dumps({"status": "failed"}), encoding="utf-8")
         code, _o, err = self.approve()
@@ -182,7 +213,9 @@ class Approve(ApproveBase):
         self.assertTrue(out.strip().splitlines()[-1].startswith(f"approve: {NAME} 승인 기록 (홍길동)"))
         data = json.loads((self.d / "approval.json").read_text(encoding="utf-8"))
         self.assertEqual((data["schema"], data["name"], data["approved_by"]), (1, NAME, "홍길동"))
-        self.assertEqual(len(data["files"]), 8)
+        self.assertEqual(len(data["files"]), 10)
+        self.assertIn("review.md", data["files"])
+        self.assertIn("bundle.json", data["files"])
         self.assertEqual(data["counts"]["수정 필요"], 0)
         self.assertEqual(data["rules"]["sha256"], compliance.load_rules().sha256)
         self.assertEqual(data["record"]["ad_applicable"], "미확인")
@@ -278,6 +311,7 @@ class Promote(ApproveBase):
         data = json.loads(path.read_text(encoding="utf-8"))
         data["rules"]["sha256"] = "0" * 64
         path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+        write_bundle_json(self.d)   # bundle 이 그 규칙으로 만든 것처럼
         code, _o, err = self.approve()
         self.assertEqual(code, 1)
         self.assertIn("다른 규칙", err)

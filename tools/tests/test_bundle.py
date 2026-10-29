@@ -74,6 +74,9 @@ class Bundle(unittest.TestCase):
         for key in ("started_at", "finished_at"):
             self.assertRegex(b[key], r"^\d{4}-\d{2}-\d{2}T")
         self.assertEqual(b["failed_step"], None)
+        # WR-02: 산출물 지문이 기록되고 지금 파일과 같다
+        self.assertEqual(b["outputs"], bundle.output_hashes(bundle.draft_paths(self.d)))
+        self.assertEqual(len(b["outputs"]), len(bundle.OUTPUT_KEYS))
 
     def test_review_section_5_timing(self):
         text = self.read("review.md").split("## 5. 걸린 시간", 1)[1]
