@@ -1,4 +1,15 @@
 {
+  "permissions": {
+    "deny": [
+      "Edit(/tools/data/figures.json)",
+      "Edit(**/approval.json)",
+      "Edit(**/record.json)",
+      "Bash(python3 tools/draft.py approve*)",
+      "Bash(python3 tools/draft.py figures confirm*)",
+      "Bash(*draft.py approve*)",
+      "Bash(*draft.py figures confirm*)"
+    ]
+  },
   "hooks": {
     "SessionStart": [
       {
