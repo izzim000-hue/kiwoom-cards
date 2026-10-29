@@ -80,6 +80,8 @@ Recent decisions affecting current work:
 - [Phase 1]: Golden SSIM threshold stays 0.98 (lowest measured 0.9923); manifest built only from committed MP4s and specs, never from renderer output
 - [Phase 1]: Golden treats a not-reproducible reel with an upload-spec FAIL as a failure (exit 1)
 
+- [Phase 2]: 국민연금 평균 수령액 같은 통계 수치는 정확한 값을 원고에 쓰지 않는다. 필요할 때 사용자가 따로 자료를 조사해 그때 확인한다(등록부 항목은 미확인 유지)
+
 ### Pending Todos
 
 None yet.
