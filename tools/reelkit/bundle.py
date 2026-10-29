@@ -377,7 +377,9 @@ def _build(d, date_text, name, paths, frames, steps, state, started, t_start,
         tmp = paths["cover"].with_name(paths["cover"].name + ".part")
         shutil.copyfile(src, tmp)
         os.replace(tmp, paths["cover"])
-        return stills.cover_crop_warnings(paths["cover"])
+        # 노트 배치는 배경이 단색이 아니라 렌더러가 글자 위치로 판단한 경고를 준다 (그 밖에는 표지 PNG 픽셀 검사)
+        by_text = getattr(r, "cover_warnings", None)
+        return list(by_text) if by_text is not None else stills.cover_crop_warnings(paths["cover"])
 
     # 7 scenes
     def do_scenes():

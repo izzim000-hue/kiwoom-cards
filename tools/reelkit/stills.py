@@ -12,6 +12,7 @@ import tempfile
 from pathlib import Path
 
 from . import constants, motion, timeline
+from . import note as note_mod
 
 GRID_W = constants.W
 GRID_H = 1440
@@ -83,6 +84,8 @@ def scene_times(spec):
 
     motion basic 이면 시간표의 final_t (모든 애니메이션이 끝난 프레임, 표지·장면 모음에 쓰는 프레임)를 쓴다.
     """
+    if note_mod.is_note(spec):
+        return note_mod.scene_times(spec)
     if motion.resolve(spec) == "basic":
         return [round(sc.final_t, 2) for sc in motion.schedule(spec).scenes]
     states = timeline.build_states(spec)

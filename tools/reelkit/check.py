@@ -17,6 +17,7 @@ from datetime import date
 
 from . import figures as figreg
 from . import constants, convert, expand, motion, numscan, timeline
+from . import note as note_mod
 from .spec import ALLOWED_TAGS, SpecError
 
 # 하우스 패턴 수치 (research "하우스 패턴 수치": 게시된 10편 실측 — 7장면, 21.8~26.05초, 줄 20~22자, top 최대 21자, 장면당 2~4줄).
@@ -309,7 +310,7 @@ def check_spec(spec, registry, *, publish_date=None):
     return report
 
 
-SOURCE_KEYS = ("version", "series", "basis", "scenes", "inputs", "derive", "figures", "basis_items", "motion")
+SOURCE_KEYS = ("version", "layout", "series", "basis", "scenes", "note", "inputs", "derive", "figures", "basis_items", "motion")
 
 
 def compare_source(spec, src, registry):
@@ -346,14 +347,29 @@ def _input_shadows(spec, registry, warn):
 def _house_pattern(spec, warn, err):
     scenes = spec["scenes"]
     n = len(scenes)
-    if not SCENES_MIN <= n <= SCENES_MAX:
+    is_note = note_mod.is_note(spec)
+    # 노트 배치: 장면은 note 블록에서 만들어진 점검용 표현이다 (제목·상자·꼭 알아둘 것·CTA). 장면 수·장면당 줄 수·<g> 강조는
+    # 하우스 패턴(7장면)의 기준이 아니므로 건너뛰고, 길이는 노트 시간표(18~27초)로 잰다
+    if not is_note and not SCENES_MIN <= n <= SCENES_MAX:
         warn(CheckIssue("scenes", None, "SCENES", f"{n}장면 — 하우스 패턴 {SCENES_MIN}~{SCENES_MAX}장면", ""))
-    try:
-        mode = motion.resolve(spec)
-    except SpecError as e:
-        err(CheckIssue("motion", None, "MOTION", str(e), ""))
-        mode = None
-    if mode is not None:
+    if is_note:
+        mode = "note"
+        try:
+            note_mod.validate_note(spec.get("note"))
+            total = note_mod.schedule(spec["note"]).total
+        except note_mod.NoteError as e:
+            err(CheckIssue("note", None, "NOTE", str(e), ""))
+        else:
+            if not note_mod.DUR_MIN <= total <= note_mod.DUR_MAX:
+                warn(CheckIssue("scenes", None, "DURATION",
+                                f"{total:.1f}초 — 노트 하우스 패턴 {note_mod.DUR_MIN:g}~{note_mod.DUR_MAX:g}초", ""))
+    else:
+        try:
+            mode = motion.resolve(spec)
+        except SpecError as e:
+            err(CheckIssue("motion", None, "MOTION", str(e), ""))
+            mode = None
+    if mode is not None and not is_note:
         # basic 은 글자 수로 정한 장면 시간표의 길이, none 은 기존 타임라인의 길이로 잰다 (MOTN-05)
         total = motion.schedule(spec).total if mode == "basic" else timeline.total_duration(timeline.build_states(spec))
         if not DUR_MIN <= total <= DUR_MAX:
@@ -370,14 +386,14 @@ def _house_pattern(spec, warn, err):
         for j, line in enumerate(sc["lines"], 1):
             if _visible(line) > LINE_MAX:
                 warn(CheckIssue(f"scene {i} line {j}", i, "LINE_LONG", f"{_visible(line)}자 > {LINE_MAX}", line))
-        if not LINES_MIN <= len(sc["lines"]) <= LINES_MAX:
+        if not is_note and not LINES_MIN <= len(sc["lines"]) <= LINES_MAX:
             warn(CheckIssue(f"scene {i}", i, "LINES", f"{len(sc['lines'])}줄 — 장면당 {LINES_MIN}~{LINES_MAX}줄", sc["top"]))
     last = scenes[-1]
     if last["top"] != "" or not any("프로필 링크" in ln for ln in last["lines"]):
         warn(CheckIssue(f"scene {n}", n, "NO_CTA", "마지막 장면은 top 이 비고 '프로필 링크' 줄이 있어야 함", last["top"]))
     if not any(w in sc["top"] for sc in scenes for w in CAUTION_WORDS):
         warn(CheckIssue("scenes", None, "NO_CAUTION", "주의 장면(top 에 '단,' '주의' '알아둘') 없음", ""))
-    if not any("<g>" in t for sc in scenes for t in [sc["top"], *sc["lines"]]):
+    if not is_note and not any("<g>" in t for sc in scenes for t in [sc["top"], *sc["lines"]]):
         warn(CheckIssue("scenes", None, "NO_EMPH", "<g> 강조가 한 곳도 없음", ""))
 
 

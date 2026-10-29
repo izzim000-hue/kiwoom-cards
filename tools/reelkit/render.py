@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import browser, specprobe, timeline
+from . import note as note_mod
 from . import motion as motion_mod
 from .constants import FPS
 from .encode import EncodeError, PipeEncoder, encode_concat
@@ -57,6 +58,7 @@ class RenderResult:
     motion: str = "none"
     countups: int = 0
     bgm: str = None   # 섞은 음원 파일 이름 (없으면 None)
+    cover_warnings: list = None   # 노트 배치만: 글자 위치로 판단한 표지 크롭 경고 (None 이면 번들이 표지 PNG 픽셀로 검사)
 
 
 def _read_spec(spec_path):
@@ -218,11 +220,15 @@ def render_reel(spec_path, out_path, *, layout="legacy", keep_work=False, overla
                 motion=None, bgm=None):
     """frame_sink(장면 번호 0부터, PNG 경로): 장면 최종 상태 프레임을 쓴 직후 한 번 부른다. 작업 폴더는 끝나면 지워지므로 바로 복사한다.
 
+    원고에 layout "note" 가 있으면 layout·motion 인자와 상관없이 노트 배치(note.render_note)로 렌더한다.
     motion: None 이면 원고의 motion 필드(없으면 none), 'none'/'basic' 이면 그 값. basic 은 새 배치에서만 쓸 수 있다.
     bgm: 이미 검증된 음원 파일 경로(bgm.validate 거친 것)이면 그 소리를 섞고, None 이면 무음 트랙.
     """
     _check_layout_name(layout)
     spec = _read_spec(spec_path)
+    if note_mod.is_note(spec):
+        # 노트 배치는 원고의 layout 필드로 정해진다: --layout·--motion 은 쓰지 않는다 (결정적 시간 탐색 렌더 + PNG 파이프)
+        return note_mod.render_note(spec, out_path, keep_work=keep_work, frame_sink=frame_sink, bgm=bgm)
     mode = motion_mod.resolve(spec, motion)
     if mode == "basic":
         if layout != "new":

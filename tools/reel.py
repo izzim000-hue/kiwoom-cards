@@ -8,6 +8,8 @@
   --motion basic   줄이 0.3초 페이드하며 24px 떠오르고(줄 사이 0.12초) 장면 사이를 0.3초 크로스페이드하는 모션. 프레임 시각마다
                    애니메이션을 멈춰 찍는 결정적 렌더이며 --layout new 에서만 쓸 수 있다 (legacy 와 함께 쓰면 종료 코드 1, MP4 없음).
                    주면 원고의 "motion" 필드보다 우선한다 (단독 렌더용; draft.py bundle 은 spec.src.json 의 필드만 따른다)
+  노트 형식  원고에 "layout": "note" (draft.py expand 가 note 블록에서 만든 spec.json) 가 있으면 스프링 노트 + 손글씨 필기 연출로 그린다.
+                   --layout·--motion 은 무시하고(결정적 시간 탐색 + PNG 파이프), 경고는 TOP/RIGHT/UI_ZONE/OVERFLOW/WRAP 등을 같은 형식으로 낸다
   --bgm, --bgm-license  받지 않는다: 주면 `음원 오류` 로 거부(종료 코드 1, Chromium 을 띄우기 전, MP4 없음).
                    배경음은 draft.py bundle --bgm 음원 --bgm-license 메모 로만 넣는다 — 라이선스 메모가 review.md 와 승인 지문에 남고
                    approve/promote 를 거치는 유일한 경로다 (단독 렌더는 메모를 남기지 못하고 출력 경로를 막지 못해 뺐다, WR-01)
@@ -65,6 +67,8 @@ def main(argv=None):
     print(f"duration={r.total:.1f}s cover_ms={r.cover_ms}")
     if r.motion == "basic":
         print("motion=basic")
+    elif r.motion == "note":
+        print("layout=note")
     for w in r.warnings:
         print(str(w), file=sys.stderr)
     if r.warnings:
