@@ -1,0 +1,150 @@
+{
+  "schema": 1,
+  "figures": {
+    "income_tax_rate_b1": {
+      "label": "소득세 기본세율 1구간(과세표준 1,400만 원 이하)",
+      "kind": "law",
+      "value": "6",
+      "unit": "%",
+      "includes_local": false,
+      "source": {
+        "name": "소득세법 기본세율 (조문 번호 미확인)",
+        "url": null,
+        "locator": null
+      },
+      "candidate_sources": [
+        "국가법령정보센터 소득세법 (law.go.kr)",
+        "국세청 연말정산 안내 (nts.go.kr)"
+      ],
+      "as_of": "2026-10",
+      "valid_until": null,
+      "found_on": "2026-10-29",
+      "checked_on": null,
+      "checked_by": null,
+      "legal_status": "시행",
+      "verified": "미확인",
+      "notes": "2차 자료 일치, 1차 원문 미확인. 조문 번호 추정 제55조"
+    },
+    "income_tax_rate_b4": {
+      "label": "소득세 기본세율 4구간(8,800만 원 초과 1.5억 원 이하)",
+      "kind": "law",
+      "value": "35",
+      "unit": "%",
+      "includes_local": false,
+      "source": {
+        "name": "소득세법 기본세율 (조문 번호 미확인)",
+        "url": null,
+        "locator": null
+      },
+      "candidate_sources": [
+        "국가법령정보센터 소득세법 (law.go.kr)",
+        "국세청 연말정산 안내 (nts.go.kr)"
+      ],
+      "as_of": "2026-10",
+      "valid_until": null,
+      "found_on": "2026-10-29",
+      "checked_on": null,
+      "checked_by": null,
+      "legal_status": "시행",
+      "verified": "미확인",
+      "notes": "2차 자료 일치, 1차 원문 미확인. 조문 번호 추정 제55조"
+    },
+    "local_income_tax_ratio": {
+      "label": "개인지방소득세(소득세의 10%)",
+      "kind": "law",
+      "value": "10",
+      "unit": "%",
+      "includes_local": false,
+      "source": {
+        "name": "지방세법 개인지방소득세 (조문 번호 미확인)",
+        "url": null,
+        "locator": null
+      },
+      "candidate_sources": [
+        "국가법령정보센터 지방세법 (law.go.kr)",
+        "국세청 연말정산 안내 (nts.go.kr)"
+      ],
+      "as_of": "2026-10",
+      "valid_until": null,
+      "found_on": "2026-10-29",
+      "checked_on": null,
+      "checked_by": null,
+      "legal_status": "시행",
+      "verified": "미확인",
+      "notes": "조문 번호 추정 제92조"
+    },
+    "pension_credit_rate_low": {
+      "label": "연금계좌 세액공제율(총급여 5,500만 원 이하·종합소득금액 4,500만 원 이하)",
+      "kind": "law",
+      "value": "15",
+      "unit": "%",
+      "includes_local": false,
+      "source": {
+        "name": "소득세법 제59조의3 (연금계좌세액공제)",
+        "url": null,
+        "locator": null
+      },
+      "candidate_sources": [
+        "국가법령정보센터 소득세법 (law.go.kr)",
+        "국세청 연말정산 안내 (nts.go.kr)"
+      ],
+      "as_of": "2026-10",
+      "valid_until": null,
+      "found_on": "2026-10-29",
+      "checked_on": null,
+      "checked_by": null,
+      "legal_status": "시행",
+      "verified": "미확인",
+      "notes": ""
+    },
+    "pension_credit_rate_high": {
+      "label": "연금계좌 세액공제율(위 기준 초과)",
+      "kind": "law",
+      "value": "12",
+      "unit": "%",
+      "includes_local": false,
+      "source": {
+        "name": "소득세법 제59조의3 (연금계좌세액공제)",
+        "url": null,
+        "locator": null
+      },
+      "candidate_sources": [
+        "국가법령정보센터 소득세법 (law.go.kr)",
+        "국세청 연말정산 안내 (nts.go.kr)"
+      ],
+      "as_of": "2026-10",
+      "valid_until": null,
+      "found_on": "2026-10-29",
+      "checked_on": null,
+      "checked_by": null,
+      "legal_status": "시행",
+      "verified": "미확인",
+      "notes": ""
+    },
+    "pension_credit_wage_threshold": {
+      "label": "연금계좌 세액공제율 경계 총급여(근로소득자)",
+      "kind": "law",
+      "value": "55000000",
+      "unit": "원",
+      "includes_local": false,
+      "source": {
+        "name": "소득세법 제59조의3 (연금계좌세액공제)",
+        "url": null,
+        "locator": null
+      },
+      "candidate_sources": [
+        "국가법령정보센터 소득세법 (law.go.kr)",
+        "국세청 연말정산 안내 (nts.go.kr)"
+      ],
+      "as_of": "2026-10",
+      "valid_until": null,
+      "found_on": "2026-10-29",
+      "checked_on": null,
+      "checked_by": null,
+      "legal_status": "시행",
+      "verified": "미확인",
+      "notes": ""
+    }
+  },
+  "unsourced": []
+}

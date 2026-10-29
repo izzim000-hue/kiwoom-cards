@@ -1,0 +1,26 @@
+{
+ "basis": "{{inputs.amt|man_won}} 공제 예시 · 지방소득세 포함",
+ "inputs": {
+  "amt": {"value": "1000000", "unit": "원", "label": "100만 원 공제 예시"},
+  "no_tax": {"value": "0", "unit": "원", "label": "낼 세금이 없는 경우 예시"}
+ },
+ "derive": {
+  "r_b1": {"fn": "with_local", "args": ["fig.income_tax_rate_b1", "fig.local_income_tax_ratio"]},
+  "r_b4": {"fn": "with_local", "args": ["fig.income_tax_rate_b4", "fig.local_income_tax_ratio"]},
+  "e_b1": {"fn": "pct_of", "args": ["inputs.amt", "r_b1"]},
+  "e_b4": {"fn": "pct_of", "args": ["inputs.amt", "r_b4"]},
+  "r_cl": {"fn": "with_local", "args": ["fig.pension_credit_rate_low", "fig.local_income_tax_ratio"]},
+  "r_ch": {"fn": "with_local", "args": ["fig.pension_credit_rate_high", "fig.local_income_tax_ratio"]},
+  "c_low": {"fn": "pct_of", "args": ["inputs.amt", "r_cl"]},
+  "c_high": {"fn": "pct_of", "args": ["inputs.amt", "r_ch"]}
+ },
+ "scenes": [
+  {"top": "연말정산 바로 알기", "lines": ["소득공제 vs 세액공제", "<g>뭐가 더 유리할까?</g>"]},
+  {"top": "비유하면", "lines": ["소득공제는", "<g>가격표 깎기</g>", "세액공제는", "<g>계산대 쿠폰</g>"]},
+  {"top": "소득공제 {{inputs.amt|man_won}}", "lines": ["세율만큼 줄어요", "{{r_b1|pct}} → {{e_b1|man1}}", "{{r_b4|pct}} → <g>{{e_b4|man1}}</g>"]},
+  {"top": "연금저축 세액공제 {{inputs.amt|man_won}}", "lines": ["세율과 상관없이", "<g>{{c_low|man1}} 또는 {{c_high|man1}}</g>", "<s>총급여 {{fig.pension_credit_wage_threshold|man_won}} 기준</s>"]},
+  {"top": "그래서", "lines": ["낮은 구간은 <g>세액공제</g>", "높은 구간은 <g>소득공제</g>", "효과가 커지는 편"]},
+  {"top": "단, 꼭 알아둘 것", "lines": ["낼 세금이 없으면", "세액공제도 <g>{{inputs.no_tax|won}}</g>", "<s>세무 판단은 세무사 확인</s>"]},
+  {"top": "", "lines": ["저장해두고", "내 세율 구간부터", "확인해 보세요", "<s>프로필 링크 · 1분 노후자금 계산기</s>"]}
+ ]
+}

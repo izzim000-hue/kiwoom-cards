@@ -1,0 +1,232 @@
+"""원고 소스(자리표시자 포함) -> v1 호환 원고 + 수치 장부 (표준 라이브러리만 사용, D-05).
+
+소스는 `basis`(선택), `inputs`(선택), `derive`(선택), `scenes` 만 가진다. 숫자는 글자로 적지 않고
+`{{이름|서식}}` 으로 쓴다. 이름은 등록부 id (`fig.<id>`), 이 릴스 한정 시나리오 가정 (`inputs.<name>`),
+또는 앞서 정의한 `derive` 이름이다. 값 계산은 calc.FUNCTIONS, 표시는 calc.FORMATS 만 쓴다 (eval/exec 없음).
+
+결과에는 숫자마다 한 줄씩 `figures` 장부(어느 장면·줄의 어느 글자가 어떤 등록부/입력에서 왔는지)와
+쓰인 등록부 항목의 `basis_items` 가 들어간다. 렌더러는 완성된 평문 문자열만 본다.
+"""
+import copy
+import json
+import os
+import re
+import tempfile
+from decimal import Decimal, InvalidOperation
+from pathlib import Path
+
+from . import calc, figures
+
+ALLOWED_KEYS = ("basis", "inputs", "derive", "scenes")
+PLACEHOLDER = re.compile(r"\{\{\s*([A-Za-z0-9_.]+)\s*\|\s*([a-z0-9_]+)\s*\}\}")
+NAME_RE = re.compile(r"^[a-z0-9_]+$")
+LABEL_MARKS = ("예시", "가정", "가상")
+SPEC_VERSION = 2
+
+
+class ExpandError(ValueError):
+    """소스가 규칙에 어긋나 확장할 수 없을 때. 메시지는 한국어이며 위치(where)를 밝힌다."""
+
+
+def _norm(d):
+    """Decimal 을 지수 표기 없는 정규화 문자열로."""
+    if d == 0:
+        return "0"
+    return format(d.normalize(), "f")
+
+
+class _Values:
+    """이름 -> (정확값 Decimal, 근거 리프 집합). 등록부 조회는 get_figure 를 거친다."""
+
+    def __init__(self, registry, inputs):
+        self.registry = registry
+        self.inputs = inputs      # name -> Decimal
+        self.derived = {}         # name -> (Decimal, frozenset)
+        self.declared = set()     # 선언된 derive 이름 (정의 순서 위반 구분용)
+
+    def lookup(self, ref, where):
+        if ref.startswith("fig."):
+            fid = ref[4:]
+            try:
+                entry = figures.get_figure(self.registry, fid)  # 없는 id 는 비슷한 id 제안을 담아 던진다
+                value = figures.parse_value(entry["value"], f"{fid}.value")
+            except figures.RegistryError as e:
+                raise ExpandError(f"{where}: {e}") from None
+            return value, frozenset({ref})
+        if ref.startswith("inputs."):
+            name = ref[7:]
+            if name not in self.inputs:
+                raise ExpandError(f"{where}: 선언되지 않은 입력 {ref} (선언된 입력: {', '.join(self.inputs) or '없음'})")
+            return self.inputs[name], frozenset({ref})
+        if "." in ref:
+            raise ExpandError(f"{where}: 알 수 없는 참조 {ref} — fig.<id>, inputs.<name>, derive 이름만 쓸 수 있음")
+        if ref in self.derived:
+            return self.derived[ref]
+        if ref in self.declared:
+            raise ExpandError(f"{where}: derive {ref} 는 아직 정의되기 전에 참조됨 (derive 는 선언 순서대로 계산)")
+        raise ExpandError(f"{where}: 알 수 없는 이름 {ref} (derive 에 선언하거나 fig./inputs. 를 붙여야 함)")
+
+
+def _check_inputs(raw):
+    if not isinstance(raw, dict):
+        raise ExpandError("inputs: 객체여야 함")
+    values = {}
+    for name, item in raw.items():
+        where = f"inputs.{name}"
+        if not isinstance(name, str) or not NAME_RE.match(name):
+            raise ExpandError(f"{where}: 이름은 영문 소문자·숫자·밑줄만 쓸 수 있음")
+        if not isinstance(item, dict) or set(item) != {"value", "unit", "label"}:
+            raise ExpandError(f"{where}: value, unit, label 세 필드를 가진 객체여야 함")
+        if not isinstance(item["value"], str):
+            raise ExpandError(f"{where}: value 는 문자열이어야 함")
+        try:
+            d = Decimal(item["value"].strip())
+        except InvalidOperation:
+            raise ExpandError(f"{where}: value 를 숫자로 읽을 수 없음 {item['value']!r}") from None
+        if not d.is_finite():
+            raise ExpandError(f"{where}: value 는 유한한 숫자여야 함 {item['value']!r}")
+        if item["unit"] not in figures.UNITS:
+            raise ExpandError(f"{where}: unit {item['unit']!r} — 허용: {', '.join(repr(u) for u in figures.UNITS)}")
+        label = item["label"]
+        if not isinstance(label, str) or not any(m in label for m in LABEL_MARKS):
+            raise ExpandError(f"{where}: label 에 예시/가정/가상 표기가 필요함")
+        values[name] = d
+    return values
+
+
+def _eval_derive(raw, vals):
+    if not isinstance(raw, dict):
+        raise ExpandError("derive: 객체여야 함")
+    vals.declared = set(raw)
+    for name, item in raw.items():
+        where = f"derive.{name}"
+        if not isinstance(name, str) or not NAME_RE.match(name):
+            raise ExpandError(f"{where}: 이름은 영문 소문자·숫자·밑줄만 쓸 수 있음")
+        if not isinstance(item, dict) or set(item) != {"fn", "args"}:
+            raise ExpandError(f"{where}: fn 과 args 두 필드를 가진 객체여야 함")
+        fn_name, args = item["fn"], item["args"]
+        if fn_name not in calc.FUNCTIONS:
+            raise ExpandError(f"{where}: 알 수 없는 함수 {fn_name!r} (사용 가능: {', '.join(calc.FUNCTIONS)})")
+        func, arity = calc.FUNCTIONS[fn_name]
+        if not isinstance(args, list) or not all(isinstance(a, str) for a in args):
+            raise ExpandError(f"{where}: args 는 참조 문자열 목록이어야 함")
+        if len(args) != arity:
+            raise ExpandError(f"{where}: {fn_name} 는 인자 {arity}개가 필요한데 {len(args)}개를 받음")
+        resolved = [vals.lookup(a, where) for a in args]
+        leaves = frozenset().union(*(r[1] for r in resolved)) if resolved else frozenset()
+        try:
+            value = func(*[r[0] for r in resolved])
+        except (calc.CalcError, ZeroDivisionError, InvalidOperation) as e:
+            raise ExpandError(f"{where}: 계산 오류 — {e}") from None
+        vals.derived[name] = (value, leaves)
+
+
+def _expand_field(text, where, scene, vals, ledger):
+    parts, cur, pos = [], 0, 0
+    for m in PLACEHOLDER.finditer(text):
+        literal = text[pos:m.start()]
+        parts.append(literal)
+        cur += len(literal)
+        ref, fmt = m.group(1), m.group(2)
+        value, leaves = vals.lookup(ref, where)
+        if fmt not in calc.FORMATS:
+            raise ExpandError(f"{where}: 알 수 없는 서식 {fmt!r} (사용 가능: {', '.join(calc.FORMATS)})")
+        try:
+            rendered, shown = calc.FORMATS[fmt](value)
+        except (calc.CalcError, InvalidOperation) as e:
+            raise ExpandError(f"{where}: 서식 오류 — {e}") from None
+        ledger.append({
+            "where": where, "scene": scene, "start": cur, "end": cur + len(rendered), "text": rendered,
+            "ref": ref, "fmt": fmt, "value": _norm(value), "exact": shown == value, "sources": sorted(leaves),
+        })
+        parts.append(rendered)
+        cur += len(rendered)
+        pos = m.end()
+    parts.append(text[pos:])
+    out = "".join(parts)
+    if "{{" in out or "}}" in out:
+        raise ExpandError(f"{where}: 해석되지 않은 자리표시자가 남음 — {{{{이름|서식}}}} 형식이어야 함: {out!r}")
+    return out
+
+
+def _check_scenes(scenes):
+    if not isinstance(scenes, list) or not scenes:
+        raise ExpandError("scenes: 비어 있지 않은 목록이어야 함")
+    for n, sc in enumerate(scenes, 1):
+        if not isinstance(sc, dict):
+            raise ExpandError(f"scene {n}: 객체여야 함")
+        if not isinstance(sc.get("top"), str):
+            raise ExpandError(f"scene {n} top: 문자열이어야 함 (빈 문자열 가능)")
+        lines = sc.get("lines")
+        if not isinstance(lines, list) or not lines:
+            raise ExpandError(f"scene {n}: lines 는 비어 있지 않은 목록이어야 함")
+        for m, line in enumerate(lines, 1):
+            if not isinstance(line, str):
+                raise ExpandError(f"scene {n} line {m}: 문자열이어야 함")
+
+
+def expand_source(src, registry):
+    """소스 dict 를 확장한 새 원고 dict 를 돌려준다. 입력 dict 는 바꾸지 않는다."""
+    if not isinstance(src, dict):
+        raise ExpandError("원고 소스 최상위는 JSON 객체여야 함")
+    src = copy.deepcopy(src)
+    unknown = [k for k in src if k not in ALLOWED_KEYS]
+    if unknown:
+        raise ExpandError(f"알 수 없는 최상위 키: {', '.join(map(str, unknown))} (허용: {', '.join(ALLOWED_KEYS)})")
+    if "basis" in src and not isinstance(src["basis"], str):
+        raise ExpandError("basis: 문자열이어야 함")
+    _check_scenes(src.get("scenes"))
+
+    inputs_raw = src.get("inputs", {})
+    vals = _Values(registry, _check_inputs(inputs_raw))
+    _eval_derive(src.get("derive", {}), vals)
+
+    ledger = []
+    out = {"version": SPEC_VERSION}
+    if "basis" in src:
+        out["basis"] = _expand_field(src["basis"], "basis", None, vals, ledger)
+    scenes = src["scenes"]
+    for n, sc in enumerate(scenes, 1):
+        sc["top"] = _expand_field(sc["top"], f"scene {n} top", n, vals, ledger)
+        sc["lines"] = [_expand_field(line, f"scene {n} line {m}", n, vals, ledger)
+                       for m, line in enumerate(sc["lines"], 1)]
+    out["scenes"] = scenes
+    if inputs_raw:
+        out["inputs"] = inputs_raw
+    out["figures"] = ledger
+    out["basis_items"] = _basis_items(ledger, registry)
+    return out
+
+
+def _basis_items(ledger, registry):
+    seen, items = set(), []
+    for entry in ledger:
+        for leaf in entry["sources"]:
+            if not leaf.startswith("fig.") or leaf in seen:
+                continue
+            seen.add(leaf)
+            fid = leaf[4:]
+            fig = figures.get_figure(registry, fid)
+            items.append({
+                "fig": fid, "label": fig["label"], "source": fig["source"]["name"], "as_of": fig["as_of"],
+                "verified": fig["verified"], "legal_status": fig["legal_status"],
+            })
+    return items
+
+
+def write_spec(spec, path):
+    """임시 파일에 쓴 뒤 os.replace 로 바꿔 넣는다 (쓰다 만 원고를 남기지 않음)."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix=path.name + ".", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(spec, f, ensure_ascii=False, indent=1)
+            f.write("\n")
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
