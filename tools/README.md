@@ -4,7 +4,7 @@
 - `reel.py`: 자막형 릴스(1080x1920) MP4 생성. 목소리 없음. 출력 끝에 표지용 시점(cover_ms)을 알려 줌.
 - `doctor.py`: 릴스를 그릴 수 있는 환경인지 점검 (세션 시작 때 자동으로도 실행됨).
 - `specprobe.py`: MP4가 Instagram 업로드 규격을 지키는지 항목별 검사.
-- `draft.py`: 릴스 초안 도구 (게시일·슬러그, 수치 등록부, 원고 확장·점검, 게시글 문구). 스킬 `make-reel` 이 사용.
+- `draft.py`: 릴스 초안 도구 (게시일·슬러그, 수치 등록부, 원고 확장·점검, 게시글 문구, 검수 묶음 `bundle`, 표현 점검 `compliance`·`redteam`, 사람 승인 `approve`, 옮기기 `promote`). 스킬 `make-reel` 이 사용.
 - `golden.py`: 게시된 릴스 10편을 다시 그려 같은 결과가 나오는지 확인하는 회귀 검사.
 
 이미지 폴더 규칙: `2026/<게시일>-<영문-슬러그>/insta_1..6.png`, 릴스는 `2026/reels/<게시일>-<영문-슬러그>.mp4`.
@@ -58,7 +58,67 @@ python3 tools/reel.py 폴더/spec.json 폴더/<게시일>-<슬러그>.mp4 --layo
 종료 코드: **0** 정상 / **1** 입력 오류 (파일 없음, JSON 오류, 규칙 위반, `check` 의 오류, 슬러그·날짜 오류) / **2** 환경 오류 (파일 쓰기 실패 등) / **3** `--strict` 인데 경고 있음.
 
 초안은 git 에 올리지 않는다 (`2026/reels/drafts/` 는 `.gitignore`). 모든 산출물은 사람이 검수한 뒤에 게시한다.
-`2026/reels/` 와 `specs/` 로 옮기는 승격은 Phase 3 승인 단계에서 한다.
+`2026/reels/` 와 `specs/` 로 옮기는 일은 사람 승인 뒤 `promote` 로 한다 (아래 "승인과 옮기기").
+
+## 검수 묶음: `draft.py bundle`
+
+```
+python3 tools/draft.py bundle 폴더 [--card 카드 spec.json] [--request-start EPOCH] [--rules PATH] [--registry PATH] [--config PATH]
+```
+
+`폴더` 는 `2026/reels/drafts/<게시일>-<슬러그>/` 이고 안에 `spec.src.json` 과 `caption.src.json` 이 있어야 한다. 명령 한 번이 아래 순서로 전부 만든다.
+`expand` -> `check` -> `caption` -> 표현 점검 -> 렌더(new 배치, 같은 프로세스) -> 표지 -> 장면 모음 -> `review.md`.
+스킬 `make-reel` 의 유일한 렌더 경로다.
+
+- 만드는 파일: `spec.json`, `check.json`, `caption.txt`, `compliance.json`, `<이름>.mp4`, `<이름>-cover.png`, `<이름>-scenes.png`, `review.md`, `record.json`, `bundle.json`.
+  표지는 장면 1의 마지막 상태이고, 인스타그램 격자 자르기 안에 글자가 들어오는지 확인해 `COVER_CROP` 경고로 알린다.
+- 다시 실행: 원고 소스를 고친 뒤에도 같은 명령으로 전부 다시 만든다. 시작할 때 이전 산출물과 `approval.json` 을 지우므로 이전 승인은 무효가 된다.
+  손으로 쓴 `spec.src.json`, `caption.src.json`, `skeleton.json`, `record.json`, `created.json` 은 지우지 않는다.
+- `record.json`: 광고 해당 여부, 키움 브랜드 관계, 심의 상태, 심의번호를 **사람이** 적는 파일. 처음에는 모두 `미확인`, 없을 때만 만들고 다시 쓰지 않는다. Claude 는 `미확인` 외의 값을 쓰지 않는다.
+- `created.json`: `slot --create` 가 폴더를 만든 시각을 남긴다.
+- 시간: `bundle.json` 에 단계별 초와 전체 초(`elapsed_s`)가 남는다. `--request-start` (epoch 초, 스킬이 `date +%s` 로 기록)나 `created.json` 이 있으면 요청부터 걸린 시간
+  `elapsed_since_request_s` 와 `within_10_min` 도 남는다 (목표 10분). 둘 다 없으면 이 값들은 `null`.
+- 종료 코드: **0** 완료 / **1** 초안·원고·규칙 입력 오류 (`check` 의 오류 포함, `review.md` 에 실패 요약) / **2** 렌더·파일 환경 오류 / **3** 레이아웃 또는 표지 경고 (항상 엄격, 파일은 이미 씀) / **4** 업로드 규격 FAIL (4 가 우선).
+  표현 점검의 발견은 종료 코드를 바꾸지 않는다. 발견 자체가 산출물이다.
+
+## 표현 점검: `draft.py compliance`, `draft.py redteam`
+
+```
+python3 tools/draft.py compliance 폴더/spec.json [--caption 폴더/caption.txt] [--check 폴더/check.json] [--rules PATH] [--out JSON]
+python3 tools/draft.py redteam [--rules PATH] [--corpus PATH] [--heldout PATH] [--json]
+```
+
+- `compliance`: 원고, 근거(`basis`), 게시글, 해시태그를 `tools/data/compliance_rules.json` 의 규칙으로 훑는다. 발견마다 위치·문제 표현·사유·대체 표현 제안을 보이고 파일은 고치지 않는다.
+  머리말은 두 가지뿐이다: `위험 표현 n건 발견` 또는 `패턴상 발견 없음 — 사람 검수 필요`. 어느 쪽도 점검이 끝났다는 뜻이 아니다.
+  규칙 상태는 `초안 규칙 — 준법 검토 전` 이다. 법령 조문 번호는 규칙과 출력에 쓰지 않는다.
+- 규칙 더하기·고치기 (코드 수정 없음): `rules` 배열에 항목을 추가한다.
+  - 필수: `id`(겹치지 않게), `category`, `severity`, `reason`, `suggest`, 그리고 패턴 규칙은 `pattern` 과 `examples`(`hit` 목록과 `miss` 목록).
+    `examples` 는 파일을 읽을 때 실제로 실행되므로, 안 맞는 예시나 잘못된 정규식이 있으면 규칙 id 를 밝히고 거부한다.
+  - 선택: `negatable`(부정문 안의 표현은 제외, 기본 true), `except`(예외 정규식 목록), `applies_to`(`reel`/`caption`), `type`(`pattern`, `requires`, `basis_required`) 와 `when`·`when_scene`·`must_have`·`scope`.
+  - 매크로: 패턴 안의 `{J}` 는 조사(은/는/이/가…)가 있어도 없어도 맞게, `{S}` 는 공백이나 줄바꿈 한 번을 허용한다 (장면 경계는 넘지 않음).
+  - 심각도 정책: **수정 필요** 는 정확한 패턴에만 쓴다. 수정 필요가 하나라도 남으면 `promote` 가 거부하고 면제 방법이 없기 때문이다. 애매한 표현은 **확인 필요** 로 둔다 (사람이 판단).
+- `redteam`: 규칙의 탐지율과 오탐을 한국어 보고서로 낸다. 줄은 네 부분이다: 기존 10편(수정 필요 0건이어야 함), 가상 문장 표본(표본 내), 규칙을 보지 않고 먼저 써 둔 따로 쓴 문장(`규칙 조정에 쓰지 않음`)의 부적절·적절 문장.
+  마지막 줄은 `redteam: 표본 내 탐지 a/b · 오탐 c/d · 따로 쓴 문장 탐지 e/f · 오탐 g/h · 기존 10편 수정 필요 0건` 형태다.
+  표본 내 수치는 규칙을 쓴 쪽이 같은 문장을 보고 맞춘 결과라 실제보다 높게 나온다. 따로 쓴 문장 줄을 함께 읽는다. 키워드·패턴 방식이라 암시적 표현은 잡지 못한다.
+  보고서를 보고 규칙을 고칠 때는 따로 쓴 문장 파일(`tools/tests/redteam/heldout.json`)을 고치거나 거기에 맞춰 패턴을 짜지 않는다.
+
+## 승인과 옮기기: `draft.py approve`, `draft.py promote`
+
+```
+python3 tools/draft.py approve 폴더 --by 이름 [--rules PATH]     # 사람 전용 (Claude 실행 금지)
+python3 tools/draft.py promote 폴더 [--rules PATH]
+```
+
+- `approve` 는 **사람이 자기 터미널에서만** 실행한다 (Claude 실행 금지). 터미널이 아니면 아무 일도 하기 전에 거부한다. 빈 이름과 Claude/AI 이름도 거부한다.
+  지금 규칙으로 다시 훑어 수정 필요가 있으면 거부하고, 아니면 머리말·건수·`record.json` 값(미확인 항목 표시)·지문을 기록할 파일 목록을 보인 뒤 폴더 이름을 다시 입력받는다.
+  맞으면 `approval.json` 에 승인자, 시각, 규칙 버전·sha256, 건수, `record.json` 사본, 여덟 파일의 sha256 을 쓴다. 지문 대상: `<이름>.mp4`, `<이름>-cover.png`, `spec.json`, `caption.txt`, `spec.src.json`, `caption.src.json`, `check.json`, `compliance.json`.
+- `promote` 는 아래가 모두 맞을 때만, 네 파일을 그 초안의 릴스 폴더로 옮긴다: `<이름>.mp4` 와 `<이름>-cover.png` 는 `2026/reels/`, `spec.json` 은 `2026/reels/specs/<이름>.json`, `caption.txt` 는 `2026/reels/captions/<이름>.txt`.
+  조건: `approval.json` 이 있고 폴더 이름과 같다 / 승인 뒤 여덟 파일이 하나도 바뀌지 않았다 / 지금 규칙으로 다시 훑어도 수정 필요 0건 (규칙 파일이 승인 때와 다르면 알림) / 네 목적지가 모두 비어 있다.
+  하나라도 어긋나면 파일 이름을 밝히는 한국어 사유로 거부하고 아무것도 만들지 않는다. 중간에 실패하면 이번에 만든 것을 전부 되돌린다.
+- 덮어쓰지 않는다: 이미 있는 목적지는 거부하고, 복사본은 `.<목적지 이름>.part` 로 쓰고 지문을 다시 맞춘 뒤 하드링크로 이름을 붙여 경쟁 상황에서도 교체하지 않는다.
+- git 은 실행하지 않는다. `promote` 가 `git add <경로>` 안내를 출력하면 사람이 실행하고 커밋도 사람이 한다.
+- 남은 위험 (사용자 결정 사항): 터미널을 흉내 내는 pty 래퍼로 `approve` 를 실행할 수 있고, Claude 가 `approval.json` 이나 `record.json` 을 직접 써 넣을 수도 있다.
+  이를 막는 권한 거부 규칙은 사용자가 정할 일로 남겨 두었고 설정하지 않았다. 위조된 기록으로 `promote` 해도 파일이 `git status` 에 보일 뿐 커밋·게시는 일어나지 않으므로 사람이 `git diff` 와 `review.md` 로 확인한다.
 
 ## 수치 등록부
 

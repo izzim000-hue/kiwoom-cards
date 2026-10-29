@@ -39,10 +39,10 @@ class SkillDoc(unittest.TestCase):
 
     def test_required_phrases(self):
         text = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
-        self.assertIn("--layout new --strict", text)
-        self.assertIn("2026/reels/drafts/", text)
+        for phrase in ("python3 tools/draft.py bundle", "--request-start", "--layout new --strict", "2026/reels/drafts/"):
+            self.assertIn(phrase, text)
         style = (SKILL_DIR / "references" / "house-style.md").read_text(encoding="utf-8")
-        for phrase in ("원금 보장", "확정 수익", "무조건 절세"):
+        for phrase in ("원금 보장", "확정 수익", "무조건 절세", "tools/data/compliance_rules.json"):
             self.assertIn(phrase, style)
 
     def test_every_draft_command_exists(self):
@@ -50,7 +50,7 @@ class SkillDoc(unittest.TestCase):
         for path in DOC_FILES:
             for sub in DRAFT_CMD_RE.findall(path.read_text(encoding="utf-8")):
                 seen.add(sub)
-        self.assertTrue({"slot", "expand", "check", "caption", "convert", "figures list", "figures add"} <= seen, seen)
+        self.assertTrue({"slot", "expand", "convert", "bundle", "approve", "promote", "figures list", "figures add"} <= seen, seen)
         for sub in sorted(seen):
             with self.subTest(sub=sub):
                 r = run(DRAFT + sub.split() + ["--help"])
@@ -62,6 +62,16 @@ class SkillDoc(unittest.TestCase):
                 if "figures confirm" in line:
                     with self.subTest(file=path.name, line=n):
                         self.assertTrue("사람" in line or "금지" in line, line)
+
+    def test_approve_only_on_human_only_lines(self):
+        seen = 0
+        for path in DOC_FILES:
+            for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+                if "draft.py approve" in line:
+                    seen += 1
+                    with self.subTest(file=path.name, line=n):
+                        self.assertTrue("사람" in line or "금지" in line, line)
+        self.assertGreaterEqual(seen, 1)
 
 
 class EndToEnd(unittest.TestCase):
