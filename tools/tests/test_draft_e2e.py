@@ -119,19 +119,31 @@ class EndToEnd(unittest.TestCase):
             self.assertTrue(1 <= len(lines[-1].split()) <= 5, lines[-1])
 
 
+def published_mirror(root):
+    """<root>/2026/reels 에 게시된 MP4·원고 이름만 빈 파일로 옮겨 둔 임시 릴스 폴더 (WR-09).
+    저장소의 drafts/ 는 git 에 없는 작업 폴더라 읽지 않는다 — 시험 결과가 사용자의 초안 폴더에 좌우되지 않게."""
+    real = REPO / "2026" / "reels"
+    reels = Path(root) / "2026" / "reels"
+    (reels / "specs").mkdir(parents=True)
+    for p in real.glob("*.mp4"):
+        (reels / p.name).write_bytes(b"")
+    for p in (real / "specs").glob("*.json"):
+        (reels / "specs" / p.name).write_text("{}", encoding="utf-8")
+    return reels
+
+
 class RealDirSlot(unittest.TestCase):
     def test_proposes_later_date_and_creates_nothing(self):
-        before = sorted(p.name for p in (REPO / "2026" / "reels" / "drafts").glob("*")) \
-            if (REPO / "2026" / "reels" / "drafts").exists() else []
-        r = run(DRAFT + ["slot", "--slug", "pension-credit-limit"])
-        self.assertEqual(r.returncode, 0, r.stderr)
-        info = json.loads(r.stdout)
-        self.assertGreater(info["proposed_date"], "2026-11-07")
-        self.assertTrue(info["ask"])
-        self.assertEqual(info["conflicts"], [])
-        after = sorted(p.name for p in (REPO / "2026" / "reels" / "drafts").glob("*")) \
-            if (REPO / "2026" / "reels" / "drafts").exists() else []
-        self.assertEqual(before, after)
+        # 게시된 이름만 옮긴 임시 폴더로 본다 (WR-09: 사용자의 drafts/ 에 초안이 있어도 결과가 같다)
+        with tempfile.TemporaryDirectory() as t:
+            reels = published_mirror(t)
+            r = run(DRAFT + ["slot", "--slug", "pension-credit-limit", "--reels-dir", str(reels)])
+            self.assertEqual(r.returncode, 0, r.stderr)
+            info = json.loads(r.stdout)
+            self.assertGreater(info["proposed_date"], "2026-11-07")
+            self.assertTrue(info["ask"])
+            self.assertEqual(info["conflicts"], [])
+            self.assertFalse((reels / "drafts").exists())
 
 
 if __name__ == "__main__":

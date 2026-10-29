@@ -21,6 +21,19 @@ def run_draft(*args):
     return subprocess.run(DRAFT + list(args), capture_output=True, text=True, encoding="utf-8")
 
 
+def published_mirror(root):
+    """<root>/2026/reels 에 게시된 MP4·원고 이름만 빈 파일로 옮겨 둔 임시 릴스 폴더 (WR-09).
+    저장소의 drafts/ 는 git 에 없는 작업 폴더라 읽지 않는다 — 시험 결과가 사용자의 초안 폴더에 좌우되지 않게."""
+    real = REPO / "2026" / "reels"
+    reels = Path(root) / "2026" / "reels"
+    (reels / "specs").mkdir(parents=True)
+    for p in real.glob("*.mp4"):
+        (reels / p.name).write_bytes(b"")
+    for p in (real / "specs").glob("*.json"):
+        (reels / "specs" / p.name).write_text("{}", encoding="utf-8")
+    return reels
+
+
 def make_reels(root, used=()):
     """used: (날짜, 슬러그) 목록을 게시된 MP4 와 원고로 만든 임시 릴스 폴더."""
     reels = Path(root) / "reels"
@@ -61,22 +74,32 @@ class InvalidInput(unittest.TestCase):
 
 
 class RealDirConflicts(unittest.TestCase):
+    """게시된 릴스 이름과의 충돌. 게시된 이름만 옮긴 임시 폴더로 시험한다 (WR-09: drafts/ 를 읽지 않음)."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.reels = published_mirror(self.tmp.name)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
     def before(self):
-        drafts = REPO / "2026" / "reels" / "drafts"
+        drafts = self.reels / "drafts"
         return sorted(p.name for p in drafts.glob("*")) if drafts.exists() else []
 
     def test_published_date_conflicts(self):
-        info = slot.propose(date="2026-11-07", slug="brand-new-topic", today=date(2026, 10, 29))
+        info = slot.propose(self.reels, date="2026-11-07", slug="brand-new-topic", today=date(2026, 10, 29))
         self.assertTrue(any(c.startswith("날짜 사용 중: 2026-11-07") for c in info["conflicts"]), info["conflicts"])
         self.assertTrue(info["ask"])
 
     def test_published_slug_conflicts(self):
-        info = slot.propose(date="2027-01-01", slug="tax-deduction", today=date(2026, 10, 29))
+        info = slot.propose(self.reels, date="2026-12-01", slug="tax-deduction", today=date(2026, 10, 29))
         self.assertTrue(any(c.startswith("슬러그 사용 중: tax-deduction") for c in info["conflicts"]), info["conflicts"])
 
     def test_create_with_conflict_exits_1_and_creates_nothing(self):
         before = self.before()
-        r = run_draft("slot", "--date", "2026-11-07", "--slug", "brand-new-topic", "--create")
+        r = run_draft("slot", "--reels-dir", str(self.reels), "--date", "2026-11-07", "--slug", "brand-new-topic",
+                      "--create")
         self.assertEqual(r.returncode, 1)
         self.assertIn("초안 오류", r.stderr)
         self.assertEqual(before, self.before())
@@ -133,14 +156,12 @@ class TempDirProposal(unittest.TestCase):
             self.assertFalse((reels / "drafts").exists())
 
     def test_real_dir_old_date_cannot_be_created(self):
-        before = sorted(p.name for p in (REPO / "2026" / "reels" / "drafts").glob("*")) \
-            if (REPO / "2026" / "reels" / "drafts").exists() else []
-        r = run_draft("slot", "--date", "2020-01-01", "--slug", "old-date", "--create")
-        self.assertEqual(r.returncode, 1)
-        self.assertIn("연도 불일치", r.stderr)
-        after = sorted(p.name for p in (REPO / "2026" / "reels" / "drafts").glob("*")) \
-            if (REPO / "2026" / "reels" / "drafts").exists() else []
-        self.assertEqual(before, after)
+        with tempfile.TemporaryDirectory() as t:
+            reels = published_mirror(t)
+            r = run_draft("slot", "--reels-dir", str(reels), "--date", "2020-01-01", "--slug", "old-date", "--create")
+            self.assertEqual(r.returncode, 1)
+            self.assertIn("연도 불일치", r.stderr)
+            self.assertFalse((reels / "drafts").exists())
 
     def test_failed_stamp_leaves_no_folder(self):
         # IN-07: created.json 쓰기 실패 뒤 빈 폴더가 남아 다시 만들 수 없게 되지 않는다
