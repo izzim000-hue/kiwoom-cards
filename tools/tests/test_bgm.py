@@ -435,9 +435,9 @@ class Refusal(unittest.TestCase):
 
 
 class InstallFailure(unittest.TestCase):
-    """install 이 BgmError 를 내면 bundle 은 음원 오류(종료 코드 1)로 멈추고 영상을 만들지 않는다 (WR-04). Chromium 을 띄우지 않음."""
+    """install 이나 렌더가 실패한 묶음 (Chromium 을 띄우지 않음): 음원 오류는 종료 코드 1 (WR-04), 실패 검수 요약의 라이선스 줄은 bundle.json 과 맞음 (IN-01)."""
 
-    def test_changed_source_stops_bundle_with_exit_1(self):
+    def draft(self):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         reels = Path(tmp.name) / "reels"
@@ -447,6 +447,24 @@ class InstallFailure(unittest.TestCase):
         d = reels / "drafts" / NAME
         shutil.copy(FIX / "draft-pension.src.json", d / "spec.src.json")
         shutil.copy(FIX / "draft-pension.caption.src.json", d / "caption.src.json")
+        return d
+
+    def test_render_failure_after_install_keeps_license_line(self):
+        d = self.draft()
+        with mock.patch.object(bundle, "render_reel", side_effect=OSError("시험: 렌더 실패")), \
+                contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            code = bundle.run_cli(str(d), bgm=str(Audio.s8), bgm_license=MEMO)
+        self.assertEqual(code, 2)
+        b = json.loads((d / "bundle.json").read_text(encoding="utf-8"))
+        self.assertEqual(b["failed_step"], "render")
+        self.assertEqual(b["bgm"]["file"], "s8.mp3")
+        text = (d / "review.md").read_text(encoding="utf-8")
+        line = next(ln for ln in text.splitlines() if ln.startswith("- [ ] 음원 라이선스"))
+        self.assertIn("`s8.mp3`", line)
+        self.assertNotIn("배경음 없음", text)
+
+    def test_changed_source_stops_bundle_with_exit_1(self):
+        d = self.draft()
 
         def changed(src, draft_dir):
             raise BgmError("음원이 검사한 뒤에 바뀜 (시험)")

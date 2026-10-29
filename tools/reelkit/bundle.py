@@ -301,6 +301,7 @@ def _build(d, date_text, name, paths, frames, steps, state, started, t_start,
             review.write_failure_review(d, {
                 "name": name, "heading": heading, "errors": list(errors), "result": memo["result"],
                 "record": record, "record_problem": problem, "check": memo.get("check") or {},
+                "bgm": state.get("bgm"),   # 음원을 넣은 뒤 실패해도 라이선스 줄이 bundle.json 과 맞게 (IN-01)
                 "steps": list(steps), **timing_fields(started, t_start, request),
             })
         except OSError as e:
