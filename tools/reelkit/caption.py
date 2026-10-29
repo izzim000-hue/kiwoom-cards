@@ -2,7 +2,8 @@
 
 Claude 가 쓰는 `caption.src.json` 은 `{hook, summary[3], hashtags[]}` 뿐이다. 시리즈명·회차·다음 편은 원고의
 `series` 한 곳에서만 가져온다 (D-10): 장면 1 top, CTA 장면의 다음 편 줄, 게시글 첫 줄과 다음 편 줄이 같은 서식 함수
-(expand.series_top / expand.next_line)를 쓴다. 게시글의 숫자는 원고에 이미 있는 숫자여야 한다 (D-07 정신).
+(expand.series_top / expand.next_line)를 쓴다. 게시글의 숫자는 원고 장부에 있는 숫자여야 하고 원고에서의 상태(미확인,
+발의, 가정)를 그대로 진다 (D-07 정신, WR-01). draft.py caption 은 원고 점검에 오류가 있으면 조립하지 않는다.
 면책·CTA 문구는 초안이며 준법 검토 전이다 (config 의 status). 브랜드 해시태그는 비어 있고 만들어 넣지 않는다 (D-12).
 """
 import json
@@ -10,7 +11,8 @@ import re
 from pathlib import Path
 
 from . import constants, numscan
-from .expand import next_line, series_top
+from .check import PROPOSAL_MARK_RE
+from .expand import LABEL_MARK_RE, next_line, series_top
 
 CONFIG_PATH = constants.TOOLS_DIR / "data" / "caption_config.json"
 HASHTAG_RE = re.compile(r"^#[0-9A-Za-z_가-힣]+$")
@@ -103,12 +105,55 @@ def _check_series_consistency(spec):
     return series
 
 
-def _check_numbers(spec, src):
-    known = {(t.cls, t.value) for text in _spec_texts(spec) for t in numscan.figure_tokens(text)}
+def _ledger_numbers(spec):
+    """원고 장부의 숫자 (cls, value) -> 근거 리프 집합. 장부 밖 숫자는 넣지 않는다 (WR-01)."""
+    known = {}
+    for entry in spec.get("figures") or []:
+        if not isinstance(entry, dict) or not isinstance(entry.get("text"), str):
+            continue
+        leaves = {s for s in entry.get("sources") or [] if isinstance(s, str)}
+        for tok in numscan.figure_tokens(entry["text"]):
+            if tok.value is not None:
+                known.setdefault((tok.cls, tok.value), set()).update(leaves)
+    return known
+
+
+def _fig_status(spec, registry):
+    """등록부 id -> (verified, legal_status). 등록부가 없으면 원고의 basis_items 를 쓴다."""
+    if registry is not None:
+        return {fid: (e["verified"], e["legal_status"]) for fid, e in registry["figures"].items()}
+    return {i["fig"]: (i.get("verified"), i.get("legal_status"))
+            for i in spec.get("basis_items") or [] if isinstance(i, dict) and isinstance(i.get("fig"), str)}
+
+
+def _check_numbers(spec, src, registry=None):
+    """게시글 숫자는 원고 장부에 있는 숫자여야 하고, 원고에서의 상태를 그대로 진다 (WR-01).
+
+    미확인 수치를 쓴 줄은 `확인 필요` 경고, 발의 수치를 같은 줄의 발의안·개정안·정부안 표기 없이 쓰면 오류,
+    inputs(가정) 숫자를 같은 줄이나 원고 basis 의 예시·가정·가상 표기 없이 쓰면 오류다. 돌려주는 값은 경고 목록.
+    """
+    known = _ledger_numbers(spec)
+    status = _fig_status(spec, registry)
+    basis = spec.get("basis") if isinstance(spec.get("basis"), str) else ""
+    warnings = []
     for where, text in [("hook", src["hook"])] + [(f"summary[{i + 1}]", t) for i, t in enumerate(src["summary"])]:
+        leaves = set()
         for tok in numscan.figure_tokens(text):
-            if (tok.cls, tok.value) not in known:
+            key = (tok.cls, tok.value)
+            if tok.value is None or key not in known:
                 raise CaptionError(f"{where}: 게시글 문구의 숫자 '{tok.raw}' 는 원고에 없음")
+            leaves |= known[key]
+        figs = sorted(leaf[4:] for leaf in leaves if leaf.startswith("fig."))
+        unverified = [f for f in figs if status.get(f, ("미확인", None))[0] != "확인"]
+        proposed = [f for f in figs if status.get(f, (None, None))[1] == "발의"]
+        if proposed and not PROPOSAL_MARK_RE.search(text):
+            raise CaptionError(f"{where}: 발의 수치({', '.join(proposed)})를 사실처럼 씀 — 같은 줄에 발의안·개정안·정부안 표기 필요")
+        if any(leaf.startswith("inputs.") for leaf in leaves) and not (
+                LABEL_MARK_RE.search(text) or LABEL_MARK_RE.search(basis)):
+            raise CaptionError(f"{where}: 가정(inputs) 숫자 — 같은 줄이나 원고 basis 에 예시·가정·가상 표기 필요")
+        if unverified:
+            warnings.append(f'확인 필요: {where} [{", ".join(unverified)}] "{text}"')
+    return warnings
 
 
 def _check_hashtags(src, config):
@@ -144,13 +189,12 @@ def _as_of_phrase(spec):
     return f" ({year}년 {month}월 기준)" if month else f" ({year}년 기준)"
 
 
-def build_caption(spec, src, config):
-    """(게시글 텍스트, 경고 목록). 규칙 위반은 CaptionError."""
+def build_caption(spec, src, config, registry=None):
+    """(게시글 텍스트, 경고 목록). 규칙 위반은 CaptionError. registry 를 주면 수치 상태를 등록부에서 읽는다."""
     _check_src(src)
     series = _check_series_consistency(spec)
-    _check_numbers(spec, src)
+    warnings = _check_numbers(spec, src, registry)
     _check_hashtags(src, config)
-    warnings = []
     topic = src["hashtags"]
     if len(topic) < MIN_TOPIC_TAGS:
         warnings.append(f"주제 해시태그 {len(topic)}개 — {MIN_TOPIC_TAGS}개 이상 권장")

@@ -123,7 +123,8 @@ class BuildCaption(Base):
     def test_layout(self):
         text, warns = self.build()
         lines = text.splitlines()
-        self.assertEqual(warns, [])
+        self.assertEqual([w.split(" [")[0] for w in warns],
+                         ["확인 필요: summary[1]", "확인 필요: summary[2]", "확인 필요: summary[3]"])
         self.assertEqual(lines[0], "연말정산 바로 알기 ② | 연금계좌 세액공제, 한도가 얼마일까?")
         self.assertEqual(lines[1], "")
         self.assertEqual([ln[:2] for ln in lines[2:5]], ["• "] * 3)
@@ -196,6 +197,48 @@ class BuildCaption(Base):
         s[0] = "연금저축만 넣으면 연 200만 원까지"
         with self.assertRaisesRegex(caption.CaptionError, "'200만 원' 는 원고에 없음"):
             self.build(cap_src=self.cap(summary=s))
+
+    def test_unverified_numbers_carry_needs_check(self):
+        # WR-01 회귀: 미확인 수치를 게시글에 옮기면 '확인 필요' 경고가 붙는다 (예전에는 경고 0건)
+        _, warns = self.build()
+        self.assertIn('확인 필요: summary[1] [pension_credit_limit_savings] "연금저축만 넣으면 연 600만 원까지 세액공제 대상"',
+                      warns)
+        third = next(w for w in warns if w.startswith("확인 필요: summary[3]"))
+        for fid in ("pension_credit_wage_threshold", "pension_credit_limit_total", "pension_credit_rate_low"):
+            self.assertIn(fid, third)
+
+    def test_confirmed_numbers_do_not_warn(self):
+        reg = copy.deepcopy(self.registry)
+        for e in reg["figures"].values():
+            e.update(verified="확인", checked_on="2026-10-29", checked_by="홍길동")
+        _, warns = caption.build_caption(self.spec, self.cap_src, self.config, reg)
+        self.assertFalse([w for w in warns if w.startswith("확인 필요")], warns)
+
+    def test_proposed_number_needs_marker_in_caption_line(self):
+        src = {"scenes": [{"top": "t", "lines": ["정부안 청년 {{fig.pension_credit_young_gov_proposal|pct0}}"]}]}
+        spec = expand_source(src, self.registry)
+        bad = self.cap(summary=["청년은 세액공제 15%", "둘", "셋"])
+        with self.assertRaisesRegex(caption.CaptionError, "발의"):
+            caption.build_caption(spec, bad, self.config, self.registry)
+        ok = self.cap(summary=["정부안: 청년은 세액공제 15%", "둘", "셋"])
+        caption.build_caption(spec, ok, self.config, self.registry)
+
+    def test_number_outside_ledger_is_not_known(self):
+        # 원고 줄에 장부 없이 손으로 쓴 숫자(check 오류)를 게시글에 옮겨도 받아 주지 않는다
+        spec = copy.deepcopy(self.spec)
+        spec["scenes"][1]["lines"][2] = "7원만 받아요"
+        s = self.cap()["summary"]
+        s[0] = "공제는 7원"
+        with self.assertRaisesRegex(caption.CaptionError, "'7원' 는 원고에 없음"):
+            self.build(spec=spec, cap_src=self.cap(summary=s))
+
+    def test_input_number_needs_mark(self):
+        src = {"inputs": {"amt": {"value": "1000000", "unit": "원", "label": "예시"}},
+               "scenes": [{"top": "t", "lines": ["예시 {{inputs.amt|man_won}}"]}]}
+        spec = expand_source(src, self.registry)
+        with self.assertRaisesRegex(caption.CaptionError, "가정"):
+            caption.build_caption(spec, self.cap(summary=["100만 원 공제", "둘", "셋"]), self.config, self.registry)
+        caption.build_caption(spec, self.cap(summary=["100만 원 공제 예시", "둘", "셋"]), self.config, self.registry)
 
     def test_hangul_number_not_in_spec(self):
         # CR-04 회귀: 게시글의 '두 배', '천만 원' 도 원고에 없는 숫자다
@@ -275,6 +318,17 @@ class Cli(unittest.TestCase):
         self.assertEqual(r.returncode, 1)
         self.assertIn("초안 오류", r.stderr)
         self.assertNotIn("Traceback", r.stderr)
+        self.assertFalse(out.exists())
+
+    def test_caption_refuses_a_spec_with_check_errors(self):
+        spec = self.expanded()
+        doc = json.loads(spec.read_text(encoding="utf-8"))
+        doc["scenes"][1]["lines"][2] = "7원만 받아요"
+        spec.write_text(json.dumps(doc, ensure_ascii=False), encoding="utf-8")
+        out = self.tmp / "caption.txt"
+        r = self.run_draft("caption", spec, CAP, "--out", out)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("원고 점검 오류", r.stderr)
         self.assertFalse(out.exists())
 
     def test_missing_and_broken_files(self):

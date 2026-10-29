@@ -2,7 +2,7 @@
 사용: python3 tools/draft.py expand SRC OUT [--registry PATH]
       python3 tools/draft.py check SPEC [--out JSON] [--src SRC] [--registry PATH] [--date YYYY-MM-DD] [--strict] [--legacy] [--card CARD]
       python3 tools/draft.py convert CARD [--out JSON]
-      python3 tools/draft.py caption SPEC SRC --out TXT [--config PATH]
+      python3 tools/draft.py caption SPEC SRC --out TXT [--config PATH] [--registry PATH]
       python3 tools/draft.py slot [--date YYYY-MM-DD] [--slug 영문-슬러그] [--reels-dir DIR] [--create]
       python3 tools/draft.py figures {list [--grep 글자] | show ID | add ... | confirm ID --by 이름 [--date YYYY-MM-DD]}
   expand  자리표시자 `{{이름|서식}}` 가 든 원고 소스(SRC)를 등록부·계산 모듈로 채워 v1 호환 원고(OUT)로 쓴다.
@@ -21,7 +21,9 @@
   convert  카드뉴스 원고(CARD)를 릴스 골격 JSON(시리즈, 장면 역할, 카드 재료, note, 카드 숫자)으로 바꿔 stdout 또는 --out 에 쓴다.
   caption  원고(SPEC)와 게시글 문구 원본(SRC: hook, summary 3줄, hashtags)으로 게시글 caption.txt 를 조립한다 (D-11 순서).
           시리즈명·회차·다음 편은 원고의 series 에서만 가져온다. 해시태그는 브랜드 태그 포함 최대 5개, 전체 2,200자 이하.
-          게시글 문구의 숫자는 원고에 이미 있는 숫자여야 한다. 면책·CTA 문구는 준법 검토 전 초안이다.
+          게시글 문구의 숫자는 원고 장부에 있는 숫자여야 하고, 미확인 수치를 쓴 줄은 `확인 필요` 경고, 발의 수치는 같은 줄에
+          발의안·개정안·정부안 표기가 필요하다. 원고 점검(check)에 오류가 있으면 조립하지 않는다.
+          면책·CTA 문구는 준법 검토 전 초안이다.
   slot    게시일과 영문 슬러그를 제안하고 게시된 릴스·기존 초안과의 충돌을 알린다 (JSON). 날짜는 폴더를 읽어 계산한다.
           --create 는 --date 와 --slug 가 필요하고 `2026/reels/drafts/<날짜>-<슬러그>/` 만 만든다 (D-14).
   figures 수치 등록부(tools/data/figures.json) 조회·추가·확인.
@@ -70,6 +72,7 @@ def build_parser():
     p.add_argument("src", help="게시글 문구 원본 JSON 경로 (hook, summary, hashtags)")
     p.add_argument("--out", required=True, help="caption.txt 를 쓸 경로")
     p.add_argument("--config", default=str(caption.CONFIG_PATH), help="게시글 설정 경로 (기본 tools/data/caption_config.json)")
+    _registry_arg(p)
 
     p = sub.add_parser("convert", help="카드뉴스 원고를 릴스 골격 JSON 으로 바꾼다")
     p.add_argument("card", help="카드뉴스 원고 JSON 경로 (2026/NN-이름/spec.json)")
@@ -252,8 +255,14 @@ def cmd_caption(args):
         spec = load_spec(args.spec)
         src = _read_json(args.src)
         config = caption.load_config(args.config)
-        text, warnings = caption.build_caption(spec, src, config)
-    except (SpecError, caption.CaptionError, ValueError) as e:
+        registry = figures.load_registry(args.registry)
+        report = check.check_spec(spec, registry)
+        if report.errors:
+            raise caption.CaptionError(
+                f"원고 점검 오류 {len(report.errors)}건 — 먼저 python3 tools/draft.py check 로 오류를 고치세요 "
+                f"(첫 오류: {report.errors[0]})")
+        text, warnings = caption.build_caption(spec, src, config, registry)
+    except (SpecError, caption.CaptionError, figures.RegistryError, ValueError) as e:
         print(f"초안 오류: {e}", file=sys.stderr)
         return 1
     try:

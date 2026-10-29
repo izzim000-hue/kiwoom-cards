@@ -49,6 +49,7 @@ description: 키움멘토 릴스 초안을 만든다. "이 주제로 릴스 만�
     - 폴더 경로와 영상 길이(`duration=`)
     - `check.json` 의 `확인 필요` 줄과 각 줄의 등록부 id (미확인 수치를 쓴 줄)
     - `check.json` 의 `assumptions`(가정 수치) 줄과 각 줄의 inputs (예시·가정 숫자)
+    - `caption` 이 낸 경고 (게시글의 `확인 필요` 줄, 면책·CTA 문구 상태)
     - 카드 입력이면 `NOT_IN_CARD`, `CARD_NOTE_DROPPED` 경고
     - "초안 — 사람 검수 후 게시"
 
