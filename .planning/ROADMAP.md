@@ -57,20 +57,20 @@ Plans:
   3. 원고에 쓰인 세법·통계 수치는 모두 수치 등록부 항목(출처·기준일·확인일·시행/발의/폐지 상태)으로 거슬러 올라갈 수 있다. 등록부에 없는 수치는 걸러지고, "발의" 상태 수치는 확정처럼 쓰이지 않는다. 파생 수치는 프로그램 계산값과 일치한다(기존 편 수치 재현 시험 포함).
   4. 원고와 함께 게시글 문구(훅, 핵심 요약, 근거, 일반 정보 고지, CTA)와 해시태그 5개 이하가 나온다. 시리즈명·회차·다음 편 예고를 지정하면 원고(첫 장면 화면 포함)와 게시글 문구에 같은 값이 들어간다.
   5. 버전 표시 없는 기존 원고 10편은 고치지 않아도 그대로 읽히고, 렌더 결과도 바뀌지 않는다. 새 선택 항목(시리즈·모션·수치·구조화 근거)을 쓴 원고도 같은 명령으로 읽힌다.
-**Plans**: 4 plans
+**Plans**: 4/4 plans executed
 
 Plans:
 **Wave 1**
-- [ ] 02-01-PLAN.md — 수치 등록부(30개, 전부 미확인)·Decimal 계산·자리표시자 확장으로 게시된 연말정산 릴스를 재현해 렌더 (tracer), 파생 수치 재현 시험, `figures` 명령 (wave 1)
+- [x] 02-01-PLAN.md — 수치 등록부(30개, 전부 미확인)·Decimal 계산·자리표시자 확장으로 게시된 연말정산 릴스를 재현해 렌더 (tracer), 파생 수치 재현 시험, `figures` 명령 (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 02-02-PLAN.md — `draft.py check`: 등록부 밖 숫자 오류, 발의·폐지 규칙, 확인 필요 줄, 하우스 패턴 경고, check.json; spec.py 선택 필드(v1 불변) (wave 2)
+- [x] 02-02-PLAN.md — `draft.py check`: 등록부 밖 숫자 오류, 발의·폐지 규칙, 확인 필요 줄, 하우스 패턴 경고, check.json; spec.py 선택 필드(v1 불변) (wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 02-03-PLAN.md — 시리즈·회차·다음 편 한 곳 지정 → 첫 장면·CTA·게시글 문구 일치, `draft.py caption`(해시태그 5개 이하), 카드 원고 → 릴스 골격 `convert`와 `check --card` 경고 (wave 3)
+- [x] 02-03-PLAN.md — 시리즈·회차·다음 편 한 곳 지정 → 첫 장면·CTA·게시글 문구 일치, `draft.py caption`(해시태그 5개 이하), 카드 원고 → 릴스 골격 `convert`와 `check --card` 경고 (wave 3)
 
 **Wave 4** *(blocked on Wave 3 completion)*
-- [ ] 02-04-PLAN.md — make-reel 스킬과 `draft.py slot`으로 주제 → 초안 폴더 전 과정 렌더 (tracer), slot 경계 시험, README, 전체 시험·golden 10/10 (wave 4)
+- [x] 02-04-PLAN.md — make-reel 스킬과 `draft.py slot`으로 주제 → 초안 폴더 전 과정 렌더 (tracer), slot 경계 시험, README, 전체 시험·golden 10/10 (wave 4)
 **UI hint**: no
 **Owner input**: 시리즈 메타 규칙, 수치 등록부 최초 확인 담당, 게시일·슬러그 결정 주체(권장: 모호하면 스킬이 질문)
 **Research flag**: 필요. 세법·연금 수치 출처를 확보해야 한다. law.go.kr·nts.go.kr은 세션에서 접근할 수 없고, 2026 한도·세액공제율·IRP 세율 개정안 상태가 미확인이다. plan-phase에서 리서치를 반드시 실행한다.
@@ -113,6 +113,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. 렌더 기반 고정 (Render Foundation) | 4/4 | Complete    | 2026-10-28 |
-| 2. 초안 생성 (Draft Generation) | 0/4 | Planned | - |
+| 2. 초안 생성 (Draft Generation) | 4/4 | In Progress | - |
 | 3. 점검과 검수 묶음 (Compliance & Review Bundle) | 0/TBD | Not started | - |
 | 4. 자막 연출 + 선택 배경음 (Motion & BGM) | 0/TBD | Not started | - |
