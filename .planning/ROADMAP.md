@@ -111,7 +111,17 @@ Plans:
   3. 모션 끄기(`none`)로 만든 릴스는 Phase 1 회귀 기준과 길이·장면 경계·표지 시점이 같고, 화면도 허용 오차 안에서 일치한다.
   4. 장면 체류 시간은 글자 양에 맞춰 자동으로 정해지고, 너무 빠르거나 긴 장면은 렌더 시 경고된다.
   5. 음원 파일과 라이선스 메모를 함께 주면 배경음이 페이드인·아웃과 적정 음량으로 들어간 MP4가 나오고, 이 MP4도 업로드 규격 검사를 통과한다. 라이선스 메모가 없으면 렌더가 거부된다. 음원 파일은 저장소에 커밋되지 않는다.
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+**Wave 1**
+- [ ] 04-01-PLAN.md — none 경로 frame-hash 기준선을 먼저 고정하고, `motion: basic` 원고를 시간 탐색 + PNG 파이프로 렌더(줄 진입 300ms·24px·120ms, 크로스페이드 0.3초) (tracer), `motion` 소스 필드·`reel.py --motion`·legacy 거부·장면 정지 화면·줄바꿈 동일성 시험, golden 10/10 (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 04-02-PLAN.md — `{{ref|fmt|up}}` 카운트업(고정 너비, 마지막 프레임 = 원고 숫자) (tracer), 글자 수 체류 시간 경고 DWELL_SHORT/LONG·basic DURATION 점검, review.md 모션 줄과 bundle.json 기록 (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 04-03-PLAN.md — `--bgm` + `--bgm-license` 배경음(검증·복사·bgm.json·ffmpeg 믹스·review.md 라이선스 줄) (tracer), 승인 지문 양방향 대조·재묶음 시 삭제·promote 제외·`reel.py --bgm`, .gitignore 음원 패턴·문서·전체 시험·golden·시간 게이트 (wave 3)
 **UI hint**: no
 **Owner gate (Phase 4 시작 전)**: 배경음 음원 파일과 라이선스(사업자 계정 상업 사용 가능 여부, 증빙 형식). 결정 전까지 배경음은 비활성이다. 모션(MOTN-01~05)은 이 게이트와 관계없이 진행할 수 있다.
 **Research flag**: 짧은 spike. `Intl.Segmenter` 자소 분리와 줄별 투명도를 적용할 때 줄바꿈이 안정적인지, 카운트업 고정 너비 박스, 클라우드 렌더 시간(장면당 3분 이하)을 확인한다. 렌더 경로 자체는 실측을 마쳤다.
@@ -126,4 +136,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. 렌더 기반 고정 (Render Foundation) | 4/4 | Complete    | 2026-10-28 |
 | 2. 초안 생성 (Draft Generation) | 4/4 | In Progress | - |
 | 3. 점검과 검수 묶음 (Compliance & Review Bundle) | 4/4 | In Progress | - |
-| 4. 자막 연출 + 선택 배경음 (Motion & BGM) | 0/TBD | Not started | - |
+| 4. 자막 연출 + 선택 배경음 (Motion & BGM) | 0/3 | Planned | - |
