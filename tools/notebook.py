@@ -143,19 +143,22 @@ def page_html(spec, mode):
     vals = dict(L, RG2=L["RG"] + 2, FONTS=constants.FONTS_DIR.resolve().as_uri())
     for k, v in vals.items():
         css = css.replace("{" + k + "}", str(v))
+    # 장면마다 제목이 있으면 장면과 함께 바뀌고, 없으면 전체 제목을 계속 보여 준다.
+    per_scene_title = all("title" in sc for sc in spec["scenes"])
     scenes = []
     for si, sc in enumerate(spec["scenes"]):
         counter = iter(range(10 ** 6))
         lines = "<br>".join(_line_html(l, counter) for l in sc["lines"])
         foot = sc.get("foot")
         foot_txt = (spec.get("foot", DEFAULT_FOOT) if foot is True else foot) or ""
-        title = html.escape(sc.get("title", spec["title"]))
-        scenes.append(f'<div class="scene" data-s="{si}" style="display:none"><div class="title">{title}</div><div class="body">{lines}</div>'
+        title = f'<div class="title">{html.escape(sc["title"])}</div>' if per_scene_title else ""
+        scenes.append(f'<div class="scene" data-s="{si}" style="display:none">{title}<div class="body">{lines}</div>'
                       f'<div class="foot">{html.escape(foot_txt)}</div></div>')
     rings = '<div class="ring"></div>' * 11
     return (f'<!doctype html><html><head><meta charset="utf-8"><style>{css}</style></head><body>'
             f'<div class="paper"><div class="margin"></div>'
             f'<div class="series">{html.escape(spec["series"])}</div>'
+            f'{"" if per_scene_title else "<div class=title>" + html.escape(spec["title"]) + "</div>"}'
             f'{"".join(scenes)}{SPROUT}</div><div class="rings">{rings}</div></body></html>'
             ).replace('<div class="rings">', f'<div class="rings" style="top:{L["PT"] + L["RT"]}px;left:174px;right:174px">')
 
