@@ -38,7 +38,7 @@ DEFAULT_FOOT = "예시는 가정에 따른 추정"
 TOKEN_RE = re.compile(r"(==.+?==|\+\+.+?\+\+|\(\(.+?\)\))")
 
 CSS = """
-@font-face{font-family:Hand;src:url("{FONTS}/GowunDodum-Regular.ttf")}
+@font-face{font-family:Hand;src:url("{FONTS}/PoorStory-Regular.ttf")}
 @font-face{font-family:Noto;src:url("{FONTS}/NotoSansKR-Regular.otf")}
 :root{--bg:#1F3A2D;--paper:#FBF8F1;--rule:#C9D1DD;--margin:#E9A9A3;--ink:#333;--sub:#666;
  --yel:rgba(255,225,77,.75);--grn:rgba(182,240,156,.85)}
@@ -52,7 +52,7 @@ html,body{margin:0;width:1080px;height:{H}px;overflow:hidden;background:var(--bg
 .ring{width:18px;height:74px;border:6px solid #3d3d3d;border-radius:12px;box-sizing:border-box;background:transparent}
 .series{position:absolute;left:134px;top:{SY}px;font:32px Hand;color:var(--sub)}
 .title{position:absolute;left:134px;top:{TY}px;font:{TF}px Hand;color:#444}
-.body{position:absolute;left:134px;right:120px;top:{BY}px;font:{BF}px/{LH} Hand;color:var(--ink);white-space:nowrap}
+.body{position:absolute;left:134px;right:120px;top:{BY}px;font:700 {BF}px/{LH} Hand;color:var(--ink);white-space:nowrap}
 .foot{position:absolute;left:130px;bottom:{FB}px;font:30px Noto;color:#8a8a8a}
 .sprout{position:absolute;right:{SR}px;bottom:{SB}px;width:74px;height:78px}
 .c{opacity:0}.c.on{opacity:1}
@@ -61,9 +61,9 @@ html,body{margin:0;width:1080px;height:{H}px;overflow:hidden;background:var(--bg
  transform-origin:left center;transform:scaleX(var(--p,0));z-index:0}
 .mk.y::before{background:var(--yel)}.mk.g::before{background:var(--grn)}
 .mk>span{position:relative;z-index:1}
-.ci{position:relative;display:inline-block;margin:0 22px}
-.ci svg{position:absolute;left:-40px;top:-12px;width:calc(100% + 80px);height:calc(100% + 24px);overflow:visible}
-.ci ellipse{fill:none;stroke:#444;stroke-width:3;stroke-dasharray:var(--len);stroke-dashoffset:calc(var(--len) * (1 - var(--p,0)))}
+.ci{position:relative;display:inline-block;margin:0 4px}
+.ci svg{position:absolute;left:-10px;top:-4px;width:calc(100% + 20px);height:calc(100% + 8px);overflow:visible}
+.ci ellipse{fill:none;stroke:#555;stroke-width:2;stroke-dasharray:var(--len);stroke-dashoffset:calc(var(--len) * (1 - var(--p,0)))}
 """
 
 SPROUT = ('<svg class="sprout" viewBox="0 0 74 78" fill="none" stroke="#6b6b6b" stroke-width="5" stroke-linecap="round">'
