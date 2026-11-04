@@ -1,0 +1,11 @@
+{"series": "키움멘토 돈 노트", "title": "월급, 왜 금방 사라질까?",
+ "foot": "예시(가정) · 이자·세금 제외 단순 합계",
+ "scenes": [
+  {"lines": ["월급 들어온 지 ==사흘==,", "통장이 벌써 텅…"], "pose": "worry", "art": "empty"},
+  {"lines": ["카드값, 관리비, 보험료", "들어오자마자 ((빠져나가요))"], "pose": "point", "art": "outflow"},
+  {"lines": ["쓰고 남은 돈을 모으려니", "==남는 게 없었던 거예요=="], "pose": "think", "art": "jar_low"},
+  {"lines": ["순서만 바꿔 봤어요", "월급날 아침, ++저축 먼저++"], "pose": "point", "art": "order"},
+  {"lines": ["자동이체 한 번 걸어 두면", "==내가 잊어도 차곡차곡=="], "pose": "cheer", "art": "calendar"},
+  {"lines": ["매달 30만 원씩이면", "1년 뒤 ++360만 원++"], "pose": "cheer", "art": "jar_full", "foot": true},
+  {"lines": ["내 월급 순서표 필요하면", "댓글에 ==순서== 남겨 주세요"], "pose": "point", "art": "sheet_reel"}
+ ]}
