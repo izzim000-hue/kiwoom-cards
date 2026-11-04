@@ -57,11 +57,13 @@ ARMS = {
     "think": _arm([(232, 305), (262, 360), (206, 268)], HAND_FIST),
     "cheer": _arm([(232, 300), (282, 230), (296, 168)], HAND_THUMB),
     "worry": _arm([(232, 305), (286, 240), (262, 128)], HAND_FIST),
+    "wave": _arm([(232, 300), (284, 240), (300, 178)], HAND_OPEN),
 }
 MOUTHS = {
     "point": f'<path d="M142 214 Q160 232 178 214" stroke="{INK}" stroke-width="5" fill="none" stroke-linecap="round"/>',
     "think": f'<path d="M148 218 L174 214" stroke="{INK}" stroke-width="5" fill="none" stroke-linecap="round"/>',
     "cheer": f'<path d="M138 208 Q160 246 182 208 Z" fill="#C8574F" stroke="{INK}" stroke-width="5" stroke-linejoin="round"/>',
+    "wave": f'<path d="M138 210 Q160 236 182 210" stroke="{INK}" stroke-width="6" fill="none" stroke-linecap="round"/>',
     "worry": f'<path d="M140 220 Q150 210 160 220 Q170 230 180 220" stroke="{INK}" stroke-width="5" fill="none" stroke-linecap="round"/>',
 }
 EXTRAS = {
@@ -69,6 +71,7 @@ EXTRAS = {
     "worry": f'<path d="M58 118 Q46 140 58 150 Q70 140 58 118 Z" fill="#9CC9EE" stroke="{INK}" stroke-width="4"/>',
     "cheer": (f'<path d="M40 120 l10 -22 M22 150 l-22 -6 M30 186 l-20 10" stroke="{INK}" stroke-width="5" stroke-linecap="round"/>'),
     "point": "",
+    "wave": "",
 }
 
 
