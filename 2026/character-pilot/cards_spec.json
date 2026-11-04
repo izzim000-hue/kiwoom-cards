@@ -1,0 +1,10 @@
+{"series": "키움멘토 돈 노트", "title": "통장, 이렇게 나눠 봤어요",
+ "scenes": [
+  {"lines": ["'이번 달은 꼭' 하는데", "==왜 또 그대로일까요?=="], "pose": "worry", "art": "calendar_x"},
+  {"lines": ["돈이 ((통장 하나))에 섞이면", "얼마 써도 되는지 몰라요"], "pose": "think", "art": "mixed"},
+  {"lines": ["그래서 ++통장 네 개++로", "나눠 봤어요"], "pose": "point", "art": "four"},
+  {"lines": ["월급 통장은", "==잠깐 머무는 정거장=="], "pose": "point", "art": "station"},
+  {"lines": ["생활비 통장엔", "++한 달 쓸 만큼만++"], "pose": "cheer", "art": "card_gauge"},
+  {"lines": ["비상금은 ==따로== 두면", "적금 깰 일이 줄어요"], "pose": "cheer", "art": "umbrella"},
+  {"lines": ["통장 나누기 표 필요하면", "댓글에 ==통장== 남겨 주세요"], "pose": "point", "art": "sheet_card", "foot": "일반 정보 · 특정 상품 권유 아님"}
+ ]}
