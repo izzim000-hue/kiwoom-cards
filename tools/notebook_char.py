@@ -33,6 +33,7 @@ INK = "#333"
 SKIN = "#FFF3E4"
 GREEN = "#2F4F3E"
 LEAF = "#8CC56E"
+HAIR = "#4A3A32"
 
 
 def _arm(points, hand):
@@ -76,16 +77,17 @@ def character(pose):
     left_arm = _arm([(88, 300), (70, 370), (84, 430)], HAND_FIST)
     return f'''<svg class="chr" viewBox="0 0 360 470" overflow="visible">
 <g class="bob">
+ <path d="M66 176 Q54 72 160 64 Q266 72 254 176 Q262 236 270 262 Q236 276 206 258 L114 258 Q84 276 50 262 Q58 236 66 176 Z" fill="{HAIR}" stroke="{INK}" stroke-width="6" stroke-linejoin="round"/>
  <path d="M66 470 L76 312 Q86 258 160 252 Q234 258 244 312 L254 470 Z" fill="{GREEN}" stroke="{INK}" stroke-width="6" stroke-linejoin="round"/>
  <path d="M132 256 L160 330 L188 256 Z" fill="#fff" stroke="{INK}" stroke-width="5" stroke-linejoin="round"/>
  <circle cx="150" cy="362" r="6" fill="#E9DFC6"/><circle cx="150" cy="402" r="6" fill="#E9DFC6"/><circle cx="150" cy="442" r="6" fill="#E9DFC6"/>
  {left_arm}
  <g class="head">
-  <path d="M160 82 L160 46" stroke="{INK}" stroke-width="6" stroke-linecap="round"/>
-  <path d="M160 56 Q138 28 112 38 Q128 66 160 56 Z" fill="{LEAF}" stroke="{INK}" stroke-width="5" stroke-linejoin="round"/>
-  <path d="M160 50 Q186 18 214 30 Q196 62 160 50 Z" fill="{LEAF}" stroke="{INK}" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M160 70 L160 40" stroke="{INK}" stroke-width="6" stroke-linecap="round"/>
+  <path d="M160 50 Q138 22 112 32 Q128 60 160 50 Z" fill="{LEAF}" stroke="{INK}" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M160 44 Q186 12 214 24 Q196 56 160 44 Z" fill="{LEAF}" stroke="{INK}" stroke-width="5" stroke-linejoin="round"/>
   <circle cx="160" cy="164" r="84" fill="{SKIN}" stroke="{INK}" stroke-width="6"/>
-  <path d="M78 156 Q72 82 160 78 Q248 82 242 156 Q230 116 186 110 Q150 132 92 132 Z" fill="#3B3B3B" stroke="{INK}" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M80 166 Q72 84 160 78 Q248 84 240 166 Q234 122 206 104 Q186 132 140 130 Q118 118 108 112 Q88 132 80 166 Z" fill="{HAIR}" stroke="{INK}" stroke-width="5" stroke-linejoin="round"/>
   <g class="eyes"><circle cx="128" cy="170" r="7" fill="{INK}"/><circle cx="192" cy="170" r="7" fill="{INK}"/></g>
   <circle cx="128" cy="168" r="24" fill="none" stroke="{INK}" stroke-width="5"/>
   <circle cx="192" cy="168" r="24" fill="none" stroke="{INK}" stroke-width="5"/>
