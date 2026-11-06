@@ -1,0 +1,11 @@
+{"series": "키움멘토 돈 노트", "title": "연봉 오른 해, 통장은 그대로",
+ "foot": "예시(가정) · 개인 상황에 따라 다름",
+ "scenes": [
+  {"lines": ["연봉이 올랐던 그 해,", "((통장은 그대로))였어요"], "pose": "worry", "art": "raise_same"},
+  {"lines": ["월 20만 원 늘었는데", "==어디 갔는지 몰라요=="], "pose": "think", "art": "raise_vanish", "foot": "실수령 증가분 예시(가정)"},
+  {"lines": ["오른 만큼 쓰는 게", "((자연스러웠던)) 거예요"], "pose": "think", "art": "lifestyle_up"},
+  {"lines": ["그래서 다음 인상 땐", "==절반을 먼저== 저축으로"], "pose": "point", "art": "half_split"},
+  {"lines": ["10만 원은 저축,", "10만 원은 ++나를 위해++"], "pose": "cheer", "art": "two_jars"},
+  {"lines": ["1년이면 120만 원,", "==티 안 나게== 모였어요"], "pose": "cheer", "art": "jar_120", "foot": "예시(가정) · 이자 제외 단순 합계"},
+  {"lines": ["월급 오르는 달,", "++자동이체부터++ 바꿔요"], "pose": "wave", "art": "auto_up", "foot": "일반 정보 · 특정 상품 권유 아님"}
+ ]}
