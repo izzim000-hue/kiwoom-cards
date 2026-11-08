@@ -1,0 +1,11 @@
+{"series": "키움멘토 돈 노트", "title": "잊고 있던 내 돈",
+ "foot": "일반 정보 · 특정 상품 권유 아님",
+ "scenes": [
+  {"lines": ["서랍 정리하다", "((옛날 통장))이 나왔어요"], "pose": "think", "art": "old_bankbook"},
+  {"lines": ["얼마 남았는지", "==기억도== 안 났어요"], "pose": "worry", "art": "forgot_q"},
+  {"lines": ["카드 포인트도", "그냥 ((사라지고)) 있었고요"], "pose": "worry", "art": "points_fade"},
+  {"lines": ["'어카운트인포'로", "++한 번에++ 찾아봤어요"], "pose": "point", "art": "acct_lookup", "foot": "금융결제원 계좌정보통합관리서비스"},
+  {"lines": ["흩어진 잔액은", "==한 통장으로== 모았어요"], "pose": "cheer", "art": "gather_one"},
+  {"lines": ["카드 포인트는", "((현금으로)) 받았고요"], "pose": "cheer", "art": "points_cash", "foot": "카드사·조건에 따라 다름"},
+  {"lines": ["오늘 5분,", "++잊은 내 돈++ 찾아봐요"], "pose": "wave", "art": "found_check"}
+ ]}
