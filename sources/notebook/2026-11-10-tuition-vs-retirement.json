@@ -1,0 +1,11 @@
+{"series": "키움멘토 돈 노트", "title": "학원비 먼저, 노후는 나중?",
+ "foot": "일반 정보 · 개인 상황에 따라 다름",
+ "scenes": [
+  {"lines": ["학원비 오르는 달마다", "((내 저축))을 줄였어요"], "pose": "worry", "art": "tuition_up"},
+  {"lines": ["아이 일이니까", "==당연하다고== 생각했죠"], "pose": "think", "art": "kid_first"},
+  {"lines": ["그런데 내 노후는", "((빌릴 곳))이 없더라고요"], "pose": "worry", "art": "no_loan"},
+  {"lines": ["그래서 순서를 바꿨어요", "++노후 저축 먼저++"], "pose": "point", "art": "order_swap"},
+  {"lines": ["학원비는", "==한도==를 정했어요"], "pose": "point", "art": "tuition_cap"},
+  {"lines": ["줄인 건 학원 하나,", "지킨 건 ++내 노후++"], "pose": "cheer", "art": "kept_jar"},
+  {"lines": ["이번 달 교육비,", "저축보다 ((먼저)) 나가나요?"], "pose": "wave", "art": "edu_check"}
+ ]}
