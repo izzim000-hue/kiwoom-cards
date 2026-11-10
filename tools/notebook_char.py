@@ -584,6 +584,35 @@ ART = {
                       '<path d="M{0} {1} l12 14 l24 -30" stroke="#2F4F3E" stroke-width="7" fill="none" stroke-linecap="round"/>'.format(208, 186 + i * 95),
                       T(270, 197 + i * 95, t, 32, INK, "start")) for i, t in enumerate(["교육비 총액", "노후 저축 금액", "나가는 순서"])]],
 
+    # 11/11 카드: 부부 돈 대화
+    "couple_wall": [g(box(150, 140, 150, 200, "#E5EEF8", 14, 6), T(225, 250, "내 통장", 30)),
+                    g(box(360, 140, 150, 200, "#E8F2EA", 14, 6), T(435, 250, "배우자", 30)),
+                    g('<path d="M330 100 L330 380" stroke="#1F2A24" stroke-width="12" stroke-dasharray="4 14" stroke-linecap="round"/>'),
+                    g(T(330, 450, "서로 얼마인지 몰라요", 32, "#C8574F"))],
+    "talk_cloud": [g('<path d="M200 130 Q200 80 260 80 L420 80 Q480 80 480 130 L480 260 Q480 310 420 310 L300 310 L240 370 L250 310 Q200 310 200 260 Z" fill="#fff" stroke="#1F2A24" stroke-width="6"/>'),
+                   g(T(340, 215, "돈 얘기 하면...", 34)),
+                   g(T(340, 450, "괜히 싸울까 봐", 34, "#C8574F"))],
+    "coffee_date": [g(box(160, 70, 340, 200, "#fff", 10, 6), '<rect x="160" y="70" width="340" height="50" fill="#2F4F3E" stroke="#1F2A24" stroke-width="6"/>', T(330, 108, "한 달에 한 번", 28, "#fff")),
+                    g('<circle cx="330" cy="195" r="44" fill="none" stroke="#C8574F" stroke-width="7"/>', T(330, 210, "돈", 38)),
+                    g(box(220, 320, 90, 110, "#FBF7EC", 12, 6), box(350, 320, 90, 110, "#FBF7EC", 12, 6), T(330, 480, "커피 한 잔", 32, GREEN))],
+    "shared_sheet": [g(box(170, 70, 320, 400, "#fff", 10, 6), T(330, 126, "우리 집 한 장", 34, GREEN)),
+                     g(T(200, 210, "들어온 돈", 32, INK, "start"), T(460, 210, "○○", 32, "#666", "end")),
+                     g(T(200, 290, "나간 돈", 32, INK, "start"), T(460, 290, "○○", 32, "#666", "end")),
+                     g(T(200, 370, "모은 돈", 32, INK, "start"), T(460, 370, "○○", 32, GREEN, "end")),
+                     g('<path d="M190 420 L470 420" stroke="#F4CF4C" stroke-width="22" stroke-linecap="round" opacity=".7"/>', T(330, 432, "탓하지 않기", 30))],
+    "one_goal": [g('<path d="M260 440 L260 90" stroke="#1F2A24" stroke-width="10" stroke-linecap="round"/>',
+                   '<path d="M264 96 L470 140 L264 200 Z" fill="#CFE8A9" stroke="#1F2A24" stroke-width="6" stroke-linejoin="round"/>'),
+                 g(T(350, 158, "우리 목표", 32)),
+                 g(box(200, 440, 260, 50, "#FFF1A8", 12, 5), T(330, 475, "딱 하나만", 30))],
+    "talk_easy": [g(box(150, 150, 150, 160, "#E5EEF8", 14, 6), T(225, 240, "나", 36)),
+                  g(box(360, 150, 150, 160, "#E8F2EA", 14, 6), T(435, 240, "배우자", 32)),
+                  g('<path d="M330 260 C290 220 300 190 318 190 C326 190 330 198 330 204 C330 198 334 190 342 190 C360 190 370 220 330 260 Z" fill="#F4A6A0" stroke="#1F2A24" stroke-width="4"/>'),
+                  g(T(330, 420, "말이 편해졌어요", 36, GREEN))],
+    "couple_check": [g(box(170, 60, 320, 420, "#fff", 10, 6), T(330, 118, "주말 30분", 36, GREEN)),
+                     *[g(box(200, 160 + i * 95, 48, 48, "#fff", 8, 5),
+                         '<path d="M{0} {1} l12 14 l24 -30" stroke="#2F4F3E" stroke-width="7" fill="none" stroke-linecap="round"/>'.format(208, 186 + i * 95),
+                         T(270, 197 + i * 95, t, 32, INK, "start")) for i, t in enumerate(["날짜 정하기", "숫자만 보기", "목표 하나"])]],
+
 }
 
 # ---------------------------------------------------------------- 레이아웃
