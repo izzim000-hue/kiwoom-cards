@@ -1,0 +1,11 @@
+{"series": "키움멘토 돈 노트", "title": "쉬는 동안, 내 국민연금은?",
+ "foot": "2026년 기준 · 제도는 바뀔 수 있음",
+ "scenes": [
+  {"lines": ["아이 키우며 쉰 10년,", "국민연금은 ((빈칸))이었어요"], "pose": "worry", "art": "pension_blank"},
+  {"lines": ["소득이 없으면", "==못 넣는 줄== 알았거든요"], "pose": "think", "art": "no_income"},
+  {"lines": ["알고 보니", "++임의가입++이 있었어요"], "pose": "point", "art": "voluntary_join", "foot": "소득 없는 18~60세 미만 · 2026년 기준"},
+  {"lines": ["예전 기록이 있으면", "((빈 기간))도 채울 수 있대요"], "pose": "think", "art": "fill_gap", "foot": "추후납부 · 요건 있음"},
+  {"lines": ["평생 연금은", "가입 ==10년== 이상부터"], "pose": "point", "art": "ten_years"},
+  {"lines": ["늦었다 싶었는데", "++지금이++ 제일 빠르대요"], "pose": "cheer", "art": "start_now"},
+  {"lines": ["국민연금 앱에서", "((내 가입 기간)) 보기"], "pose": "wave", "art": "pension_app"}
+ ]}

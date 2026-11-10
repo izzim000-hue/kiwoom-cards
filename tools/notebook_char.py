@@ -613,6 +613,32 @@ ART = {
                          '<path d="M{0} {1} l12 14 l24 -30" stroke="#2F4F3E" stroke-width="7" fill="none" stroke-linecap="round"/>'.format(208, 186 + i * 95),
                          T(270, 197 + i * 95, t, 32, INK, "start")) for i, t in enumerate(["날짜 정하기", "숫자만 보기", "목표 하나"])]],
 
+    # 11/11 릴스: 경력 쉬는 동안 국민연금 빈칸
+    "pension_blank": [g('<path d="M140 250 L520 250" stroke="#1F2A24" stroke-width="6"/>', T(330, 150, "내 국민연금 기록", 34, GREEN)),
+                      g(box(140, 220, 120, 60, "#CFE8A9", 8, 5), T(200, 320, "직장", 28, "#666")),
+                      g(box(270, 220, 160, 60, "#fff", 8, 5), '<path d="M280 230 L420 270" stroke="#C8574F" stroke-width="5"/>', T(350, 320, "육아 10년", 28, "#C8574F")),
+                      g(T(350, 420, "빈칸...", 40, "#C8574F"))],
+    "no_income": [g(box(190, 130, 280, 200, "#F3F6FA", 24, 6), '<path d="M190 190 L470 190" stroke="#1F2A24" stroke-width="5"/>', T(330, 280, "소득 0", 46, "#9A9A9A")),
+                  g(T(330, 420, "넣을 수 없는 줄", 36, "#C8574F"))],
+    "voluntary_join": [g(box(170, 60, 320, 420, "#fff", 10, 6), T(330, 118, "국민연금 신청", 34, GREEN)),
+                       g(box(205, 170, 40, 40, "#fff", 6, 4), T(260, 202, "직장 가입", 30, "#9A9A9A", "start")),
+                       g(box(205, 240, 40, 40, "#CFE8A9", 6, 4), '<path d="M211 260 l10 12 l20 -26" stroke="#2F4F3E" stroke-width="6" fill="none" stroke-linecap="round"/>', T(260, 272, "임의가입", 34, INK, "start")),
+                       g('<path d="M200 360 L460 360" stroke="#F4CF4C" stroke-width="22" stroke-linecap="round" opacity=".7"/>', T(330, 372, "소득 없어도 가능", 30))],
+    "fill_gap": [g('<path d="M140 250 L520 250" stroke="#1F2A24" stroke-width="6"/>', box(140, 220, 120, 60, "#CFE8A9", 8, 5), box(270, 220, 160, 60, "#fff", 8, 5)),
+                 g(box(270, 220, 160, 60, "#FFF1A8", 8, 5), T(350, 260, "채우기", 30)),
+                 g(T(330, 380, "빈 기간 추후납부", 34, GREEN))],
+    "ten_years": [g(box(130, 220, 400, 60, "#fff", 10, 6), '<rect x="134" y="224" width="300" height="52" rx="8" fill="#CFE8A9"/>'),
+                  g('<path d="M460 300 L460 140" stroke="#1F2A24" stroke-width="7"/>', '<path d="M463 144 L540 166 L463 190 Z" fill="#F4CF4C" stroke="#1F2A24" stroke-width="5"/>', T(505, 125, "10년", 34)),
+                  g(T(330, 380, "여기부터 평생 연금", 34, GREEN))],
+    "start_now": [g('<path d="M330 440 L330 280" stroke="#2F4F3E" stroke-width="10" stroke-linecap="round"/>',
+                    '<path d="M330 300 C260 300 230 240 240 200 C300 200 330 250 330 300 Z" fill="#CFE8A9" stroke="#1F2A24" stroke-width="5"/>',
+                    '<path d="M330 280 C400 280 430 220 420 180 C360 180 330 230 330 280 Z" fill="#CFE8A9" stroke="#1F2A24" stroke-width="5"/>'),
+                  g(box(220, 440, 220, 60, "#FFF1A8", 14, 5), T(330, 482, "지금 시작", 34))],
+    "pension_app": [g(box(220, 40, 220, 440, "#fff", 34, 6), box(238, 90, 184, 320, "#F3F6FA", 10, 4)),
+                    g(T(330, 150, "내 곁에 국민연금", 22, GREEN)),
+                    g(box(252, 180, 156, 70, "#E8F2EA", 10, 3), T(330, 210, "가입 기간", 22, "#666"), T(330, 240, "○년 ○개월", 26)),
+                    g(box(252, 275, 156, 70, "#FFF1A8", 10, 3), T(330, 305, "빈 기간", 22, "#666"), T(330, 335, "확인!", 26, "#C8574F"))],
+
 }
 
 # ---------------------------------------------------------------- 레이아웃
