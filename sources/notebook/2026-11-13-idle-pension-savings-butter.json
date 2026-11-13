@@ -1,0 +1,69 @@
+{
+ "series": "키움멘토 돈 노트",
+ "title": "놀고 있던 내 연금저축",
+ "foot": "일반 정보 · 특정 상품 권유 아님",
+ "scenes": [
+  {
+   "big": "==잠자는==|연금저축",
+   "bigsub": "혹시 내 얘기?",
+   "lines": [
+    "연말정산 때문에 만든",
+    "((그 계좌)) 얘기예요"
+   ],
+   "pose": "worry",
+   "art": "pension_acct"
+  },
+  {
+   "lines": [
+    "몇 년을 넣었는데",
+    "==거의 그대로==였어요"
+   ],
+   "pose": "worry",
+   "art": "flat_line"
+  },
+  {
+   "lines": [
+    "알고 보니 상품을 안 골라",
+    "((현금으로)) 쉬고 있었어요"
+   ],
+   "pose": "worry",
+   "art": "idle_cash",
+   "foot": "계좌·금융사마다 다름"
+  },
+  {
+   "lines": [
+    "넣는 것과",
+    "++굴리는 것++은 달랐어요"
+   ],
+   "pose": "point",
+   "art": "put_vs_run"
+  },
+  {
+   "lines": [
+    "내 성향에 맞게",
+    "==운용 상품==을 골랐어요"
+   ],
+   "pose": "point",
+   "art": "choose_mix",
+   "foot": "투자 상품은 원금 손실 가능"
+  },
+  {
+   "lines": [
+    "이제는 한 달에 한 번",
+    "++들여다봐요++"
+   ],
+   "pose": "cheer",
+   "art": "monthly_peek"
+  },
+  {
+   "lines": [
+    "연금 계좌 앱에서",
+    "((대기 자금)) 확인해요"
+   ],
+   "pose": "wave",
+   "art": "idle_check_app"
+  }
+ ],
+ "theme": "butter",
+ "character": "sprout"
+}

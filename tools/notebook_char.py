@@ -1058,12 +1058,14 @@ def theme_of(spec):
 def draw_character(spec, pose):
     kind = spec.get("character", "sprout")
     pose = pose if pose in ARMS else "point"
+    if kind == "none":
+        return ""
     if kind == "sprout":
         svg = character(pose)
         th = theme_of(spec)
         return svg.replace(GREEN, th["accent"])
     if kind not in CHARACTERS:
-        raise nb.SpecError(f"캐릭터 '{kind}' 가 없습니다. 쓸 수 있는 캐릭터: sprout, {', '.join(CHARACTERS)}")
+        raise nb.SpecError(f"캐릭터 '{kind}' 가 없습니다. 쓸 수 있는 캐릭터: sprout, none, {', '.join(CHARACTERS)}")
     return CHARACTERS[kind](pose, theme_of(spec)["accent"])
 
 
