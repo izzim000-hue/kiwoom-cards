@@ -775,6 +775,26 @@ ART = {
                        g(box(252, 180, 156, 70, "#FFF1A8", 10, 3), T(330, 210, "대기 자금", 22, "#666"), T(330, 240, "얼마?", 28, "#C8574F")),
                        g(box(252, 275, 156, 70, "#E8F2EA", 10, 3), T(330, 305, "운용 상품", 22, "#666"), T(330, 335, "있나?", 28))],
 
+    "parents_q": [g('<circle cx="260" cy="170" r="44" fill="#FFF3E4" stroke="#333" stroke-width="5"/><path d="M216 164 Q260 100 304 164 Q280 140 260 142 Q236 140 216 164 Z" fill="#9A9A9A" stroke="#333" stroke-width="4"/><circle cx="245" cy="174" r="5" fill="#333"/><circle cx="275" cy="174" r="5" fill="#333"/><path d="M248 192 Q260 202 272 192" stroke="#333" stroke-width="4" fill="none" stroke-linecap="round"/><circle cx="420" cy="170" r="44" fill="#FFF3E4" stroke="#333" stroke-width="5"/><path d="M376 164 Q420 100 464 164 Q440 140 420 142 Q396 140 376 164 Z" fill="#666" stroke="#333" stroke-width="4"/><circle cx="405" cy="174" r="5" fill="#333"/><circle cx="435" cy="174" r="5" fill="#333"/><path d="M408 192 Q420 202 432 192" stroke="#333" stroke-width="4" fill="none" stroke-linecap="round"/>', ''),
+                  g(box(270, 260, 140, 100, "#fff", 8, 5), '<path d="M270 262 L340 312 L410 262" fill="none" stroke="#333" stroke-width="5"/>', T(340, 345, "용돈", 26)),
+                  g(T(340, 450, "얼마가 맞을까?", 34, "#C8574F"), T(470, 250, "?", 70, "#C8574F"))],
+    "plan_shake": [g(box(190, 70, 290, 330, "#fff", 10, 6), T(335, 122, "이번 달 계획", 30, GREEN)),
+                   g(T(335, 190, "저축", 30), T(335, 250, "생활비", 30), T(335, 310, "용돈 +α", 30, "#C8574F")),
+                   g('<path d="M160 120 l-24 -10 M160 200 l-28 0 M510 140 l24 -12 M510 230 l28 0" stroke="#333" stroke-width="5" stroke-linecap="round"/>'),
+                   g(T(335, 460, "그때그때 달라졌어요", 32, "#C8574F"))],
+    "sibling_rule": [g('<circle cx="230" cy="170" r="44" fill="#FFF3E4" stroke="#333" stroke-width="5"/><path d="M186 164 Q230 100 274 164 Q250 140 230 142 Q206 140 186 164 Z" fill="#4A3A32" stroke="#333" stroke-width="4"/><circle cx="215" cy="174" r="5" fill="#333"/><circle cx="245" cy="174" r="5" fill="#333"/><path d="M218 192 Q230 202 242 192" stroke="#333" stroke-width="4" fill="none" stroke-linecap="round"/>'), g('<circle cx="335" cy="150" r="44" fill="#FFF3E4" stroke="#333" stroke-width="5"/><path d="M291 144 Q335 80 379 144 Q355 120 335 122 Q311 120 291 144 Z" fill="#4A3A32" stroke="#333" stroke-width="4"/><circle cx="320" cy="154" r="5" fill="#333"/><circle cx="350" cy="154" r="5" fill="#333"/><path d="M323 172 Q335 182 347 172" stroke="#333" stroke-width="4" fill="none" stroke-linecap="round"/>'), g('<circle cx="440" cy="170" r="44" fill="#FFF3E4" stroke="#333" stroke-width="5"/><path d="M396 164 Q440 100 484 164 Q460 140 440 142 Q416 140 396 164 Z" fill="#4A3A32" stroke="#333" stroke-width="4"/><circle cx="425" cy="174" r="5" fill="#333"/><circle cx="455" cy="174" r="5" fill="#333"/><path d="M428 192 Q440 202 452 192" stroke="#333" stroke-width="4" fill="none" stroke-linecap="round"/>'),
+                     g(box(200, 300, 270, 120, "#FFF1A8", 14, 6), T(335, 350, "우리 집 기준", 32), T(335, 395, "매달 · 같은 날", 28, "#555"))],
+    "auto_transfer": [g(box(150, 80, 200, 300, "#fff", 30, 6), box(165, 120, 170, 200, "#F3F6FA", 8, 4), T(250, 200, "자동이체", 28, GREEN), T(250, 250, "매달 ○일", 28)),
+                      g(arrow(370, 230, 440, 230)),
+                      g(box(450, 180, 110, 100, "#fff", 8, 5), '<path d="M450 182 L505 228 L560 182" fill="none" stroke="#333" stroke-width="5"/>', T(505, 265, "부모님", 22)),
+                      g(T(355, 450, "잊지 않고, 흔들리지 않게", 30, GREEN))],
+    "event_jar": _jar(3, "명절·생신") + [g(box(390, 20, 200, 80, "#E8F2EA", 40, 5), T(490, 72, "따로 모으기", 30, GREEN))],
+    "both_kept": [g(box(120, 150, 190, 230, "#FFF1A8", 16, 6), T(215, 250, "부모님", 32), T(215, 300, "용돈", 32)),
+                  g(box(360, 150, 190, 230, "#E8F2EA", 16, 6), T(455, 250, "내 노후", 32), T(455, 300, "저축", 32)),
+                  g(T(335, 460, "둘 다 지켜요", 36, GREEN))],
+    "family_chat": [g(box(220, 40, 220, 440, "#fff", 34, 6), box(238, 90, 184, 320, "#F3F6FA", 10, 4), T(330, 75, "가족 단톡방", 20, "#666")),
+                    g(box(250, 120, 150, 70, "#fff", 14, 3), T(325, 165, "용돈 기준", 24)),
+                    g(box(262, 210, 150, 70, "#FFF1A8", 14, 3), T(337, 255, "같이 정해요", 24))],
 }
 
 
