@@ -1,0 +1,11 @@
+{"series": "키움멘토 돈 노트", "title": "우리 부부, 돈 얘기 해 봤나요?",
+ "foot": "일반 정보 · 개인 상황에 따라 다름",
+ "scenes": [
+  {"lines": ["결혼 15년인데", "서로 ((통장))을 몰라요"], "pose": "worry", "art": "couple_wall"},
+  {"lines": ["돈 얘기만 꺼내면", "==다툴까 봐== 미뤘어요"], "pose": "worry", "art": "talk_cloud"},
+  {"lines": ["그래서 한 달에 한 번", "++돈 데이트++를 했어요"], "pose": "point", "art": "coffee_date"},
+  {"lines": ["따지지 않고", "((숫자만)) 같이 봤어요"], "pose": "think", "art": "shared_sheet"},
+  {"lines": ["목표도 하나만", "==같이== 정했어요"], "pose": "cheer", "art": "one_goal"},
+  {"lines": ["석 달 뒤,", "대화가 ++편해졌어요++"], "pose": "cheer", "art": "talk_easy"},
+  {"lines": ["이번 주말,", "++30분++만 같이 앉아요"], "pose": "wave", "art": "couple_check"}
+ ]}

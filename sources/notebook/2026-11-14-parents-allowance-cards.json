@@ -1,0 +1,11 @@
+{"series": "키움멘토 돈 노트", "title": "부모님 용돈, 기준 있나요?",
+ "foot": "일반 정보 · 집집마다 상황이 달라요",
+ "scenes": [
+  {"lines": ["명절이 다가오면", "((부모님 용돈)) 고민했어요"], "pose": "think", "art": "parents_q"},
+  {"lines": ["그때그때 드리다 보니", "==내 계획이 흔들렸어요=="], "pose": "worry", "art": "plan_shake"},
+  {"lines": ["형제들과 한 번", "++기준을 정했어요++"], "pose": "point", "art": "sibling_rule"},
+  {"lines": ["매달 정한 날", "((자동이체))로 보내요"], "pose": "point", "art": "auto_transfer"},
+  {"lines": ["명절·생신 몫은", "==따로 모아 둬요=="], "pose": "point", "art": "event_jar"},
+  {"lines": ["드리는 마음도 편하고", "++내 노후도 지켜요++"], "pose": "cheer", "art": "both_kept"},
+  {"lines": ["오늘 가족 단톡방에", "((용돈 기준)) 꺼내 봐요"], "pose": "wave", "art": "family_chat"}
+ ]}

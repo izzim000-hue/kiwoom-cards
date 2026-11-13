@@ -1,0 +1,11 @@
+{"series": "키움멘토 돈 노트", "title": "할부가 월급을 먼저 써요",
+ "foot": "예시(가정) · 개인 상황에 따라 다름",
+ "scenes": [
+  {"lines": ["월급날 카드 앱을", "열었더니 ((할부만 6개))"], "pose": "worry", "art": "card_bills"},
+  {"lines": ["하나하나는 작았는데", "==합치니 월 40만 원=="], "pose": "think", "art": "installment_stack", "foot": "예시(가정)"},
+  {"lines": ["다음 달 월급이", "((이미 쓰여)) 있던 거예요"], "pose": "worry", "art": "calendar_used"},
+  {"lines": ["그래서 할부 목록을", "==종이에 다 적어== 봤어요"], "pose": "point", "art": "list_paper"},
+  {"lines": ["끝나는 달까지는", "++새 할부는 멈춤++"], "pose": "point", "art": "stop_sign"},
+  {"lines": ["끝난 할부 금액은", "그대로 ==저축 통장==으로"], "pose": "cheer", "art": "to_savings", "foot": "예시(가정) · 금액은 사람마다 다름"},
+  {"lines": ["카드 앱 '할부 내역'에서", "++남은 개월++부터 확인해요"], "pose": "wave", "art": "installment_app", "foot": "일반 정보 · 특정 상품 권유 아님"}
+ ]}

@@ -1,0 +1,11 @@
+{"series": "키움멘토 돈 노트", "title": "친구가 돈 빌려 달라고 할 때",
+ "foot": "일반 정보 · 개인 상황에 따라 다름",
+ "scenes": [
+  {"lines": ["오랜만에 온 친구 연락,", "((돈 부탁))이었어요"], "pose": "worry", "art": "friend_msg"},
+  {"lines": ["거절하면 서운할까 봐", "==그냥 빌려줬어요=="], "pose": "think", "art": "lend_yes"},
+  {"lines": ["약속한 날이 지나도", "((연락이)) 없더라고요"], "pose": "worry", "art": "no_return"},
+  {"lines": ["그 뒤로 원칙을 정했어요", "++못 받아도 괜찮은 만큼++"], "pose": "point", "art": "lend_rule"},
+  {"lines": ["어려울 땐", "==정중하게== 말해요"], "pose": "think", "art": "kind_no"},
+  {"lines": ["기준이 생기니", "++마음이++ 편해졌어요"], "pose": "cheer", "art": "peace_mind"},
+  {"lines": ["내 한도,", "((미리)) 적어 두세요"], "pose": "wave", "art": "my_limit"}
+ ]}
