@@ -777,6 +777,184 @@ ART = {
 
 }
 
+
+# ---------------------------------------------------------------- 색감 · 캐릭터 시안 (2026-11-13)
+# 원고에 "theme" 과 "character" 를 넣으면 바꿔 그린다. 없으면 지금까지와 같다(green / sprout).
+THEMES = {
+    "green":    dict(bg="#1F3A2D", paper="#FBF8F1", rule="#C9D1DD", accent=GREEN, hl2="rgba(182,240,156,.85)", ring="#3d3d3d", label="딥그린"),
+    "butter":   dict(bg="#F5CB4E", paper="#FFFEF8", rule="#EDE3C6", accent="#34507A", hl2="rgba(150,200,255,.7)", ring="#4a4a4a", label="버터 옐로"),
+    "sky":      dict(bg="#8FC3E6", paper="#FFFFFF", rule="#D8E5EF", accent="#E2725B", hl2="rgba(255,180,160,.75)", ring="#4a4a4a", label="스카이 블루"),
+    "charcoal": dict(bg="#2A2D34", paper="#FAF7F0", rule="#D6D2C8", accent="#3B5B8C", hl2="rgba(232,198,110,.75)", ring="#c9a24a", label="차콜 + 골드"),
+}
+
+
+def _hands(skin):
+    return dict(
+        open=(f'<circle r="19" fill="{skin}" stroke="{INK}" stroke-width="5"/>'
+              f'<path d="M10 -14 L24 -30" stroke="{INK}" stroke-width="12" stroke-linecap="round"/>'
+              f'<path d="M10 -14 L24 -30" stroke="{skin}" stroke-width="4" stroke-linecap="round"/>'),
+        fist=f'<circle r="19" fill="{skin}" stroke="{INK}" stroke-width="5"/>',
+        thumb=(f'<circle r="19" fill="{skin}" stroke="{INK}" stroke-width="5"/>'
+               f'<rect x="-30" y="-40" width="16" height="30" rx="8" transform="rotate(-35)" fill="{skin}" stroke="{INK}" stroke-width="5"/>'
+               f'<path d="M-8 -8 L12 -8 M-8 2 L12 2" stroke="{INK}" stroke-width="3" stroke-linecap="round"/>'))
+
+
+def _arm2(points, hand, cloth):
+    d = "M" + " L".join(f"{x} {y}" for x, y in points)
+    hx, hy = points[-1]
+    return (f'<path d="{d}" stroke="{INK}" stroke-width="40" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'
+            f'<path d="{d}" stroke="{cloth}" stroke-width="28" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'
+            f'<g transform="translate({hx} {hy})">{hand}</g>')
+
+
+def _arms2(pose, cloth, skin):
+    h = _hands(skin)
+    table = {
+        "point": ([(232, 300), (290, 262), (330, 236)], h["open"]),
+        "think": ([(232, 305), (262, 360), (206, 268)], h["fist"]),
+        "cheer": ([(232, 300), (282, 230), (296, 168)], h["thumb"]),
+        "worry": ([(232, 305), (286, 240), (262, 128)], h["fist"]),
+        "wave": ([(232, 300), (284, 240), (300, 178)], h["open"]),
+    }
+    pts, hand = table[pose]
+    return _arm2([(88, 300), (70, 370), (84, 430)], h["fist"], cloth), _arm2(pts, hand, cloth)
+
+
+def _body(cloth, collar="#fff"):
+    return (f'<path d="M66 470 L76 312 Q86 258 160 252 Q234 258 244 312 L254 470 Z" fill="{cloth}" stroke="{INK}" stroke-width="6" stroke-linejoin="round"/>'
+            f'<path d="M132 256 L160 330 L188 256 Z" fill="{collar}" stroke="{INK}" stroke-width="5" stroke-linejoin="round"/>'
+            f'<circle cx="150" cy="362" r="6" fill="#E9DFC6"/><circle cx="150" cy="402" r="6" fill="#E9DFC6"/><circle cx="150" cy="442" r="6" fill="#E9DFC6"/>')
+
+
+def _glasses(y=168, r=24, dx=32, sw=5):
+    return (f'<circle cx="{160-dx}" cy="{y}" r="{r}" fill="rgba(255,255,255,.25)" stroke="{INK}" stroke-width="{sw}"/>'
+            f'<circle cx="{160+dx}" cy="{y}" r="{r}" fill="rgba(255,255,255,.25)" stroke="{INK}" stroke-width="{sw}"/>'
+            f'<path d="M{160-dx+r} {y-2} Q160 {y-8} {160+dx-r} {y-2}" fill="none" stroke="{INK}" stroke-width="{sw}"/>')
+
+
+def _eyes(y=170, dx=32, r=8):
+    return (f'<g class="eyes"><circle cx="{160-dx}" cy="{y}" r="{r}" fill="{INK}"/><circle cx="{160+dx}" cy="{y}" r="{r}" fill="{INK}"/>'
+            f'<circle cx="{160-dx+3}" cy="{y-3}" r="2.6" fill="#fff"/><circle cx="{160+dx+3}" cy="{y-3}" r="2.6" fill="#fff"/></g>')
+
+
+def _wrap(pose, back, body, head, cloth, skin):
+    la, ra = _arms2(pose, cloth, skin)
+    return (f'<svg class="chr" viewBox="0 0 360 470" overflow="visible"><g class="bob">{back}{body}{la}'
+            f'<g class="head">{head}</g>{ra}{EXTRAS[pose]}</g></svg>')
+
+
+def char_squirrel(pose, cloth):
+    """안경 쓴 다람쥐 '도토리 멘토' — 도토리를 모으듯 차곡차곡."""
+    fur, cream = "#C98552", "#FFF1DD"
+    tail = (f'<path d="M232 440 Q338 430 332 300 Q326 190 268 150 Q300 230 262 268 Q228 300 242 360 Z" '
+            f'fill="{fur}" stroke="{INK}" stroke-width="6" stroke-linejoin="round"/>'
+            f'<path d="M290 200 Q318 260 300 330" fill="none" stroke="#A8693C" stroke-width="5" stroke-linecap="round"/>')
+    head = (f'<circle cx="96" cy="96" r="28" fill="{fur}" stroke="{INK}" stroke-width="6"/><circle cx="96" cy="98" r="13" fill="#F2AE9C"/>'
+            f'<circle cx="224" cy="96" r="28" fill="{fur}" stroke="{INK}" stroke-width="6"/><circle cx="224" cy="98" r="13" fill="#F2AE9C"/>'
+            f'<circle cx="160" cy="164" r="86" fill="{fur}" stroke="{INK}" stroke-width="6"/>'
+            f'<ellipse cx="160" cy="200" rx="58" ry="44" fill="{cream}"/>'
+            f'<path d="M150 118 Q160 96 170 118" fill="none" stroke="#A8693C" stroke-width="5" stroke-linecap="round"/>'
+            f'{_eyes(166)}{_glasses(164, 25)}'
+            f'<path d="M152 190 L168 190 L160 199 Z" fill="{INK}"/>'
+            f'<ellipse cx="102" cy="204" rx="11" ry="7" fill="#F2AE9C" opacity=".8"/><ellipse cx="218" cy="204" rx="11" ry="7" fill="#F2AE9C" opacity=".8"/>'
+            f'<g transform="translate(0 6)">{MOUTHS[pose]}</g>'
+            f'<g transform="translate(228 70) rotate(18)"><ellipse cx="0" cy="8" rx="13" ry="16" fill="#B5793F" stroke="{INK}" stroke-width="4"/>'
+            f'<path d="M-15 0 Q0 -16 15 0 Z" fill="#7A5230" stroke="{INK}" stroke-width="4"/></g>')
+    return _wrap(pose, tail, _body(cloth, cream), head, cloth, cream)
+
+
+def char_owl(pose, cloth):
+    """학사모 쓴 부엉이 '부엉 멘토' — 똑똑하게 짚어 주는 역할."""
+    fur, face = "#8A6A52", "#F6E8D2"
+    head = (f'<path d="M88 104 L80 52 L122 86 Z" fill="{fur}" stroke="{INK}" stroke-width="6" stroke-linejoin="round"/>'
+            f'<path d="M232 104 L240 52 L198 86 Z" fill="{fur}" stroke="{INK}" stroke-width="6" stroke-linejoin="round"/>'
+            f'<ellipse cx="160" cy="168" rx="94" ry="88" fill="{fur}" stroke="{INK}" stroke-width="6"/>'
+            f'<circle cx="126" cy="166" r="40" fill="{face}"/><circle cx="194" cy="166" r="40" fill="{face}"/>'
+            f'{_eyes(168, 34, 10)}{_glasses(166, 30, 34)}'
+            f'<path d="M150 198 L170 198 L160 218 Z" fill="#F0A93B" stroke="{INK}" stroke-width="4" stroke-linejoin="round"/>'
+            f'<ellipse cx="96" cy="214" rx="11" ry="7" fill="#F2AE9C" opacity=".8"/><ellipse cx="224" cy="214" rx="11" ry="7" fill="#F2AE9C" opacity=".8"/>'
+            f'<g transform="rotate(-8 160 70)"><path d="M100 72 L160 46 L220 72 L160 98 Z" fill="#2E2E2E" stroke="{INK}" stroke-width="4"/>'
+            f'<rect x="132" y="78" width="56" height="20" fill="#2E2E2E"/>'
+            f'<path d="M160 72 L214 92 L214 118" stroke="#E2B640" stroke-width="5" fill="none"/><circle cx="214" cy="122" r="7" fill="#E2B640"/></g>')
+    body = _body(cloth, face)
+    return _wrap(pose, "", body, head, cloth, face)
+
+
+def char_pony(pose, cloth):
+    """포니테일 '똑똑 멘토' — 사각 안경, 귀에 꽂은 연필."""
+    hair = "#3E2F28"
+    back = (f'<path d="M226 96 Q312 92 300 210 Q292 272 252 290 Q276 220 236 150 Z" fill="{hair}" stroke="{INK}" stroke-width="6" stroke-linejoin="round"/>'
+            f'<circle cx="236" cy="100" r="12" fill="#E2B640" stroke="{INK}" stroke-width="4"/>')
+    head = (f'<circle cx="160" cy="166" r="86" fill="{SKIN}" stroke="{INK}" stroke-width="6"/>'
+            f'<path d="M74 170 Q62 74 160 72 Q256 74 246 170 Q236 116 196 104 Q150 142 92 128 Q80 146 74 170 Z" fill="{hair}" stroke="{INK}" stroke-width="5" stroke-linejoin="round"/>'
+            f'{_eyes(172, 34, 9)}'
+            f'<rect x="96" y="148" width="58" height="46" rx="14" fill="rgba(255,255,255,.25)" stroke="{INK}" stroke-width="5"/>'
+            f'<rect x="166" y="148" width="58" height="46" rx="14" fill="rgba(255,255,255,.25)" stroke="{INK}" stroke-width="5"/>'
+            f'<path d="M154 166 L166 166" stroke="{INK}" stroke-width="5"/>'
+            f'<ellipse cx="100" cy="212" rx="12" ry="7" fill="#F2AE9C" opacity=".8"/><ellipse cx="220" cy="212" rx="12" ry="7" fill="#F2AE9C" opacity=".8"/>'
+            f'{MOUTHS[pose]}'
+            f'<g transform="translate(70 150) rotate(-35)"><rect x="-6" y="-34" width="12" height="60" fill="#F4CF4C" stroke="{INK}" stroke-width="4"/>'
+            f'<path d="M-6 26 L0 40 L6 26 Z" fill="#E9C9A0" stroke="{INK}" stroke-width="4"/></g>')
+    return _wrap(pose, back, _body(cloth), head, cloth, SKIN)
+
+
+CHARACTERS = {"squirrel": char_squirrel, "owl": char_owl, "pony": char_pony}
+
+
+def theme_of(spec):
+    name = spec.get("theme", "green")
+    if name not in THEMES:
+        raise nb.SpecError(f"색감 '{name}' 이 없습니다. 쓸 수 있는 색감: {', '.join(THEMES)}")
+    return THEMES[name]
+
+
+def draw_character(spec, pose):
+    kind = spec.get("character", "sprout")
+    pose = pose if pose in ARMS else "point"
+    if kind == "sprout":
+        svg = character(pose)
+        th = theme_of(spec)
+        return svg.replace(GREEN, th["accent"])
+    if kind not in CHARACTERS:
+        raise nb.SpecError(f"캐릭터 '{kind}' 가 없습니다. 쓸 수 있는 캐릭터: sprout, {', '.join(CHARACTERS)}")
+    return CHARACTERS[kind](pose, theme_of(spec)["accent"])
+
+
+def theme_css(spec):
+    th = theme_of(spec)
+    return (f":root{{--bg:{th['bg']};--paper:{th['paper']};--rule:{th['rule']};--grn:{th['hl2']}}}"
+            f".ring{{border-color:{th['ring']}}}")
+
+
+# 첫 화면 훅: 장면에 "big" 을 넣으면 큰 글씨가 첫 프레임부터 바로 보이고, lines 는 그 아래 작은 글씨로 써진다.
+HOOK_CSS = """
+.big{position:absolute;left:120px;right:90px;top:{HY}px;font:700 {HF}px/1.12 Hand;color:var(--ink);text-align:center;letter-spacing:-2px}
+.big .hl{background:linear-gradient(transparent 55%, var(--yel) 55%, var(--yel) 96%, transparent 96%);padding:0 10px}
+.big small{display:block;font-size:{HS}px;color:#555;letter-spacing:0;margin-top:14px}
+.scene.hook .body{top:{HB}px;text-align:center;right:90px;left:120px;font-size:{HBF}px}
+.scene.hook .art{top:{HA}px}
+"""
+HOOK_LAYOUT = {"reel": dict(HY=250, HF=170, HS=52, HB=760, HBF=66, HA=930),
+               "card": dict(HY=170, HF=130, HS=42, HB=560, HBF=54, HA=720)}
+
+
+def hook_html(sc):
+    rows = [re_hl(row) for row in sc["big"].split("|")]
+    sub = f'<small>{html.escape(sc["bigsub"])}</small>' if sc.get("bigsub") else ""
+    return f'<div class="big">{"<br>".join(rows)}{sub}</div>'
+
+
+def re_hl(row):
+    out = []
+    for piece in nb.TOKEN_RE.split(row):
+        if not piece:
+            continue
+        if piece[:2] in ("==", "++", "((") and len(piece) > 4:
+            out.append(f'<span class="hl">{html.escape(piece[2:-2])}</span>')
+        else:
+            out.append(html.escape(piece))
+    return "".join(out)
+
 # ---------------------------------------------------------------- 레이아웃
 LAYOUT = {
     "reel": dict(nb.LAYOUT["reel"], SY=104, TY=178, BY=318, BF=74, LH=1.45, TF=54,
@@ -805,20 +983,30 @@ def page_html(spec, mode):
     css = EXTRA_CSS
     for k, v in L.items():
         css = css.replace("{" + k + "}", str(v))
-    doc = doc.replace("</style>", css + "</style>")
+    hook_css = HOOK_CSS
+    for k, v in HOOK_LAYOUT[mode].items():
+        hook_css = hook_css.replace("{" + k + "}", str(v))
+    doc = doc.replace("</style>", css + hook_css + theme_css(spec) + "</style>")
     # 장면마다 그림·캐릭터를 끼워 넣는다 (장면 div 의 끝 바로 앞).
     for si, sc in enumerate(spec["scenes"]):
         art = sc.get("art")
         if art and art not in ART:
             raise nb.SpecError(f"그림 '{art}' 이 없습니다. 쓸 수 있는 그림: {', '.join(ART)}")
-        art_svg = f'<svg class="art" viewBox="0 0 600 520">{"".join(ART[art])}</svg>' if art else ""
+        accent = theme_of(spec)["accent"]
+        art_svg = (f'<svg class="art" viewBox="0 0 600 520">{"".join(ART[art])}</svg>'.replace(GREEN, accent)) if art else ""
         marker = f'<div class="scene" data-s="{si}" style="display:none">'
-        doc = doc.replace(marker, marker + art_svg + character(sc.get("pose", "point")), 1)
+        if sc.get("big"):
+            new_marker = f'<div class="scene hook" data-s="{si}" data-hook="1" style="display:none">'
+            doc = doc.replace(marker, new_marker + hook_html(sc) + art_svg + draw_character(spec, sc.get("pose", "point")), 1)
+        else:
+            doc = doc.replace(marker, marker + art_svg + draw_character(spec, sc.get("pose", "point")), 1)
     return doc
 
 
 SEEK_JS = nb.SEEK_JS.rstrip()[:-1] + """
   const el = args[3], t = args[4];
+  const gt = document.querySelector('.paper > .title');
+  if (gt) gt.style.visibility = sc.dataset.hook ? 'hidden' : 'visible';
   sc.querySelectorAll('.pp').forEach((p, k) => {
     const f = Math.max(0, Math.min(1, (el - 0.25 - 0.32 * k) / 0.3));
     p.style.opacity = f;
@@ -832,7 +1020,7 @@ SEEK_JS = nb.SEEK_JS.rstrip()[:-1] + """
 
 
 def schedule(spec):
-    out, t = [], 0.4
+    out, t = [], (0.0 if spec["scenes"][0].get("big") else 0.4)
     base = nb.schedule(spec)
     for i, (s, te, me, e) in enumerate(base):
         dur = max(e - s, MIN_SCENE_S + (1.0 if i == len(base) - 1 else 0))
