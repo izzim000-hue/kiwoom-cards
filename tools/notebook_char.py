@@ -898,7 +898,154 @@ def char_pony(pose, cloth):
     return _wrap(pose, back, _body(cloth), head, cloth, SKIN)
 
 
-CHARACTERS = {"squirrel": char_squirrel, "owl": char_owl, "pony": char_pony}
+# ---------------------------------------------------------------- 귀여운 캐릭터 시안 (2026-11-13 2차)
+# 사용자 피드백 "무섭고 징그럽다" → 큰 머리·큰 눈(반짝임)·짧은 팔·부드러운 갈색 외곽선으로 다시 그림.
+SOFT = "#5C4A40"          # 검정 대신 부드러운 갈색 외곽선
+SW = 5
+
+
+def _ceyes(lx, rx, y, rx_=15, ry=19):
+    """큰 눈 + 반짝임 두 개. class="eyes" 는 깜빡임용."""
+    def one(x):
+        return (f'<ellipse cx="{x}" cy="{y}" rx="{rx_}" ry="{ry}" fill="#3B2C26"/>'
+                f'<circle cx="{x+5}" cy="{y-7}" r="{rx_*0.42:.1f}" fill="#fff"/>'
+                f'<circle cx="{x-5}" cy="{y+8}" r="{rx_*0.2:.1f}" fill="#fff" opacity=".9"/>')
+    return f'<g class="eyes">{one(lx)}{one(rx)}</g>'
+
+
+def _cmouth(pose, x=180, y=222):
+    return {
+        "point": f'<path d="M{x-10} {y} Q{x} {y+10} {x+10} {y}" stroke="{SOFT}" stroke-width="4.5" fill="none" stroke-linecap="round"/>',
+        "wave": f'<path d="M{x-11} {y} Q{x} {y+12} {x+11} {y}" stroke="{SOFT}" stroke-width="4.5" fill="none" stroke-linecap="round"/>',
+        "cheer": f'<path d="M{x-14} {y-3} Q{x} {y+22} {x+14} {y-3} Z" fill="#E8776A" stroke="{SOFT}" stroke-width="4" stroke-linejoin="round"/>',
+        "think": f'<ellipse cx="{x+4}" cy="{y+3}" rx="6" ry="5" fill="none" stroke="{SOFT}" stroke-width="4"/>',
+        "worry": f'<path d="M{x-10} {y+6} Q{x} {y-3} {x+10} {y+6}" stroke="{SOFT}" stroke-width="4.5" fill="none" stroke-linecap="round"/>',
+    }[pose]
+
+
+def _cbrows(pose, lx, rx, y):
+    if pose == "worry":
+        return (f'<path d="M{lx-12} {y+2} L{lx+10} {y-6}" stroke="{SOFT}" stroke-width="4" stroke-linecap="round"/>'
+                f'<path d="M{rx+12} {y+2} L{rx-10} {y-6}" stroke="{SOFT}" stroke-width="4" stroke-linecap="round"/>')
+    if pose == "think":
+        return f'<path d="M{rx-12} {y-6} Q{rx} {y-12} {rx+12} {y-6}" stroke="{SOFT}" stroke-width="4" fill="none" stroke-linecap="round"/>'
+    return ""
+
+
+def _cblush(lx, rx, y):
+    return (f'<ellipse cx="{lx}" cy="{y}" rx="17" ry="10" fill="#FF9F8F" opacity=".55"/>'
+            f'<ellipse cx="{rx}" cy="{y}" rx="17" ry="10" fill="#FF9F8F" opacity=".55"/>')
+
+
+def _cextra(pose):
+    return {
+        "think": f'<g fill="{SOFT}"><circle cx="300" cy="96" r="7"/><circle cx="318" cy="72" r="9"/><text x="324" y="52" font-size="54" font-weight="700" font-family="Hand">?</text></g>',
+        "worry": f'<path d="M298 112 Q288 132 298 142 Q308 132 298 112 Z" fill="#A8D4F2" stroke="{SOFT}" stroke-width="3.5"/>',
+        "cheer": (f'<g stroke="#F2B640" stroke-width="6" stroke-linecap="round"><path d="M316 196 l18 -10"/><path d="M322 236 l22 2"/><path d="M300 160 l8 -18"/></g>'),
+        "wave": f'<g stroke="{SOFT}" stroke-width="4.5" stroke-linecap="round" fill="none"><path d="M338 236 q10 14 0 28"/><path d="M352 228 q14 20 0 44"/></g>',
+        "point": "",
+    }[pose]
+
+
+def _cstub(x1, y1, x2, y2, cloth, skin):
+    """짧고 통통한 팔 (외곽선 + 옷) + 동그란 손."""
+    d = f"M{x1} {y1} L{x2} {y2}"
+    return (f'<path d="{d}" stroke="{SOFT}" stroke-width="36" stroke-linecap="round"/>'
+            f'<path d="{d}" stroke="{cloth}" stroke-width="26" stroke-linecap="round"/>'
+            f'<circle cx="{x2}" cy="{y2}" r="17" fill="{skin}" stroke="{SOFT}" stroke-width="{SW}"/>')
+
+
+# 오른팔(그림 쪽) 끝 위치. 어깨는 (236, 336).
+_CHAND = {"point": (306, 300), "think": (214, 296), "cheer": (296, 236), "worry": (282, 256), "wave": (306, 248)}
+
+
+def _cpointer(pose):
+    if pose != "point":
+        return ""
+    # 손에 든 짧은 지시봉(끝에 노란 별 대신 동그라미)
+    return (f'<path d="M318 290 L352 262" stroke="{SOFT}" stroke-width="9" stroke-linecap="round"/>'
+            f'<path d="M318 290 L352 262" stroke="#F2B640" stroke-width="4" stroke-linecap="round"/>'
+            f'<circle cx="356" cy="259" r="8" fill="#F2B640" stroke="{SOFT}" stroke-width="4"/>')
+
+
+def _cbody(cloth, collar):
+    return (f'<path d="M104 470 Q100 360 140 326 Q180 300 220 326 Q260 360 256 470 Z" fill="{cloth}" stroke="{SOFT}" stroke-width="{SW}" stroke-linejoin="round"/>'
+            f'<path d="M154 316 Q180 344 206 316" fill="{collar}" stroke="{SOFT}" stroke-width="4" stroke-linejoin="round"/>')
+
+
+def _cwrap(pose, back, body, head, cloth, skin, front=""):
+    hx, hy = _CHAND[pose]
+    left = _cstub(126, 340, 110, 410, cloth, skin)
+    right = _cstub(234, 340, hx, hy, cloth, skin)
+    return (f'<svg class="chr" viewBox="0 0 360 470" overflow="visible"><g class="bob">{back}{body}{left}'
+            f'<g class="head">{head}</g>{front}{right}{_cpointer(pose)}{_cextra(pose)}</g></svg>')
+
+
+def char_cutie(pose, cloth):
+    """A '똑똑 새싹이' — 2등신 단발 여성, 큰 눈 + 얇은 동그란 안경, 머리 위 새싹."""
+    hair, skin = "#6B4A3A", "#FFEFE2"
+    back = (f'<path d="M66 190 Q56 70 180 58 Q304 70 294 190 Q300 262 278 292 L82 292 Q60 262 66 190 Z" '
+            f'fill="{hair}" stroke="{SOFT}" stroke-width="{SW}" stroke-linejoin="round"/>')
+    head = (f'<path d="M180 66 L180 34" stroke="{SOFT}" stroke-width="5" stroke-linecap="round"/>'
+            f'<path d="M180 42 Q158 14 132 24 Q146 54 180 42 Z" fill="{LEAF}" stroke="{SOFT}" stroke-width="4.5" stroke-linejoin="round"/>'
+            f'<path d="M180 38 Q204 8 230 20 Q214 50 180 38 Z" fill="{LEAF}" stroke="{SOFT}" stroke-width="4.5" stroke-linejoin="round"/>'
+            f'<ellipse cx="180" cy="180" rx="104" ry="98" fill="{skin}" stroke="{SOFT}" stroke-width="{SW}"/>'
+            f'<path d="M76 178 Q74 78 180 70 Q286 78 284 178 Q270 124 236 108 Q214 140 174 132 Q190 120 186 104 Q150 134 104 130 Q86 148 76 178 Z" '
+            f'fill="{hair}" stroke="{SOFT}" stroke-width="4.5" stroke-linejoin="round"/>'
+            f'{_cbrows(pose, 140, 220, 146)}{_ceyes(140, 220, 184)}'
+            f'<circle cx="140" cy="184" r="31" fill="none" stroke="#B0805A" stroke-width="3.5"/>'
+            f'<circle cx="220" cy="184" r="31" fill="none" stroke="#B0805A" stroke-width="3.5"/>'
+            f'<path d="M171 182 Q180 176 189 182" fill="none" stroke="#B0805A" stroke-width="3.5"/>'
+            f'{_cblush(112, 248, 220)}{_cmouth(pose, 180, 232)}')
+    return _cwrap(pose, back, _cbody(cloth, "#fff"), head, cloth, skin)
+
+
+def char_bunny(pose, cloth):
+    """B '토끼 멘토 모모' — 긴 귀, 큰 눈, 나비넥타이, 귀에 꽂은 연필."""
+    fur, inner = "#FFFDF8", "#FFC9C2"
+    back = (f'<g transform="rotate(-8 140 90)"><ellipse cx="140" cy="40" rx="30" ry="78" fill="{fur}" stroke="{SOFT}" stroke-width="{SW}"/>'
+            f'<ellipse cx="140" cy="46" rx="14" ry="54" fill="{inner}"/></g>'
+            f'<g transform="rotate(14 220 90)"><ellipse cx="220" cy="40" rx="30" ry="78" fill="{fur}" stroke="{SOFT}" stroke-width="{SW}"/>'
+            f'<ellipse cx="220" cy="46" rx="14" ry="54" fill="{inner}"/></g>'
+            f'<g transform="translate(268 92) rotate(38)"><rect x="-6" y="-6" width="12" height="62" rx="3" fill="#F4CF4C" stroke="{SOFT}" stroke-width="3.5"/>'
+            f'<path d="M-6 56 L0 70 L6 56 Z" fill="#F0D6B0" stroke="{SOFT}" stroke-width="3.5" stroke-linejoin="round"/></g>')
+    head = (f'<ellipse cx="180" cy="186" rx="108" ry="96" fill="{fur}" stroke="{SOFT}" stroke-width="{SW}"/>'
+            f'{_cbrows(pose, 138, 222, 150)}{_ceyes(138, 222, 186, 16, 20)}'
+            f'<path d="M172 214 Q180 222 188 214 Q180 208 172 214 Z" fill="#E98C86"/>'
+            f'{_cblush(108, 252, 222)}{_cmouth(pose, 180, 232)}')
+    tie = (f'<path d="M180 330 L150 314 L150 346 Z" fill="#F2B640" stroke="{SOFT}" stroke-width="4" stroke-linejoin="round"/>'
+           f'<path d="M180 330 L210 314 L210 346 Z" fill="#F2B640" stroke="{SOFT}" stroke-width="4" stroke-linejoin="round"/>'
+           f'<circle cx="180" cy="330" r="8" fill="#D99A2B" stroke="{SOFT}" stroke-width="4"/>')
+    return _cwrap(pose, back, _cbody(cloth, fur), head, cloth, fur, front=tie)
+
+
+def char_bean(pose, cloth):
+    """C '콩이' — 동그란 새싹 콩 마스코트. 몸·머리가 하나, 작은 동그란 안경."""
+    bean, belly = "#BFE3A6", "#E6F5DA"
+    back = ""
+    body = (f'<path d="M180 470 Q70 470 66 330 Q60 150 180 96 Q300 150 294 330 Q290 470 180 470 Z" '
+            f'fill="{bean}" stroke="{SOFT}" stroke-width="{SW}" stroke-linejoin="round"/>'
+            f'<ellipse cx="180" cy="390" rx="76" ry="62" fill="{belly}"/>'
+            f'<g transform="translate(180 392)"><circle r="30" fill="#F6CF5A" stroke="{SOFT}" stroke-width="4"/>'
+            f'<text y="12" text-anchor="middle" font-size="34" font-weight="700" fill="{SOFT}" font-family="Hand">₩</text></g>')
+    head = (f'<path d="M180 100 L180 66" stroke="{SOFT}" stroke-width="5" stroke-linecap="round"/>'
+            f'<path d="M180 74 Q156 44 128 56 Q144 88 180 74 Z" fill="#7DBA5A" stroke="{SOFT}" stroke-width="4.5" stroke-linejoin="round"/>'
+            f'<path d="M180 70 Q206 38 234 52 Q216 84 180 70 Z" fill="#7DBA5A" stroke="{SOFT}" stroke-width="4.5" stroke-linejoin="round"/>'
+            f'{_cbrows(pose, 140, 220, 172)}{_ceyes(142, 218, 210, 15, 18)}'
+            f'<circle cx="142" cy="210" r="28" fill="none" stroke="{SOFT}" stroke-width="3.5"/>'
+            f'<circle cx="218" cy="210" r="28" fill="none" stroke="{SOFT}" stroke-width="3.5"/>'
+            f'<path d="M170 208 Q180 202 190 208" fill="none" stroke="{SOFT}" stroke-width="3.5"/>'
+            f'{_cblush(110, 250, 246)}{_cmouth(pose, 180, 258)}')
+    # 콩이는 옷이 없으니 팔도 몸 색
+    hx, hy = _CHAND[pose]
+    left = _cstub(100, 360, 84, 420, bean, bean)
+    right = _cstub(258, 350, hx + 8, hy + 10, bean, bean)
+    return (f'<svg class="chr" viewBox="0 0 360 470" overflow="visible"><g class="bob">{body}{left}'
+            f'<g class="head">{head}</g>{right}{_cpointer(pose)}{_cextra(pose)}</g></svg>')
+
+
+CHARACTERS = {"squirrel": char_squirrel, "owl": char_owl, "pony": char_pony,
+              "cutie": char_cutie, "bunny": char_bunny, "bean": char_bean}
 
 
 def theme_of(spec):
@@ -968,6 +1115,7 @@ EXTRA_CSS = """
 .art{position:absolute;left:{AX}px;top:{AY}px;width:{AW}px;height:{AH}px;overflow:visible}
 .chr{position:absolute;left:{CX}px;bottom:{CB}px;width:{CW}px;height:auto;overflow:visible}
 .pp{transform-box:fill-box;transform-origin:center;opacity:0}
+.eyes{transform-box:fill-box;transform-origin:center}
 .foot{left:auto;right:130px}
 """
 
@@ -1015,7 +1163,7 @@ SEEK_JS = nb.SEEK_JS.rstrip()[:-1] + """
   const bob = sc.querySelector('.bob');
   if (bob) bob.setAttribute('transform', 'translate(0 ' + (Math.sin(t * 2.6) * 5).toFixed(2) + ')');
   const eyes = sc.querySelector('.eyes');
-  if (eyes) { const ph = t % 3.4; eyes.setAttribute('transform', ph < 0.12 ? 'translate(0 152) scale(1 0.1)' : ''); }
+  if (eyes) { const ph = t % 3.4; eyes.style.transform = ph < 0.12 ? 'scaleY(0.1)' : ''; }
 }"""
 
 
