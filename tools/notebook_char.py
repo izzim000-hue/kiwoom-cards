@@ -1063,12 +1063,29 @@ SEEK_JS = nb.SEEK_JS.rstrip()[:-1] + """
 
 
 def schedule(spec):
+    if spec.get("timing"):
+        return _timed_schedule(spec)
     out, t = [], (0.0 if spec["scenes"][0].get("big") else 0.4)
     base = nb.schedule(spec)
     for i, (s, te, me, e) in enumerate(base):
         dur = max(e - s, MIN_SCENE_S + (1.0 if i == len(base) - 1 else 0))
         out.append((t, t + (te - s), t + (me - s), t + dur))
         t = t + dur + nb.GAP_S
+    return out
+
+
+def _timed_schedule(spec):
+    """녹음에 맞춘 장면 시간. spec["timing"] = [[시작, 끝], ...] (초, 영상 기준). 타이핑은 시작부터 같은 속도."""
+    tm = spec["timing"]
+    if len(tm) != len(spec["scenes"]):
+        raise nb.SpecError("timing 개수가 장면 수와 다릅니다")
+    out = []
+    for sc, (s, e) in zip(spec["scenes"], tm):
+        n = sum(nb._chars(l) for l in sc["lines"])
+        marks = sum(len(nb.TOKEN_RE.findall(l)) for l in sc["lines"])
+        te = min(s + n / nb.TYPE_CPS, e - 0.2)
+        me = min(te + (nb.MARK_S + 0.1) * marks, e - 0.05)
+        out.append((s, te, me, e))
     return out
 
 
