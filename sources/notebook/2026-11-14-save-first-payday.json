@@ -1,11 +1,66 @@
-{"series": "키움멘토 돈 노트", "title": "월급이 순삭되던 나",
+{
+ "series": "키움멘토 돈 노트",
+ "title": "월급이 순삭되던 나",
  "foot": "일반 정보 · 개인 상황에 따라 다름",
  "scenes": [
-  {"big": "월급이|==순삭==", "bigsub": "통장 열어 보기 무섭죠?", "lines": ["월급날엔 든든했는데", "며칠 뒤엔 ((텅))"], "pose": "worry", "art": "payday_empty"},
-  {"lines": ["남으면 저축하려 했는데", "==늘 안 남았어요=="], "pose": "think", "art": "leftover_zero"},
-  {"lines": ["그래서 순서를 바꿨어요", "++저축 먼저, 생활은 나중++"], "pose": "point", "art": "save_first"},
-  {"lines": ["저축 이체를 월급날", "((당일))로 옮겼어요"], "pose": "point", "art": "payday_auto"},
-  {"lines": ["남은 돈 안에서", "==생활비를 맞췄어요=="], "pose": "point", "art": "live_within", "foot": true},
-  {"lines": ["어느새 통장에", "++쌓이는 게 보여요++"], "pose": "cheer", "art": "save_jar"},
-  {"lines": ["오늘 내 저축 이체", "((날짜))부터 확인해요"], "pose": "wave", "art": "transfer_date_app"}
- ]}
+  {
+   "big": "월급이|==순삭==",
+   "bigsub": "통장 열어 보기 무섭죠?",
+   "lines": [
+    "월급날엔 든든했는데",
+    "며칠 뒤엔 ((텅))이더라고요"
+   ],
+   "pose": "worry",
+   "art": "payday_empty"
+  },
+  {
+   "lines": [
+    "남으면 저축하려 했는데",
+    "==늘 안 남더라고요=="
+   ],
+   "pose": "think",
+   "art": "leftover_zero"
+  },
+  {
+   "lines": [
+    "그래서 순서를 바꿔 봤어요",
+    "++저축 먼저, 생활은 나중++"
+   ],
+   "pose": "point",
+   "art": "save_first"
+  },
+  {
+   "lines": [
+    "저축 이체를 월급날",
+    "((당일))로 옮겨 봤어요"
+   ],
+   "pose": "point",
+   "art": "payday_auto"
+  },
+  {
+   "lines": [
+    "남은 돈 안에서",
+    "==살림을 맞춰 가요=="
+   ],
+   "pose": "point",
+   "art": "live_within",
+   "foot": true
+  },
+  {
+   "lines": [
+    "어느새 통장에",
+    "++조금씩 쌓이더라고요++"
+   ],
+   "pose": "cheer",
+   "art": "save_jar"
+  },
+  {
+   "lines": [
+    "내 저축 이체 날짜,",
+    "((한 번)) 같이 볼까요?"
+   ],
+   "pose": "wave",
+   "art": "transfer_date_app"
+  }
+ ]
+}
