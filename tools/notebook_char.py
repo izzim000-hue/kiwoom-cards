@@ -1022,9 +1022,7 @@ def draw_character(spec, pose):
     kind = spec.get("character", "sprout")
     pose = pose if pose in ARMS else "point"
     if kind == "sprout":
-        svg = character(pose)
-        th = theme_of(spec)
-        return svg.replace(GREEN, th["accent"])
+        return character(pose)  # 새싹 멘토는 딥그린 카디건 그대로
     if kind not in CHARACTERS:
         raise nb.SpecError(f"캐릭터 '{kind}' 가 없습니다. 쓸 수 있는 캐릭터: sprout, {', '.join(CHARACTERS)}")
     return CHARACTERS[kind](pose, theme_of(spec)["accent"])
