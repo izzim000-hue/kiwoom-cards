@@ -1,0 +1,12 @@
+{"series": "키움멘토 상담 노트", "title": "꼬리표 없는 통장", "theme": "sky",
+ "foot": "실제 상담을 바탕으로 재구성 · 개인 정보는 바꿨어요",
+ "scenes": [
+  {"lines": ["상담에서 통장을 펼쳐 보니", "((세 개))가 있더라고요"], "pose": "think", "art": "three_books", "foot": true},
+  {"lines": ["좋다는 적금, 해야 한다는 청약,", "==누가 권한 것== 하나"], "pose": "worry", "art": "others_talk"},
+  {"lines": ["돈에 ((꼬리표))가 없으니", "만기 뒤 ==다음이 없더라고요=="], "pose": "think", "art": "no_tag"},
+  {"lines": ["결국 모아도", "++쓰려고 모으는++ 습관이었어요"], "pose": "worry", "art": "spend_loop"},
+  {"lines": ["그래서 할 일 딱 하나,", "==쓰는 통장==부터 나눠 드렸어요"], "pose": "point", "art": "split_two", "foot": "생활비 통장 예: 증권사 CMA · 특정 상품 권유 아님"},
+  {"lines": ["모으는 돈에는", "((내 목표)) 꼬리표를 달고요"], "pose": "point", "art": "goal_tags"},
+  {"lines": ["내 이야기에 맞는 계획을", "++하나씩++ 만드는 게 ==재무설계=="], "pose": "cheer", "art": "goal_steps"},
+  {"lines": ["내 통장에는", "((꼬리표)) 붙어 있나요?"], "pose": "wave", "art": "tag_today"}
+ ]}
