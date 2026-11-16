@@ -1084,9 +1084,33 @@ BOARD_VARIANT = {
              ".art{filter:invert(1) hue-rotate(180deg) brightness(1.05);mix-blend-mode:screen}"
              ".big .hl{background:linear-gradient(transparent 80%, var(--bacc) 80%, var(--bacc) 92%, transparent 92%)}"
              ".mk::before{top:84%!important;bottom:-4%!important;border-radius:3px}",
+    # 기록(2026-11-16 사용자: "키보드로 딱 기록해서 저장해서 봉인, 목표를 세워서 강한 느낌"):
+    # 어두운 편집기 화면, 커서와 함께 타이핑, 핵심은 선택 블록, 마지막 장면에 '봉인' 도장.
+    "record": ".paper{background:#121417!important;border:2px solid #2B3038;box-sizing:border-box;border-radius:16px}"
+              ".paper::before{content:'';position:absolute;left:0;right:0;top:0;height:{BAR}px;background:#1B1F25;border-bottom:2px solid #2B3038}"
+              ":root{--bink:#F1F1EE;--bsub:#8C939C}"
+              ".series{top:{BARY}px;font:700 26px NotoB;letter-spacing:3px;color:var(--bsub)}"
+              ".series::before{content:'';display:inline-block;width:16px;height:16px;border-radius:50%;background:#E5484D;margin-right:14px;vertical-align:1px}"
+              ".step{top:{BARY}px;color:var(--bacc)}"
+              ".title{border-bottom:none;padding-bottom:0;color:var(--bsub);font-size:{BTF2}px}"
+              ".title::before{content:'# ';color:var(--bacc)}"
+              ".body{border-left:6px solid var(--bacc);padding-left:30px;left:104px}"
+              ".mk::before{top:4%!important;bottom:0!important;left:-4px!important;right:-4px!important;border-radius:4px;background:var(--bacc)!important}"
+              ".mk>span{color:#111}"
+              ".ci ellipse{stroke:var(--bacc)}"
+              ".c.cur::after{content:'';display:inline-block;width:.46em;height:.95em;background:var(--bacc);vertical-align:-.1em;margin-left:6px}"
+              "body.off .c.cur::after{opacity:0}"
+              ".art{filter:invert(1) hue-rotate(180deg) brightness(1.05);mix-blend-mode:screen}"
+              ".big{text-align:left;left:110px}.big small{color:var(--bsub)}"
+              ".big .hl{background:var(--bacc);color:#111;padding:0 14px;border-radius:6px}"
+              ".scene.hook .body{text-align:left;left:104px}"
+              ".seal{position:absolute;right:96px;bottom:{SEALB}px;border:8px solid var(--bacc);color:var(--bacc);padding:10px 34px 14px;"
+              "border-radius:12px;text-align:center;font:900 72px/1.1 NotoK;letter-spacing:8px;opacity:var(--p,0);"
+              "transform:rotate(-8deg) scale(calc(1.6 - .6 * var(--p,0)))}"
+              ".seal small{display:block;font:700 24px NotoB;letter-spacing:3px}",
 }
-BOARD_LAYOUT = {"reel": dict(BSY=110, BTY=170, BTF=50, BBY=330, BBF=70, HS2=48, HBF2=60),
-                "card": dict(BSY=90, BTY=140, BTF=50, BBY=270, BBF=56, HS2=40, HBF2=50)}
+BOARD_LAYOUT = {"reel": dict(BSY=110, BTY=170, BTF=50, BBY=330, BBF=70, HS2=48, HBF2=60, BAR=92, BARY=26, BTF2=40, SEALB=170),
+                "card": dict(BSY=90, BTY=140, BTF=50, BBY=270, BBF=56, HS2=40, HBF2=50, BAR=80, BARY=22, BTF2=36, SEALB=110)}
 
 
 def board_css(spec, mode):
@@ -1095,11 +1119,12 @@ def board_css(spec, mode):
         raise nb.SpecError(f"스타일 '{style}' 이 없습니다. 쓸 수 있는 스타일: notebook, {', '.join(BOARD_VARIANT)}")
     th = theme_of(spec)
     css = BOARD_CSS.replace("{FONTS}", nb.constants.FONTS_DIR.resolve().as_uri())
+    css += BOARD_VARIANT[style]
     for k, v in BOARD_LAYOUT[mode].items():
         css = css.replace("{" + k + "}", str(v))
     hl = BOARD_HL.get(spec.get("theme"), "rgba(255,225,77,.6)")
     acc = th["accent"] if style == "whiteboard" else ("#F5CB4E" if spec.get("theme") == "butter" else "#9FD0F0")
-    return css + BOARD_VARIANT[style] + f":root{{--yel:{hl};--bacc:{acc}}}"
+    return css + f":root{{--yel:{hl};--bacc:{acc}}}"
 
 
 def is_board(spec):
@@ -1182,6 +1207,9 @@ def page_html(spec, mode):
         marker = f'<div class="scene" data-s="{si}" style="display:none">'
         if is_board(spec) and not sc.get("big"):
             art_svg = f'<div class="step"><b>{si + 1:02d}</b> / {len(spec["scenes"]):02d}</div>' + art_svg
+            if spec.get("style") == "record" and si == len(spec["scenes"]) - 1:
+                seal = html.escape(spec.get("seal", "SEALED"))
+                art_svg += f'<div class="seal">{seal}<small>기록 · 저장 · 봉인</small></div>'
         if sc.get("big"):
             new_marker = f'<div class="scene hook" data-s="{si}" data-hook="1" style="display:none">'
             doc = doc.replace(marker, new_marker + hook_html(sc) + art_svg + draw_character(spec, sc.get("pose", "point")), 1)
@@ -1192,6 +1220,13 @@ def page_html(spec, mode):
 
 SEEK_JS = nb.SEEK_JS.rstrip()[:-1] + """
   const el = args[3], t = args[4];
+  const cs = [...sc.querySelectorAll('.body .c')];
+  cs.forEach(c => c.classList.remove('cur'));
+  const onc = cs.filter(c => c.classList.contains('on'));
+  if (onc.length) onc[onc.length - 1].classList.add('cur');
+  document.body.classList.toggle('off', onc.length >= cs.length && (t % 1) >= 0.65);
+  const nm = sc.querySelectorAll('.mk, .ci').length;
+  sc.querySelectorAll('.seal').forEach(e => e.style.setProperty('--p', Math.max(0, Math.min(1, (markP - nm) / 0.6))));
   const gt = document.querySelector('.paper > .title');
   if (gt) gt.style.visibility = sc.dataset.hook ? 'hidden' : 'visible';
   sc.querySelectorAll('.pp').forEach((p, k) => {
