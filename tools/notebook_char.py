@@ -902,6 +902,7 @@ ART = {
 
 # ---------------------------------------------------------------- 색감 · 캐릭터 시안 (2026-11-13)
 # 원고에 "theme" 과 "character" 를 넣으면 바꿔 그린다. 없으면 지금까지와 같다(green / sprout).
+# 2026-11-16부터 기본 운영은 "character": "none" (캐릭터 없이 전문가 톤, 그림은 가운데).
 THEMES = {
     "green":    dict(bg="#1F3A2D", paper="#FBF8F1", rule="#C9D1DD", accent=GREEN, hl2="rgba(182,240,156,.85)", ring="#3d3d3d", label="딥그린"),
     "butter":   dict(bg="#F5CB4E", paper="#FFFEF8", rule="#EDE3C6", accent="#34507A", hl2="rgba(150,200,255,.7)", ring="#4a4a4a", label="버터 옐로"),
@@ -1032,6 +1033,8 @@ def theme_of(spec):
 
 def draw_character(spec, pose):
     kind = spec.get("character", "sprout")
+    if kind == "none":
+        return ""  # 2026-11-16 사용자: 캐릭터 빼고 전문가답게
     pose = pose if pose in ARMS else "point"
     if kind == "sprout":
         return character(pose)  # 새싹 멘토는 딥그린 카디건 그대로
@@ -1106,6 +1109,9 @@ def page_html(spec, mode):
     hook_css = HOOK_CSS
     for k, v in HOOK_LAYOUT[mode].items():
         hook_css = hook_css.replace("{" + k + "}", str(v))
+    if spec.get("character") == "none":
+        # 캐릭터 자리가 비므로 그림을 가운데로 옮기고 쪽번호도 가운데로 둔다.
+        css += f".art{{left:{(1080 - L['AW']) // 2}px}}.foot{{right:auto;left:0;width:1080px;text-align:center}}"
     doc = doc.replace("</style>", css + hook_css + theme_css(spec) + "</style>")
     # 장면마다 그림·캐릭터를 끼워 넣는다 (장면 div 의 끝 바로 앞).
     for si, sc in enumerate(spec["scenes"]):
