@@ -1,0 +1,198 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+  html,body{margin:0;padding:0;background:#111;}
+  #stage{position:relative;width:1080px;height:1920px;overflow:hidden;background:#e9e0d1;}
+  #cam{position:absolute;inset:0;transform-origin:50% 50%;}
+  .abs{position:absolute;}
+  .paper{background:#fbf8f2;border-radius:6px;box-shadow:0 18px 40px rgba(60,45,30,.22),0 2px 6px rgba(60,45,30,.18);}
+  .bar{position:absolute;height:14px;border-radius:7px;background:#cfc6b8;filter:blur(1.2px);}
+  #grain{position:absolute;inset:0;pointer-events:none;opacity:.07;mix-blend-mode:multiply;}
+  #vig{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 45%,rgba(0,0,0,0) 55%,rgba(30,22,12,.38) 100%);}
+  #light{position:absolute;inset:0;pointer-events:none;mix-blend-mode:soft-light;}
+</style></head>
+<body>
+<div id="stage">
+  <div id="cam"></div>
+  <div id="light"></div>
+  <svg id="grain" width="1080" height="1920"><filter id="n"><feTurbulence id="turb" type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="1"/></filter><rect width="100%" height="100%" filter="url(#n)"/></svg>
+  <div id="vig"></div>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+const cam=$('#cam'), light=$('#light');
+const clamp=(x,a=0,b=1)=>Math.min(b,Math.max(a,x));
+const ease=x=>{x=clamp(x);return x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;};
+const easeOut=x=>1-Math.pow(1-clamp(x),3);
+const prog=(t,a,b)=>clamp((t-a)/(b-a));
+const lerp=(a,b,x)=>a+(b-a)*x;
+// 손으로 든 카메라 같은 아주 작은 흔들림
+const wobble=t=>`translate(${(Math.sin(t*1.3)*4+Math.sin(t*2.9)*2).toFixed(2)}px,${(Math.cos(t*1.1)*3+Math.sin(t*2.3)*2).toFixed(2)}px) rotate(${(Math.sin(t*.9)*.25).toFixed(3)}deg)`;
+function bars(n,w0,gap,top,left,col){let h='';for(let i=0;i<n;i++){const w=w0*(0.55+0.45*Math.abs(Math.sin(i*2.7+1)));h+=`<div class="bar" style="top:${top+i*gap}px;left:${left}px;width:${w}px;${col?'background:'+col:''}"></div>`;}return h;}
+
+const SCENES={};
+
+/* 1. 퇴근 후 저녁, 뒷모습으로 휴대폰 잔액을 보는 사람 */
+SCENES[1]={dur:4.0,build(){cam.innerHTML=`
+  <div class="abs" style="inset:0;background:linear-gradient(#2c2a2b,#4a4038 55%,#6a5847)"></div>
+  <div class="abs" style="left:90px;top:160px;width:900px;height:900px;border-radius:8px;background:linear-gradient(#1d2733,#3b3f4a);box-shadow:inset 0 0 0 22px #5b4c3e"></div>
+  <div id="cityl" class="abs" style="left:112px;top:182px;width:856px;height:856px;overflow:hidden;filter:blur(7px)"></div>
+  <div class="abs" style="left:760px;top:980px;width:420px;height:420px;border-radius:50%;background:radial-gradient(rgba(255,206,140,.55),rgba(255,206,140,0) 70%)"></div>
+  <div class="abs" style="left:0;top:1350px;width:1080px;height:600px;background:linear-gradient(#5e4c3c,#3f3228);border-radius:60px 60px 0 0"></div>
+  <div class="abs" style="left:150px;top:1290px;width:220px;height:170px;border-radius:40px;background:#2F4F3E;opacity:.9"></div>
+  <div id="person" class="abs" style="left:250px;top:880px;width:600px;height:1100px">
+    <div class="abs" style="left:150px;top:310px;width:300px;height:180px;background:#c9a98c;border-radius:30px"></div>
+    <div class="abs" style="left:-40px;top:420px;width:680px;height:800px;border-radius:260px 260px 40px 40px;background:linear-gradient(#7d8a7f,#5d6b61)"></div>
+    <div class="abs" style="left:120px;top:20px;width:360px;height:420px;border-radius:48% 48% 44% 44%;background:radial-gradient(circle at 40% 30%,#3a2e29,#1b1513 70%)"></div>
+  </div>
+  <div id="phoneWrap" class="abs" style="left:735px;top:1060px;width:230px;height:410px">
+    <div class="abs" style="inset:0;border-radius:34px;background:#141414;box-shadow:0 0 80px rgba(170,210,255,.35)"></div>
+    <div class="abs" style="left:12px;top:14px;width:236px;height:432px;border-radius:26px;background:linear-gradient(#f4f6f4,#e4ece6);overflow:hidden;filter:blur(2.2px)">
+      <div class="abs" style="left:24px;top:40px;width:90px;height:16px;border-radius:8px;background:#9db3a5"></div>
+      <div class="abs" style="left:24px;top:90px;width:180px;height:40px;border-radius:10px;background:#2F4F3E"></div>
+      ${bars(6,170,40,170,24,'#c8d2cb')}
+    </div>
+    <div class="abs" style="left:150px;top:300px;width:170px;height:200px;border-radius:70px 70px 60px 60px;background:#c9a98c;transform:rotate(-12deg)"></div>
+  </div>`;
+  let h='';for(let i=0;i<70;i++){const x=(i*137)%856,y=420+((i*251)%420),c=i%3?'#ffd59a':'#cfe3ff';h+=`<div class="abs" style="left:${x}px;top:${y}px;width:${10+i%4*6}px;height:${10+i%4*6}px;border-radius:50%;background:${c};opacity:${.35+(i%5)*.12}"></div>`;}
+  $('#cityl').innerHTML=h;
+  light.style.background='radial-gradient(circle at 75% 60%,rgba(255,200,130,.5),rgba(0,0,0,0) 55%)';
+ },
+ render(t){const p=ease(t/4.0);cam.style.transform=`${wobble(t)} translate(${lerp(0,-120,p)}px,${lerp(0,-60,p)}px) scale(${lerp(1.0,1.14,p)})`;
+  const low=ease(prog(t,2.3,3.4));$('#phoneWrap').style.transform=`translateY(${low*70}px) rotate(${low*-4}deg)`;
+  $('#person').style.transform=`rotate(${low*-1.5}deg)`;}};
+
+/* 2. 식탁 위 휴대폰 알림과 영수증 */
+SCENES[2]={dur:4.5,build(){cam.innerHTML=`
+  <div class="abs" style="inset:-200px;background:repeating-linear-gradient(90deg,#c9a57e 0 180px,#c19c74 180px 182px,#cda983 182px 360px)"></div>
+  <div class="abs" style="inset:-200px;background:linear-gradient(115deg,rgba(255,240,215,.35),rgba(0,0,0,.08))"></div>
+  <div id="r1" class="abs paper" style="left:80px;top:300px;width:260px;height:520px">${bars(10,180,44,60,40)}</div>
+  <div id="r2" class="abs paper" style="left:720px;top:1180px;width:250px;height:470px">${bars(9,170,44,50,40)}</div>
+  <div id="r3" class="abs paper" style="left:120px;top:1300px;width:230px;height:380px">${bars(7,150,44,50,36)}</div>
+  <div class="abs" style="left:760px;top:330px;width:230px;height:230px;border-radius:50%;background:#f2ede4;box-shadow:0 20px 40px rgba(60,40,20,.25)"><div class="abs" style="left:28px;top:28px;width:174px;height:174px;border-radius:50%;background:radial-gradient(#b98a52,#8b5f30)"></div></div>
+  <div id="steam" class="abs" style="left:800px;top:120px;width:150px;height:240px;opacity:.35;filter:blur(10px)"></div>
+  <div id="phone2" class="abs" style="left:330px;top:560px;width:420px;height:820px;border-radius:52px;background:#151515;box-shadow:0 40px 70px rgba(40,25,10,.35)">
+    <div class="abs" style="left:18px;top:20px;width:384px;height:780px;border-radius:40px;background:linear-gradient(#e9eee9,#dfe6e0);overflow:hidden">
+      <div id="notes" class="abs" style="left:0;top:0;width:384px;height:780px"></div>
+    </div>
+  </div>`;
+  let n='';for(let i=0;i<3;i++){n+=`<div id="n${i}" class="abs" style="left:20px;top:${70+i*150}px;width:344px;height:126px;border-radius:24px;background:rgba(255,255,255,.92);box-shadow:0 6px 16px rgba(0,0,0,.1)"><div class="abs" style="left:20px;top:28px;width:70px;height:70px;border-radius:18px;background:${['#2F4F3E','#8a9b8f','#b48d5c'][i]}"></div><div class="abs" style="left:110px;top:34px;width:150px;height:16px;border-radius:8px;background:#9aa49d;filter:blur(1.5px)"></div><div class="abs" style="left:110px;top:70px;width:${200-i*30}px;height:16px;border-radius:8px;background:#c6cdc8;filter:blur(1.5px)"></div></div>`;}
+  $('#notes').innerHTML=n+`<div class="abs" style="left:20px;top:540px;width:344px;height:200px;filter:blur(2px)">${bars(4,300,46,0,0,'#c3ccc5')}</div>`;
+  light.style.background='linear-gradient(120deg,rgba(255,230,190,.55),rgba(0,0,0,0) 60%)';},
+ render(t){const p=ease(t/4.5);cam.style.transform=`${wobble(t)} translate(${lerp(40,-50,p)}px,0) scale(1.08)`;
+  for(let i=0;i<3;i++){const q=easeOut(prog(t,0.3+i*1.0,0.9+i*1.0));$('#n'+i).style.transform=`translateY(${(1-q)*-180}px)`;$('#n'+i).style.opacity=q;}
+  const r=[['#r1',-14,-260,0.2],['#r2',9,300,0.9],['#r3',-6,-300,1.6]];
+  r.forEach(([id,rot,dx,st])=>{const q=easeOut(prog(t,st,st+1.1));$(id).style.transform=`translateX(${(1-q)*dx}px) rotate(${rot+(1-q)*rot}deg)`;});
+  $('#steam').innerHTML=[0,1,2].map(k=>`<div class="abs" style="left:${40+k*30+Math.sin(t*2+k)*14}px;top:${60-((t*40+k*60)%120)}px;width:40px;height:120px;border-radius:20px;background:#fff"></div>`).join('');}};
+
+/* 3. 위에서 본 가계부, 천천히 넘어가는 페이지 */
+SCENES[3]={dur:4.5,build(){cam.innerHTML=`
+  <div class="abs" style="inset:-200px;background:repeating-linear-gradient(90deg,#c39e77 0 200px,#bb966e 200px 202px,#c7a37c 202px 400px)"></div>
+  <div class="abs" style="left:110px;top:430px;width:860px;height:1060px;border-radius:14px;background:#2F4F3E;box-shadow:0 40px 80px rgba(40,25,10,.35)"></div>
+  <div id="book" class="abs" style="left:130px;top:450px;width:820px;height:1020px;perspective:2400px">
+    <div class="abs paper" style="left:0;top:0;width:410px;height:1020px;border-radius:8px 0 0 8px;background:linear-gradient(90deg,#fbf8f1 85%,#e8e1d4)">${lines(20,'#d9cfbf')}${scr(9,60)}</div>
+    <div class="abs paper" style="left:410px;top:0;width:410px;height:1020px;border-radius:0 8px 8px 0;background:linear-gradient(90deg,#e8e1d4,#fbf8f1 15%)">${lines(20,'#d9cfbf')}${scr(5,80)}</div>
+    <div id="page" class="abs" style="left:410px;top:0;width:410px;height:1020px;transform-origin:0 50%;transform-style:preserve-3d">
+      <div class="abs paper" style="inset:0;border-radius:0 8px 8px 0;backface-visibility:hidden;background:linear-gradient(90deg,#e8e1d4,#fbf8f1 15%)">${lines(20,'#d9cfbf')}${scr(11,60)}</div>
+      <div class="abs paper" style="inset:0;border-radius:8px 0 0 8px;backface-visibility:hidden;transform:rotateY(180deg);background:linear-gradient(90deg,#fbf8f1 85%,#e8e1d4)">${lines(20,'#d9cfbf')}</div>
+    </div>
+  </div>
+  <div id="pen3" class="abs" style="left:700px;top:1540px;width:360px;height:26px;border-radius:13px;background:linear-gradient(#2c3a33,#1b2620);transform:rotate(-24deg);box-shadow:0 14px 20px rgba(30,20,10,.3)"></div>
+  <div class="abs paper" style="left:-40px;top:180px;width:300px;height:200px;transform:rotate(-8deg)">${bars(3,200,48,40,30)}</div>`;
+  light.style.background='linear-gradient(160deg,rgba(255,236,200,.6),rgba(0,0,0,0) 65%)';},
+ render(t){const p=ease(t/4.5);cam.style.transform=`${wobble(t)} translateY(${lerp(-40,40,p)}px) scale(${lerp(1.04,1.12,p)})`;
+  const q=ease(prog(t,0.9,2.6));$('#page').style.transform=`rotateY(${-178*q}deg)`;
+  $('#pen3').style.transform=`rotate(${-24+ease(prog(t,2.8,3.8))*6}deg) translateX(${-ease(prog(t,2.8,3.8))*40}px)`;}};
+function lines(n,c){let h='';for(let i=0;i<n;i++)h+=`<div class="abs" style="left:30px;right:30px;top:${80+i*46}px;height:2px;background:${c}"></div>`;return h;}
+function scr(n,l){let h='';for(let i=0;i<n;i++){const w=120+((i*73)%170);h+=`<div class="abs" style="left:${l}px;top:${100+i*92}px;width:${w}px;height:12px;border-radius:6px;background:#8f8a80;filter:blur(1.8px);opacity:.7"></div>`;}return h;}
+
+/* 4. 정돈된 책상, 빈 서류가 펼쳐짐 */
+SCENES[4]={dur:5.0,build(){cam.innerHTML=`
+  <div class="abs" style="inset:-200px;background:#d9c7ad"></div>
+  <div id="blinds" class="abs" style="inset:-300px;background:repeating-linear-gradient(-28deg,rgba(255,244,222,.55) 0 70px,rgba(0,0,0,0) 70px 150px);filter:blur(10px)"></div>
+  <div class="abs" style="left:-80px;top:120px;width:380px;height:420px;filter:blur(1px)">${leaves()}</div>
+  ${[0,1,2,3].map(i=>`<div id="d${i}" class="abs paper" style="left:300px;top:640px;width:500px;height:680px">${bars(8,330,58,90,60)}<div class="abs" style="left:60px;top:40px;width:140px;height:18px;border-radius:9px;background:#2F4F3E;opacity:.8"></div></div>`).join('')}
+  <div id="nb4" class="abs" style="left:560px;top:1320px;width:420px;height:520px;border-radius:12px;background:#2F4F3E;box-shadow:0 30px 50px rgba(40,25,10,.3);transform-origin:0 50%"></div>
+  <div class="abs" style="left:120px;top:1520px;width:300px;height:22px;border-radius:11px;background:#b08a4c;transform:rotate(18deg);box-shadow:0 12px 18px rgba(30,20,10,.3)"></div>`;
+  light.style.background='linear-gradient(200deg,rgba(255,236,200,.55),rgba(0,0,0,0) 60%)';},
+ render(t){const p=ease(t/5.0);cam.style.transform=`${wobble(t)} scale(${lerp(1.0,1.13,p)}) translateY(${lerp(0,-30,p)}px)`;
+  $('#blinds').style.transform=`translateX(${t*10}px)`;
+  const pos=[[-250,-330,-9],[250,-300,7],[-230,330,-4],[240,320,6]];
+  pos.forEach(([x,y,r],i)=>{const q=ease(prog(t,0.3+i*0.55,1.4+i*0.55));$('#d'+i).style.transform=`translate(${x*q*0.62}px,${y*q*0.6}px) rotate(${r*q}deg) scale(${lerp(1,0.6,q)})`;});
+  const o=ease(prog(t,2.9,4.2));$('#nb4').style.transform=`translateX(${-o*80}px) rotate(${-6+o*4}deg)`;}};
+function leaves(){let h='';for(let i=0;i<9;i++){h+=`<div class="abs" style="left:${60+(i*53)%240}px;top:${(i*71)%330}px;width:140px;height:70px;border-radius:70px 0;background:${i%2?'#3f6b52':'#2F4F3E'};transform:rotate(${i*40}deg)"></div>`;}return h;}
+
+/* 5. 노트북과 메모하는 펜 (초점이 펜 → 노트북으로) */
+SCENES[5]={dur:5.5,build(){cam.innerHTML=`
+  <div class="abs" style="inset:-200px;background:linear-gradient(#e8dccb,#d6c3a6)"></div>
+  <div id="lap" class="abs" style="left:150px;top:260px;width:780px;height:640px">
+    <div class="abs" style="left:0;top:0;width:780px;height:520px;border-radius:24px;background:#2a2d2b;box-shadow:0 30px 60px rgba(40,25,10,.3)"></div>
+    <div id="screen" class="abs" style="left:26px;top:26px;width:728px;height:468px;border-radius:12px;background:#f3f1ec;overflow:hidden">
+      <div class="abs" style="left:40px;top:40px;width:200px;height:20px;border-radius:10px;background:#2F4F3E;opacity:.8"></div>
+      ${[0,1,2,3,4].map(i=>`<div class="abs" style="left:40px;top:${110+i*66}px;width:120px;height:14px;border-radius:7px;background:#b9b4aa"></div><div id="lb${i}" class="abs" style="left:190px;top:${104+i*66}px;height:26px;border-radius:6px;background:${i%2?'#9fb5a6':'#2F4F3E'}"></div>`).join('')}
+    </div>
+    <div class="abs" style="left:-40px;top:520px;width:860px;height:60px;border-radius:0 0 30px 30px;background:linear-gradient(#bdbdb8,#8e8e89)"></div>
+  </div>
+  <div class="abs paper" style="left:190px;top:1000px;width:700px;height:820px;transform:rotate(-3deg)">
+    ${lines(15,'#e3dacb')}
+    <svg class="abs" style="left:0;top:0" width="700" height="820"><g fill="none" stroke="#2f3a34" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" style="filter:blur(.6px)">
+      <path id="w0" d="M70 150 c20-30 40 30 60 0 s40-30 60 0 30 20 50-10 40 25 60 0 s30-20 50 5 40-15 60 0"/>
+      <path id="w1" d="M70 290 c25-25 35 25 55 0 s35-30 55 0 35 25 55-10 30 20 50 0 s35-20 55 5"/>
+      <path id="w2" d="M70 430 c20-30 40 30 60 0 s40-30 60 0 30 20 50-10 40 25 60 0 s30-20 50 5 40-15 60 0 s30 20 50 0"/>
+    </g></svg>
+  </div>
+  <div id="pen5" class="abs" style="left:0;top:0;width:34px;height:420px;border-radius:17px;background:linear-gradient(90deg,#1e2a24,#3a4a42 40%,#1e2a24);transform-origin:50% 100%;box-shadow:20px 20px 30px rgba(30,20,10,.25)"><div class="abs" style="left:9px;bottom:-26px;width:16px;height:30px;background:#b08a4c;clip-path:polygon(0 0,100% 0,50% 100%)"></div></div>`;
+  ['w0','w1','w2'].forEach(id=>{const p=$('#'+id);const L=p.getTotalLength();p.style.strokeDasharray=L;p.dataset.len=L;});
+  light.style.background='linear-gradient(90deg,rgba(255,236,200,.5),rgba(0,0,0,0) 55%)';},
+ render(t){const p=ease(t/5.5);cam.style.transform=`${wobble(t)} scale(${lerp(1.12,1.04,p)}) translateY(${lerp(-60,40,p)}px)`;
+  const f=ease(prog(t,3.0,4.2));
+  $('#lap').style.filter=`blur(${lerp(9,0,f)}px)`;
+  [0,1,2,3,4].forEach(i=>{$('#lb'+i).style.width=(easeOut(prog(t,3.2+i*0.12,4.4+i*0.12))*[380,260,320,200,300][i])+'px';});
+  let tip=null;['w0','w1','w2'].forEach((id,i)=>{const el=$('#'+id),L=+el.dataset.len;const q=prog(t,0.2+i*0.95,1.05+i*0.95);el.style.strokeDashoffset=L*(1-q);if(q>0&&q<1){tip=el.getPointAtLength(L*q);}if(q>=1&&i==2&&!tip)tip=el.getPointAtLength(L);});
+  if(!tip)tip={x:70,y:150};
+  const pen=$('#pen5');const ox=190+tip.x-17, oy=1000+tip.y-420;
+  pen.style.transform=`translate(${ox}px,${oy+lerp(0,90,f)}px) rotate(28deg)`;pen.style.filter=`blur(${lerp(0,4,f)}px)`;}};
+
+/* 6. 글자 없는 카드 네 장이 순서대로 정리됨 */
+SCENES[6]={dur:5.0,build(){cam.innerHTML=`
+  <div class="abs" style="inset:-200px;background:repeating-linear-gradient(90deg,#c9a57e 0 190px,#c29e76 190px 192px,#cba881 192px 380px)"></div>
+  ${[0,1,2,3].map(i=>`<div id="c${i}" class="abs paper" style="left:290px;top:0;width:500px;height:250px"><div class="abs" style="left:0;top:0;width:22px;height:250px;border-radius:6px 0 0 6px;background:${['#2F4F3E','#4f7360','#7f9a88','#b5c4b8'][i]}"></div>${bars(3,280,56,60,70)}</div>`).join('')}
+  <div class="abs" style="left:800px;top:1500px;width:260px;height:260px;border-radius:50%;background:#f2ede4;box-shadow:0 20px 40px rgba(60,40,20,.25)"><div class="abs" style="left:32px;top:32px;width:196px;height:196px;border-radius:50%;background:radial-gradient(#7a5230,#4a2f18)"></div></div>
+  <div class="abs" style="left:60px;top:1620px;width:340px;height:24px;border-radius:12px;background:linear-gradient(#2c3a33,#1b2620);transform:rotate(-12deg);box-shadow:0 12px 18px rgba(30,20,10,.3)"></div>`;
+  light.style.background='linear-gradient(140deg,rgba(255,236,200,.55),rgba(0,0,0,0) 60%)';},
+ render(t){const p=ease(t/5.0);cam.style.transform=`${wobble(t)} scale(${lerp(1.1,1.0,p)})`;
+  const start=[[-170,380,-14],[180,1180,10],[150,520,7],[-150,1040,-9]];
+  const end=[[0,420,0],[0,720,0],[0,1020,0],[0,1320,0]];
+  const order=[2,0,3,1];
+  order.forEach((ci,k)=>{const q=ease(prog(t,0.4+k*0.75,1.3+k*0.75));const [sx,sy,sr]=start[ci],[ex,ey]=end[ci];
+    const lift=Math.sin(q*Math.PI)*0.05;const el=$('#c'+ci);el.style.transform=`translate(${lerp(sx,ex,q)}px,${lerp(sy,ey,q)}px) rotate(${lerp(sr,0,q)}deg) scale(${1+lift})`;el.style.zIndex=q>0&&q<1?10:1;});}};
+
+/* 7. 파일을 덮고, 뒤로 물러나며 보이는 차분한 공간 */
+SCENES[7]={dur:6.5,build(){cam.innerHTML=`
+  <div class="abs" style="inset:-400px;background:#e7dccb"></div>
+  <div class="abs" style="left:560px;top:180px;width:420px;height:760px;background:linear-gradient(#f6f1e6,#e9dfcd);box-shadow:inset 0 0 0 18px #cdbb9f"></div>
+  <div class="abs" style="left:560px;top:180px;width:420px;height:760px;background:linear-gradient(90deg,rgba(0,0,0,0) 48%,#cdbb9f 48% 52%,rgba(0,0,0,0) 52%)"></div>
+  <div class="abs" style="left:300px;top:150px;width:900px;height:1600px;background:linear-gradient(200deg,rgba(255,246,225,.65),rgba(255,246,225,0) 60%);filter:blur(30px)"></div>
+  <div class="abs" style="left:0;top:1150px;width:1080px;height:800px;background:linear-gradient(#cdb998,#b9a17c)"></div>
+  <div class="abs" style="left:60px;top:560px;width:260px;height:520px;filter:blur(.5px)">${leaves()}<div class="abs" style="left:90px;top:330px;width:120px;height:260px;border-radius:0 0 30px 30px;background:#b9a07c"></div></div>
+  <div class="abs" style="left:110px;top:1000px;width:300px;height:420px;border-radius:40px 40px 20px 20px;background:#2F4F3E;box-shadow:0 30px 40px rgba(40,25,10,.25)"></div>
+  <div class="abs" style="left:700px;top:1000px;width:300px;height:420px;border-radius:40px 40px 20px 20px;background:#2F4F3E;box-shadow:0 30px 40px rgba(40,25,10,.25)"></div>
+  <div class="abs" style="left:300px;top:1120px;width:480px;height:120px;border-radius:50%;background:#efe6d6;box-shadow:0 24px 40px rgba(40,25,10,.3)"></div>
+  <div class="abs" style="left:520px;top:1240px;width:40px;height:260px;background:#a88e68"></div>
+  <div id="fold" class="abs" style="left:470px;top:1130px;width:140px;height:84px;perspective:600px">
+    <div class="abs paper" style="left:6px;top:6px;width:128px;height:72px;border-radius:2px"></div>
+    <div id="flap" class="abs" style="left:0;top:0;width:140px;height:84px;border-radius:4px;background:#2F4F3E;transform-origin:50% 0;box-shadow:0 4px 10px rgba(0,0,0,.2)"></div>
+  </div>`;
+  light.style.background='linear-gradient(200deg,rgba(255,236,200,.5),rgba(0,0,0,0) 60%)';},
+ render(t){const close=ease(prog(t,0.2,1.6));$('#flap').style.transform=`rotateX(${lerp(-170,0,close)}deg)`;
+  const z=ease(prog(t,1.4,6.4));const s=lerp(5.2,1.0,z);
+  const fx=540,fy=1172; // 파일 위치를 중심으로 확대 → 전체로
+  const tx=(540-fx)*s*(1-z), ty=(960-fy)*s*(1-z);
+  cam.style.transformOrigin=`${fx}px ${fy}px`;
+  cam.style.transform=`${wobble(t)} translate(${(540-fx)*(1-z)}px,${(960-fy)*(1-z)}px) scale(${s})`;}};
+
+let cur=null;
+window.setup=id=>{cur=SCENES[id];cam.style.transformOrigin='50% 50%';cur.build();return cur.dur;};
+window.render=(t,frame)=>{cur.render(t);$('#turb').setAttribute('seed',String(frame%97+1));};
+</script>
+</body></html>
