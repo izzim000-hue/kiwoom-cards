@@ -88,7 +88,21 @@ def _arm(points, hand, cloth, held=""):
             f'<g transform="translate({hx} {hy})">{held}{hand}</g>')
 
 
+SPROUT_POSES = list(nc.ARMS)  # 새싹 멘토: point, think, cheer, worry, wave
+
+
+def poses_for(look):
+    return SPROUT_POSES if look == "sprout" else list(POSES)
+
+
 def person(look, pose):
+    if look == "sprout":  # 1인칭 '나' 이야기: 양쪽 칸 모두 새싹 멘토(예전의 나 / 바꾼 뒤의 나)
+        if pose not in nc.ARMS:
+            raise SpecError(f"새싹 멘토 포즈 '{pose}' 가 없습니다. 쓸 수 있는 포즈: {', '.join(nc.ARMS)}")
+        svg = nc.character(pose)
+        return svg[svg.index(">") + 1:svg.rindex("</svg>")]
+    if look not in LOOKS:
+        raise SpecError(f"look '{look}' 이 없습니다. 쓸 수 있는 값: sprout, {', '.join(LOOKS)}")
     lk = LOOKS[look]
     if pose not in POSES:
         raise SpecError(f"포즈 '{pose}' 가 없습니다. 쓸 수 있는 포즈: {', '.join(POSES)}")
@@ -236,10 +250,10 @@ def page_html(spec):
              f'<div class="top"><span class="badge">{html.escape(spec.get("badge", "가상 인물 · 예시"))}</span>'
              f'<div class="ttl">{rich(spec["title"])}</div></div>']
     for side, p in (("L", L), ("R", R)):
-        figs = "".join(f'<g class="pose" data-p="{po}" style="display:none">{person(p["look"], po)}</g>' for po in POSES)
+        figs = "".join(f'<g class="pose" data-p="{po}" style="display:none">{person(p["look"], po)}</g>' for po in poses_for(p["look"]))
         own = "".join(f'<div class="it" data-id="{iid}" style="top:{it["y"]}px">{item_html(it)}</div>'
                       for iid, it in items.items() if it.get("side") == side)
-        parts.append(f'<div class="panel {side}" data-side="{side}"><div class="head"><span class="name">{html.escape(p["name"])}'
+        parts.append(f'<div class="panel {side}" data-side="{side}" data-p0="{poses_for(p["look"])[0]}"><div class="head"><span class="name">{html.escape(p["name"])}'
                      f'<small>{html.escape(p.get("age", ""))}</small></span></div>{own}'
                      f'<svg class="fig" viewBox="0 0 360 470" overflow="visible">{figs}</svg></div>')
     parts.append('<div class="eq" data-id="eq">=</div><div class="vs" data-id="vs">≠</div>')
@@ -307,7 +321,7 @@ SEEK_JS = """(st) => {
     el.querySelectorAll('.jar').forEach(j => { j.querySelector('.fill').style.height = (parseFloat(j.dataset.fill) * 100 * (1 - Math.pow(1 - fp, 3))).toFixed(1) + '%'; });
   });
   document.querySelectorAll('.panel').forEach(pn => {
-    const s = pn.dataset.side, pose = st.pose[s] || 'stand';
+    const s = pn.dataset.side, pose = st.pose[s] || pn.dataset.p0;
     pn.querySelectorAll('.pose').forEach(g => g.style.display = g.dataset.p === pose ? '' : 'none');
     const dim = st.focus && st.focus !== s;  // focus 'C' 는 두 칸 모두 흐리게
     pn.style.opacity = dim ? 0.5 : 1;
