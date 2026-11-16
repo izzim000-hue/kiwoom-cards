@@ -1049,6 +1049,63 @@ def theme_css(spec):
             f".ring{{border-color:{th['ring']}}}")
 
 
+# 보드 스타일(2026-11-16 사용자: "스프링 노트보다 칠판에 정리해 주는 듯한, 전문가 느낌").
+# 원고에 "style": "whiteboard" 또는 "chalk". 스프링·여백선·줄·새싹 마크를 없애고 고딕 글씨로 쓴다.
+# 배경색(theme)은 그대로라 릴스 노랑 / 카드 하늘 구분은 유지된다.
+BOARD_HL = {"butter": "rgba(245,203,78,.55)", "sky": "rgba(143,195,230,.6)"}
+BOARD_CSS = """
+@font-face{font-family:NotoB;src:url("{FONTS}/NotoSansKR-Bold.otf")}
+@font-face{font-family:NotoK;src:url("{FONTS}/NotoSansKR-Black.otf")}
+.rings,.margin,.sprout,.chr{display:none!important}
+.paper{background-image:none!important;border-radius:8px;box-shadow:0 22px 50px rgba(0,0,0,.28)}
+.series{font:700 28px NotoB;letter-spacing:2px;color:var(--bsub);top:{BSY}px;left:110px}
+.title{font:700 {BTF}px NotoB;color:var(--bink);left:110px;top:{BTY}px;letter-spacing:-1px;padding-bottom:18px;
+ border-bottom:4px solid var(--bacc);display:inline-block}
+.body{font:700 {BBF}px/1.55 NotoB;color:var(--bink);left:110px;top:{BBY}px;letter-spacing:-1.5px}
+.foot{font:26px Noto;color:var(--bsub)}
+.step{position:absolute;right:96px;top:{BSY}px;font:700 26px NotoB;color:var(--bacc);letter-spacing:1px}
+.step b{font:900 26px NotoK}
+.big{font-family:NotoK;font-weight:900;letter-spacing:-6px;color:var(--bink)}
+.big small{font:700 {HS2}px NotoB;color:var(--bsub);letter-spacing:-1px}
+.big .hl{background:linear-gradient(transparent 60%, var(--yel) 60%, var(--yel) 94%, transparent 94%)}
+.scene.hook .body{font-size:{HBF2}px}
+.ci ellipse{stroke:var(--bacc);stroke-width:2.5}
+.preload{position:absolute;left:-9999px;top:0;font-family:NotoB}.preload i{font-family:NotoK}
+"""
+BOARD_VARIANT = {
+    # 화이트보드: 흰 판 + 은색 테두리, 진한 글씨, 형광 마커
+    "whiteboard": ".paper{background:#FCFCFA!important;border:16px solid #C7CBD0;box-sizing:border-box;"
+                  "outline:2px solid #A9AEB4}"
+                  ":root{--bink:#1E2328;--bsub:#7A8088}",
+    # 칠판: 짙은 슬레이트 판 + 검은 테두리, 흰 분필 글씨. 그림은 반전해 밝은 선으로.
+    "chalk": ".paper{background:#26332D radial-gradient(ellipse at 30% 20%,rgba(255,255,255,.06),transparent 60%)!important;"
+             "border:16px solid #15191A;box-sizing:border-box}"
+             ":root{--bink:#F3F1EA;--bsub:#AEB8B2}"
+             ".art{filter:invert(1) hue-rotate(180deg) brightness(1.05);mix-blend-mode:screen}"
+             ".big .hl{background:linear-gradient(transparent 80%, var(--bacc) 80%, var(--bacc) 92%, transparent 92%)}"
+             ".mk::before{top:84%!important;bottom:-4%!important;border-radius:3px}",
+}
+BOARD_LAYOUT = {"reel": dict(BSY=110, BTY=170, BTF=50, BBY=330, BBF=70, HS2=48, HBF2=60),
+                "card": dict(BSY=90, BTY=140, BTF=50, BBY=270, BBF=56, HS2=40, HBF2=50)}
+
+
+def board_css(spec, mode):
+    style = spec.get("style")
+    if style not in BOARD_VARIANT:
+        raise nb.SpecError(f"스타일 '{style}' 이 없습니다. 쓸 수 있는 스타일: notebook, {', '.join(BOARD_VARIANT)}")
+    th = theme_of(spec)
+    css = BOARD_CSS.replace("{FONTS}", nb.constants.FONTS_DIR.resolve().as_uri())
+    for k, v in BOARD_LAYOUT[mode].items():
+        css = css.replace("{" + k + "}", str(v))
+    hl = BOARD_HL.get(spec.get("theme"), "rgba(255,225,77,.6)")
+    acc = th["accent"] if style == "whiteboard" else ("#F5CB4E" if spec.get("theme") == "butter" else "#9FD0F0")
+    return css + BOARD_VARIANT[style] + f":root{{--yel:{hl};--bacc:{acc}}}"
+
+
+def is_board(spec):
+    return spec.get("style", "notebook") != "notebook"
+
+
 # 첫 화면 훅: 장면에 "big" 을 넣으면 큰 글씨가 첫 프레임부터 바로 보이고, lines 는 그 아래 작은 글씨로 써진다.
 HOOK_CSS = """
 .big{position:absolute;left:120px;right:90px;top:{HY}px;font:700 {HF}px/1.12 Hand;color:var(--ink);text-align:center;letter-spacing:-2px}
@@ -1109,10 +1166,12 @@ def page_html(spec, mode):
     hook_css = HOOK_CSS
     for k, v in HOOK_LAYOUT[mode].items():
         hook_css = hook_css.replace("{" + k + "}", str(v))
-    if spec.get("character") == "none":
+    if spec.get("character") == "none" or is_board(spec):
         # 캐릭터 자리가 비므로 그림을 가운데로 옮기고 쪽번호도 가운데로 둔다.
         css += f".art{{left:{(1080 - L['AW']) // 2}px}}.foot{{right:auto;left:0;width:1080px;text-align:center}}"
-    doc = doc.replace("</style>", css + hook_css + theme_css(spec) + "</style>")
+    doc = doc.replace("</style>", css + hook_css + theme_css(spec) + (board_css(spec, mode) if is_board(spec) else "") + "</style>")
+    if is_board(spec):
+        doc = doc.replace(nb.SPROUT, '<div class="preload">가<i>가</i></div>')
     # 장면마다 그림·캐릭터를 끼워 넣는다 (장면 div 의 끝 바로 앞).
     for si, sc in enumerate(spec["scenes"]):
         art = sc.get("art")
@@ -1121,6 +1180,8 @@ def page_html(spec, mode):
         accent = theme_of(spec)["accent"]
         art_svg = (f'<svg class="art" viewBox="0 0 600 520">{"".join(ART[art])}</svg>'.replace(GREEN, accent)) if art else ""
         marker = f'<div class="scene" data-s="{si}" style="display:none">'
+        if is_board(spec) and not sc.get("big"):
+            art_svg = f'<div class="step"><b>{si + 1:02d}</b> / {len(spec["scenes"]):02d}</div>' + art_svg
         if sc.get("big"):
             new_marker = f'<div class="scene hook" data-s="{si}" data-hook="1" style="display:none">'
             doc = doc.replace(marker, new_marker + hook_html(sc) + art_svg + draw_character(spec, sc.get("pose", "point")), 1)
