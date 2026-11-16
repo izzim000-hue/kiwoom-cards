@@ -1,0 +1,11 @@
+{"series": "키움멘토 돈 노트", "title": "일주일에 하루, 무지출 데이",
+ "foot": "일반 정보 · 개인 상황에 따라 다름", "theme": "butter",
+ "scenes": [
+  {"big": "무지출|==데이==", "bigsub": "일주일에 딱 하루만요", "lines": ["편의점·커피·배달,", "((습관처럼)) 쓰고 있더라고요"], "pose": "worry", "art": "spend_habit"},
+  {"lines": ["하루도 안 쉬고", "==돈이 나가고 있었어요=="], "pose": "think", "art": "no_break_cal"},
+  {"lines": ["그래서 일주일에 하루,", "++무지출 데이++를 정했어요"], "pose": "point", "art": "pick_day"},
+  {"lines": ["그날은 도시락·텀블러,", "((있는 걸로)) 버텨 봐요"], "pose": "point", "art": "lunchbox"},
+  {"lines": ["안 쓴 날엔 달력에", "==스티커를 붙여요=="], "pose": "point", "art": "sticker_cal"},
+  {"lines": ["스티커가 늘수록", "++쓰는 감각이 달라지더라고요++"], "pose": "cheer", "art": "stickers_full"},
+  {"lines": ["이번 주 무지출 데이,", "((무슨 요일))로 할까요?"], "pose": "wave", "art": "which_day"}
+ ]}

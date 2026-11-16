@@ -1,0 +1,11 @@
+{"series": "키움멘토 돈 노트", "title": "내 보험, 뭐가 있더라?",
+ "foot": "일반 정보 · 특정 상품 권유 아님",
+ "scenes": [
+  {"lines": ["매달 보험료는 나가는데", "((뭐가 있는지)) 몰랐어요"], "pose": "worry", "art": "ins_auto"},
+  {"lines": ["가입할 땐 다", "==필요하다고== 들었거든요"], "pose": "think", "art": "ins_pile"},
+  {"lines": ["모아 보니", "((겹치는 보장))이 있었어요"], "pose": "think", "art": "ins_overlap"},
+  {"lines": ["정작 필요한 건", "==비어== 있었고요"], "pose": "worry", "art": "ins_gap"},
+  {"lines": ["그래서 내 보험을", "++한 장으로++ 정리했어요"], "pose": "point", "art": "ins_one_page"},
+  {"lines": ["해지는 서두르지 않고", "==따져 보고== 정해요"], "pose": "think", "art": "ins_careful", "foot": "해지 시 환급금 손실 가능"},
+  {"lines": ["'내보험다보여'에서", "++내 보험부터++ 보세요"], "pose": "wave", "art": "ins_lookup", "foot": "신용정보원 조회 서비스"}
+ ]}

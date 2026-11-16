@@ -1,0 +1,11 @@
+{"series": "키움멘토 돈 노트", "title": "잊고 지낸 내 청약통장",
+ "foot": "일반 정보 · 특정 상품 권유 아님",
+ "scenes": [
+  {"lines": ["사회 초년생 때 만든", "((청약통장)) 기억나세요?"], "pose": "think", "art": "subs_book"},
+  {"lines": ["매달 넣긴 했는데", "==얼마나 됐는지 몰랐어요=="], "pose": "worry", "art": "subs_unknown"},
+  {"lines": ["청약홈에 들어가 보니", "++한눈에 보이더라고요++"], "pose": "point", "art": "subs_home"},
+  {"lines": ["가입 기간과 납입 횟수,", "==둘 다 같이 봐요=="], "pose": "point", "art": "subs_two"},
+  {"lines": ["기준이 바뀌기도 해서", "((최근 공고))도 살펴봐요"], "pose": "think", "art": "rule_update", "foot": "청약 자격·기준은 청약홈 공고 기준"},
+  {"lines": ["내 집 계획이", "++조금 또렷해지더라고요++"], "pose": "cheer", "art": "house_plan"},
+  {"lines": ["오늘 청약홈에서", "((내 통장)) 열어 볼까요?"], "pose": "wave", "art": "subs_app"}
+ ]}
