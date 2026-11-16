@@ -1,0 +1,10 @@
+{"series": "키움멘토 돈 노트", "title": "같은 천만 원, 언제 쓸 돈인가요",
+ "foot": "일반적인 설명 · 개인 상황에 따라 달라요",
+ "timing": [[0, 3.4], [3.4, 9.6], [9.6, 17.8], [17.8, 27.2], [27.2, 36.5]],
+ "scenes": [
+  {"big": "==천만 원,==|어디에|투자할까요?", "bigfs": 140, "lines": ["제가 먼저 여쭤보는 건요"], "pose": "none", "art": "tenm_drop"},
+  {"lines": ["저는 상품보다", "==언제 쓰실 돈인지==", "먼저 묻습니다"], "pose": "think", "art": "products_aside", "foot": true, "art_top": 700},
+  {"lines": ["((1년 안에)) 쓸 돈이라면", "필요할 때 꺼낼 수 있게,", "==손실 위험은 줄이는 게 먼저=="], "pose": "point", "art": "near_money", "foot": true, "art_top": 700},
+  {"lines": ["((10년 뒤)) 쓸 돈이라면", "고를 수 있는 길이 넓어져도", "++정답은 사람마다 달라요++"], "pose": "none", "art": "far_money", "foot": true, "art_top": 720},
+  {"lines": ["같은 천만 원이어도", "쓰는 날이 다르면", "==관리 방법도 달라져요=="], "pose": "none", "art": "two_paths", "foot": true, "art_top": 700}
+ ]}

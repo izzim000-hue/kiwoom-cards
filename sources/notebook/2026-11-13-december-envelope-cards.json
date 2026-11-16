@@ -1,0 +1,11 @@
+{"series": "키움멘토 돈 노트", "title": "12월 카드값, 미리 막는 법",
+ "foot": "일반 정보 · 개인 상황에 따라 다름",
+ "scenes": [
+  {"lines": ["작년 1월, 카드값 보고", "((깜짝)) 놀랐어요"], "pose": "worry", "art": "dec_bill"},
+  {"lines": ["송년회·선물·경조사가", "==12월에 몰렸던== 거예요"], "pose": "think", "art": "dec_pile"},
+  {"lines": ["그래서 올해는 11월에", "++12월 봉투++를 만들었어요"], "pose": "point", "art": "dec_envelope"},
+  {"lines": ["12월 일정을 적고", "((금액))을 옆에 썼어요"], "pose": "point", "art": "dec_list"},
+  {"lines": ["두 달에 나눠 모으니", "==부담이== 줄었어요"], "pose": "cheer", "art": "dec_split"},
+  {"lines": ["다가올 1월은", "++카드값이 편할++ 거예요"], "pose": "cheer", "art": "jan_calm"},
+  {"lines": ["오늘 10분,", "((12월 일정))부터 적어요"], "pose": "wave", "art": "dec_check"}
+ ]}

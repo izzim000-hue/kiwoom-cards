@@ -1,0 +1,11 @@
+{"series": "키움멘토 돈 노트", "title": "버린 병원 영수증",
+ "foot": "일반 정보 · 가입한 보험 약관에 따라 달라요",
+ "scenes": [
+  {"lines": ["감기로 병원 다녀오고", "((영수증)) 그냥 버렸어요"], "pose": "think", "art": "receipt_trash"},
+  {"lines": ["몇천 원이라", "==청구할 생각을 못 했어요=="], "pose": "worry", "art": "small_amount"},
+  {"lines": ["알고 보니 소액도", "++청구할 수 있더라고요++"], "pose": "point", "art": "claim_ok", "foot": "실손보험 약관·자기부담금에 따라 달라요"},
+  {"lines": ["보험사 앱에서", "((사진 몇 장))이면 되더라고요"], "pose": "point", "art": "claim_app"},
+  {"lines": ["지난 진료도", "==3년 안이면 청구할 수 있어요=="], "pose": "point", "art": "three_years", "foot": "보험금 청구권 소멸시효 3년(상법 기준)"},
+  {"lines": ["모아서 받아 보니", "++생각보다 쏠쏠하더라고요++"], "pose": "cheer", "art": "refund_jar"},
+  {"lines": ["오늘 지난 진료 영수증", "((한 번)) 찾아볼까요?"], "pose": "wave", "art": "receipt_today"}
+ ]}
