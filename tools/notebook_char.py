@@ -936,6 +936,115 @@ ART = {
 }
 
 
+
+# ---- 릴스 2026-11-16 「같은 천만 원, 언제 쓸 돈인가요」: 움직이는 그림
+RED = "#C8574F"
+
+
+def bills(x, y, label="천만 원", w=210, h=104):
+    """돈 묶음(지폐 세 장 + 띠지)."""
+    return (f'<rect x="{x + 14}" y="{y - 14}" width="{w}" height="{h}" rx="10" fill="#DCEBD5" stroke="{INK}" stroke-width="5"/>'
+            f'<rect x="{x + 7}" y="{y - 7}" width="{w}" height="{h}" rx="10" fill="#DCEBD5" stroke="{INK}" stroke-width="5"/>'
+            f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="10" fill="#CFE3C8" stroke="{INK}" stroke-width="5"/>'
+            f'<rect x="{x + w / 2 - 26}" y="{y}" width="52" height="{h}" fill="#F4CF4C" stroke="{INK}" stroke-width="4"/>'
+            + T(x + w * 0.2, y + h / 2 + 10, "₩", int(h * 0.3), GREEN)
+            + T(x + w * 0.79, y + h / 2 - 2, label[:2], int(h * 0.26), GREEN)
+            + T(x + w * 0.79, y + h / 2 + h * 0.26, label[2:].strip(), int(h * 0.26), GREEN))
+
+
+def mv(dx, dy, t0, t1, inner):
+    return f'<g data-mv="{dx},{dy},{t0},{t1}">{inner}</g>'
+
+
+def at(t, *parts, stamp=False):
+    st = ' data-stamp="1"' if stamp else ""
+    return f'<g class="pp" data-at="{t}"{st}>{"".join(parts)}</g>'
+
+
+def flag(x, y, label, color=GREEN):
+    return (f'<path d="M{x} {y} L{x} {y - 96}" stroke="{INK}" stroke-width="6" stroke-linecap="round"/>'
+            f'<path d="M{x} {y - 96} L{x + 96} {y - 76} L{x} {y - 52} Z" fill="{color}" stroke="{INK}" stroke-width="5" stroke-linejoin="round"/>'
+            + T(x + 2, y + 46, label, 36, INK))
+
+
+def draw_line(d, t0, t1, color=GREEN, w=10, dash=False):
+    return (f'<path d="{d}" pathLength="1" data-draw="{t0},{t1}" stroke="{color}" stroke-width="{w}" '
+            f'fill="none" stroke-linecap="round" stroke-linejoin="round"/>')
+
+
+def _wave(y, amp=26, per=160):
+    pts = [f"M-200 {y}"]
+    x = -200
+    while x < 800:
+        pts.append(f"q{per / 4} {-amp} {per / 2} 0 t{per / 2} 0")
+        x += per
+    return " ".join(pts)
+
+
+ART.update({
+    # 1. 훅: 천만 원 묶음이 위에서 툭 떨어지고 물음표가 둥실
+    "tenm_drop": [
+        at(0.0, mv(0, 260, 0.0, 0.55, bills(140, -150, "천만 원", 320, 160))),
+        at(0.5, f'<g data-bob="8">{T(70, 190, "?", 150, RED)}</g>'),
+        at(0.7, f'<g data-bob="6">{T(560, 150, "?", 110, "#888")}</g>'),
+        at(0.9, f'<g data-bob="5">{T(530, 300, "?", 70, "#aaa")}</g>'),
+    ],
+    # 2. 판단: 이름 없는 상품 카드가 아래로 비켜나고, '언제?' 달력이 그 자리에
+    "products_aside": [
+        *[at(0.2 + 0.25 * k, mv(0, 230, 1.7, 2.5,
+              box(150 + 135 * k, 40, 120, 170, "#F3F6FA", 16, 5)
+              + T(210 + 135 * k, 112, "상품", 32, "#777") + T(210 + 135 * k, 170, "ABC"[k], 46, "#999")))
+          for k in range(3)],
+        at(2.4, box(160, 30, 280, 250, "#fff", 12, 6),
+           f'<rect x="160" y="30" width="280" height="64" fill="{RED}" stroke="{INK}" stroke-width="6"/>',
+           *[f'<path d="M{x} 14 L{x} 52" stroke="{INK}" stroke-width="8" stroke-linecap="round"/>' for x in (220, 300, 380)],
+           T(300, 218, "언제?", 84, INK)),
+        at(3.0, f'<g data-bob="6">{T(500, 110, "?", 80, GREEN)}</g>'),
+    ],
+    # 3. 1년 안에 쓸 돈: 짧은 시간선 → 손 닿는 서랍으로 쏙
+    "near_money": [
+        at(0.1, f'<path d="M40 110 L560 110" stroke="#C9CFCB" stroke-width="8" stroke-dasharray="4 18" stroke-linecap="round"/>',
+           T(40, 168, "지금", 30, "#666", "start")),
+        at(0.2, draw_line("M40 110 L210 110", 0.3, 1.1)),
+        at(1.1, flag(210, 110, "1년")),
+        at(1.6, box(130, 300, 290, 190, "#fff", 14, 6), box(130, 300, 290, 46, "#E8F2EA", 10, 5),
+           f'<rect x="237" y="420" width="76" height="16" rx="8" fill="{INK}"/>', T(275, 334, "필요할 때 바로", 30, GREEN)),
+        at(1.8, mv(150, 210, 2.0, 2.9, bills(40, 150, "천만 원", 170, 84))),
+        at(3.4, f'<g data-bob="5"><path d="M570 300 Q570 370 520 400 Q470 370 470 300 L520 280 Z" fill="#E8F2EA" stroke="{INK}" stroke-width="6" stroke-linejoin="round"/>'
+                f'<path d="M496 338 l18 20 l32 -40" stroke="{GREEN}" stroke-width="9" fill="none" stroke-linecap="round"/></g>',
+           T(520, 450, "위험 줄이기", 30, INK)),
+    ],
+    # 4. 10년 뒤 쓸 돈: 긴 시간선, 오르내리는 물결, 여러 갈래 길(정답은 하나가 아님)
+    "far_money": [
+        at(0.1, f'<path d="M40 90 L560 90" stroke="#C9CFCB" stroke-width="8" stroke-dasharray="4 18" stroke-linecap="round"/>',
+           T(40, 148, "지금", 30, "#666", "start")),
+        at(0.2, draw_line("M40 90 L520 90", 0.3, 1.7)),
+        at(1.7, flag(520, 90, "10년")),
+        at(2.0, '<clipPath id="wclip"><rect x="40" y="170" width="520" height="120"/></clipPath>',
+           f'<g clip-path="url(#wclip)"><path data-wave="70" d="{_wave(230)}" stroke="#7FA88F" stroke-width="7" fill="none" stroke-linecap="round"/></g>',
+           T(300, 318, "중간엔 오르내림도 있어요", 28, "#777")),
+        at(3.2, draw_line("M300 520 L300 470", 3.2, 3.6, INK, 8)),
+        at(3.5, draw_line("M300 470 Q300 420 130 400", 3.5, 4.3, INK, 7),
+           draw_line("M300 470 L300 396", 3.5, 4.3, INK, 7),
+           draw_line("M300 470 Q300 420 470 400", 3.5, 4.3, INK, 7)),
+        at(4.4, *[f'<g data-bob="{4 + k}"><circle cx="{x}" cy="392" r="26" fill="#FFF1A8" stroke="{INK}" stroke-width="5"/>{T(x, 405, "?", 38, INK)}</g>'
+                  for k, x in enumerate((130, 300, 470))]),
+    ],
+    # 5. 결론: 같은 천만 원 두 묶음이 짧은 길·긴 길로 갈라지고, 마지막에 도장
+    "two_paths": [
+        at(0.1, f'<path d="M300 500 L80 500" stroke="#C9CFCB" stroke-width="8" stroke-linecap="round"/>'
+                f'<path d="M300 500 L560 500" stroke="#C9CFCB" stroke-width="8" stroke-linecap="round"/>'),
+        at(0.3, mv(-150, 0, 1.0, 2.0, bills(200, 280, "천만 원", 150, 74))),
+        at(0.5, mv(170, 0, 1.0, 2.6, bills(250, 280, "천만 원", 150, 74))),
+        at(1.9, flag(70, 500, "1년")),
+        at(2.5, flag(520, 500, "10년")),
+        at(3.4, f'<g transform="translate(0 -60) rotate(-6 300 150)"><rect x="80" y="70" width="440" height="170" rx="14" fill="none" stroke="{RED}" stroke-width="9"/>'
+                f'<rect x="96" y="86" width="408" height="138" rx="8" fill="none" stroke="{RED}" stroke-width="3"/>'
+                + T(300, 150, "상품은 마지막에", 56, RED) + T(300, 204, "먼저, 언제 쓸 돈인지", 34, RED) + '</g>', stamp=True),
+        at(4.3, T(570, 236, "— 키움멘토", 32, GREEN, "end")),
+    ],
+})
+
 # ---------------------------------------------------------------- 색감 · 캐릭터 시안 (2026-11-13)
 # 원고에 "theme" 과 "character" 를 넣으면 바꿔 그린다. 없으면 지금까지와 같다(green / sprout).
 # 2026-11-16부터 기본 운영은 "character": "none" (캐릭터 없이 전문가 톤, 그림은 가운데).
@@ -1065,6 +1174,10 @@ def theme_of(spec):
     if name not in THEMES:
         raise nb.SpecError(f"색감 '{name}' 이 없습니다. 쓸 수 있는 색감: {', '.join(THEMES)}")
     return THEMES[name]
+
+
+def _char_for(spec, sc):
+    return "" if sc.get("pose") == "none" else draw_character(spec, sc.get("pose", "point"))
 
 
 def draw_character(spec, pose):
@@ -1265,7 +1378,8 @@ HOOK_LAYOUT = {"reel": dict(HY=250, HF=170, HS=52, HB=760, HBF=66, HA=930),
 def hook_html(sc):
     rows = [re_hl(row) for row in sc["big"].split("|")]
     sub = f'<small>{html.escape(sc["bigsub"])}</small>' if sc.get("bigsub") else ""
-    return f'<div class="big">{"<br>".join(rows)}{sub}</div>'
+    fs = f' style="font-size:{int(sc["bigfs"])}px"' if sc.get("bigfs") else ""
+    return f'<div class="big"{fs}>{"<br>".join(rows)}{sub}</div>'
 
 
 def re_hl(row):
@@ -1324,7 +1438,15 @@ def page_html(spec, mode):
         if art and art not in ART:
             raise nb.SpecError(f"그림 '{art}' 이 없습니다. 쓸 수 있는 그림: {', '.join(ART)}")
         accent = theme_of(spec)["accent"]
-        art_svg = (f'<svg class="art" viewBox="0 0 600 520">{"".join(ART[art])}</svg>'.replace(GREEN, accent)) if art else ""
+        # 장면별 선택(2026-11-16): "pose": "none" 이면 그 장면만 캐릭터 없이 그림을 가운데로,
+        # "art_top" 으로 그림 높이(px), "bigfs" 로 첫 화면 큰 글씨 크기(px)를 바꾼다.
+        st = []
+        if sc.get("pose") == "none":
+            st.append(f"left:{(1080 - LAYOUT['reel']['AW']) // 2 if mode == 'reel' else (1080 - LAYOUT['card']['AW']) // 2}px")
+        if sc.get("art_top"):
+            st.append(f"top:{sc['art_top']}px")
+        style = f' style="{";".join(st)}"' if st else ""
+        art_svg = (f'<svg class="art"{style} viewBox="0 0 600 520">{"".join(ART[art])}</svg>'.replace(GREEN, accent)) if art else ""
         marker = f'<div class="scene" data-s="{si}" style="display:none">'
         if is_board(spec) and not sc.get("big"):
             art_svg = f'<div class="step"><b>{si + 1:02d}</b> / {len(spec["scenes"]):02d}</div>' + art_svg
@@ -1336,9 +1458,9 @@ def page_html(spec, mode):
                 art_svg += f'<div class="seal">{seal}<small>나를 위한 계획</small></div>'
         if sc.get("big"):
             new_marker = f'<div class="scene hook" data-s="{si}" data-hook="1" style="display:none">'
-            doc = doc.replace(marker, new_marker + hook_html(sc) + art_svg + draw_character(spec, sc.get("pose", "point")), 1)
+            doc = doc.replace(marker, new_marker + hook_html(sc) + art_svg + _char_for(spec, sc), 1)
         else:
-            doc = doc.replace(marker, marker + art_svg + draw_character(spec, sc.get("pose", "point")), 1)
+            doc = doc.replace(marker, marker + art_svg + _char_for(spec, sc), 1)
     return doc
 
 
@@ -1360,10 +1482,39 @@ SEEK_JS = nb.SEEK_JS.rstrip()[:-1] + """
   sc.querySelectorAll('.seal').forEach(e => e.style.setProperty('--p', Math.max(0, Math.min(1, (markP - nm) / 0.6))));
   const gt = document.querySelector('.paper > .title');
   if (gt) gt.style.visibility = sc.dataset.hook ? 'hidden' : 'visible';
+  const clamp = v => Math.max(0, Math.min(1, v));
+  const ease = v => v < 0.5 ? 2 * v * v : 1 - Math.pow(-2 * v + 2, 2) / 2;
   sc.querySelectorAll('.pp').forEach((p, k) => {
-    const f = Math.max(0, Math.min(1, (el - 0.25 - 0.32 * k) / 0.3));
+    // data-at: 나타나는 시각(장면 시작 기준 초). 없으면 순서대로 0.32초 간격.
+    const at = p.dataset.at !== undefined ? parseFloat(p.dataset.at) : 0.25 + 0.32 * k;
+    const f = clamp((el - at) / 0.3);
     p.style.opacity = f;
-    p.style.transform = 'scale(' + (0.8 + 0.2 * f) + ')';
+    // data-stamp: 크게 찍혔다가 제자리로(도장)
+    const sc0 = p.dataset.stamp !== undefined ? 1.7 - 0.7 * ease(f) : 0.8 + 0.2 * f;
+    p.style.transform = 'scale(' + sc0 + ')';
+  });
+  // 움직임(2026-11-16, 정적인 카드뉴스처럼 보이지 않게)
+  // data-mv="dx,dy,t0,t1": t0~t1 동안 (dx,dy)만큼 부드럽게 이동
+  sc.querySelectorAll('[data-mv]').forEach(m => {
+    const [dx, dy, t0, t1] = m.dataset.mv.split(',').map(parseFloat);
+    const f = ease(clamp((el - t0) / (t1 - t0)));
+    m.setAttribute('transform', 'translate(' + (dx * f).toFixed(1) + ' ' + (dy * f).toFixed(1) + ')');
+  });
+  // data-draw="t0,t1": 선이 그려지듯 (pathLength=1 인 path)
+  sc.querySelectorAll('[data-draw]').forEach(m => {
+    const [t0, t1] = m.dataset.draw.split(',').map(parseFloat);
+    m.style.strokeDasharray = '1 1';
+    m.style.strokeDashoffset = (1 - ease(clamp((el - t0) / (t1 - t0)))).toFixed(3);
+  });
+  // data-wave="speed": 물결이 옆으로 계속 흐름
+  sc.querySelectorAll('[data-wave]').forEach(m => {
+    const sp = parseFloat(m.dataset.wave);
+    m.setAttribute('transform', 'translate(' + (-((el * sp) % 160)).toFixed(1) + ' 0)');
+  });
+  // data-bob="amp": 위아래로 살짝 떠 있음
+  sc.querySelectorAll('[data-bob]').forEach(m => {
+    const a = parseFloat(m.dataset.bob);
+    m.setAttribute('transform', 'translate(0 ' + (Math.sin(el * 3.2) * a).toFixed(1) + ')');
   });
   const bob = sc.querySelector('.bob');
   if (bob) bob.setAttribute('transform', 'translate(0 ' + (Math.sin(t * 2.6) * 5).toFixed(2) + ')');
