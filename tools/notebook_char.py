@@ -1426,8 +1426,13 @@ def render_reel(spec, out):
         b, page = _open(pw, spec, "reel", work)
         enc = PipeEncoder(out)
         try:
+            # "cover": true 면 첫 장면은 타이핑 없이 완성된 화면으로 보여 준다
+            # (0초 첫 프레임이 곧 표지가 되어 프로필 그리드에서 어중간하게 보이지 않게, 2026-11-16 사용자 요청).
+            cover_end = sch[0][3] if spec.get("cover") else 0
             for i in range(int(round(total * FPS))):
-                page.evaluate(SEEK_JS, _state(sch, i / FPS))
+                t = i / FPS
+                st = [0, 10 ** 6, 99, 99, t] if t < cover_end else _state(sch, t)
+                page.evaluate(SEEK_JS, st)
                 enc.write(page.screenshot(type="png"))
             enc.close()
         except BaseException:
