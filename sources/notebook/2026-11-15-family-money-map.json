@@ -1,0 +1,11 @@
+{"series": "키움멘토 돈 노트", "title": "우리 집 돈 지도",
+ "foot": "일반 정보 · 비밀번호는 적지 않아요",
+ "scenes": [
+  {"big": "우리 집|==돈 지도==", "bigsub": "가족은 알고 있을까요?", "lines": ["갑자기 입원하게 되면", "((가족이)) 내 통장 알까요?"], "pose": "worry", "art": "hospital_q"},
+  {"lines": ["어느 은행에, 무슨 보험이", "==저만 알고 있더라고요=="], "pose": "think", "art": "only_me"},
+  {"lines": ["그래서 종이 한 장에", "++돈 지도를 그려 봤어요++"], "pose": "point", "art": "money_map"},
+  {"lines": ["은행·보험·연금·대출,", "((어디에)) 있는지만 적어요"], "pose": "point", "art": "map_rows"},
+  {"lines": ["비밀번호는 빼고", "==둔 곳만 함께 알아요=="], "pose": "point", "art": "share_place", "foot": true},
+  {"lines": ["마음이 한결", "++가벼워지더라고요++"], "pose": "cheer", "art": "light_heart"},
+  {"lines": ["오늘 종이 한 장에", "((돈 지도)) 그려 볼까요?"], "pose": "wave", "art": "map_today"}
+ ]}
