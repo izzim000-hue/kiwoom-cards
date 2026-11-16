@@ -26,10 +26,10 @@ from reelkit.encode import EncodeError, PipeEncoder  # noqa: E402
 
 FPS = 30
 GROUND = 1150
-ENV = (270, 470)
-BOWL = (800, 640)
-SPOTS = [(560, GROUND), (740, GROUND), (920, GROUND)]
-ENV_S, BOWL_S, SEED_S, PLANT_S = 1.5, 1.4, 1.5, 1.2
+ENV = (300, 470)
+BOWL = (790, 650)
+SPOTS = [(300, GROUND), (540, GROUND), (780, GROUND)]
+ENV_S, BOWL_S, SEED_S, PLANT_S = 1.5, 1.5, 1.6, 1.2
 N_SEED = 12
 KEYS = ["hook", "payday", "spend", "empty", "change", "rest", "sprout", "grow", "names", "conclude", "ask", "cta"]
 
@@ -38,46 +38,60 @@ def seed_home(i):
     return (ENV[0] - 120 + (i % 6) * 48, ENV[1] - 12 + (i // 6) * 44)
 
 
-# ---------------------------------------------------------------- 그림
+# ---------------------------------------------------------------- 그림 (절제된 선화, 캐릭터 없음 · 2026-11-16 사용자 "전문가답게")
+G1, G2, INKP = "#2F4F3E", "#5E8A71", "#1E2B24"
+
+
 def plant(h):
     """원점이 뿌리(땅 위)인 나무. h = 높이."""
     leaves = []
-    for k, y in enumerate(range(-int(h * 0.35), -h, -max(46, h // 5))):
+    for k, y in enumerate(range(-int(h * 0.3), -h + 30, -max(52, h // 5))):
         side = -1 if k % 2 else 1
-        leaves.append(f'<path d="M0 {y} q{side*46} -30 {side*78} -6 q{-side*30} 30 {-side*78} 6 Z" fill="#8CC56E" stroke="#333" stroke-width="5" stroke-linejoin="round"/>')
-    top = (f'<path d="M0 {-h} q-38 -40 -70 -26 q22 40 70 26 Z" fill="#8CC56E" stroke="#333" stroke-width="5"/>'
-           f'<path d="M0 {-h} q38 -48 76 -30 q-24 44 -76 30 Z" fill="#8CC56E" stroke="#333" stroke-width="5"/>')
-    return (f'<path d="M0 0 L0 {-h}" stroke="#333" stroke-width="16" stroke-linecap="round"/>'
-            f'<path d="M0 0 L0 {-h}" stroke="#6E9E4E" stroke-width="8" stroke-linecap="round"/>{"".join(leaves)}{top}')
+        leaves.append(f'<path d="M0 {y} q{side*40} -34 {side*84} -14 q{-side*36} 34 {-side*84} 14 Z" fill="{G2 if k % 2 else G1}"/>')
+    top = (f'<path d="M0 {-h} q-30 -46 -74 -36 q24 44 74 36 Z" fill="{G1}"/>'
+           f'<path d="M0 {-h} q34 -54 82 -40 q-26 48 -82 40 Z" fill="{G2}"/>')
+    return f'<path d="M0 0 L0 {-h}" stroke="{G1}" stroke-width="7" stroke-linecap="round"/>{"".join(leaves)}{top}'
 
 
-SEED = '<ellipse rx="12" ry="8" fill="#9A6A3A" stroke="#333" stroke-width="4"/>'
-ENVELOPE = ('<rect x="-130" y="-78" width="260" height="150" rx="14" fill="#fff" stroke="#333" stroke-width="6"/>'
-            '<path d="M-130 -78 L0 -6 L130 -78" fill="none" stroke="#333" stroke-width="5"/>')
-BOWL_SVG = ('<path d="M-130 -20 Q-126 80 0 86 Q126 80 130 -20 Z" fill="#fff" stroke="#333" stroke-width="6" stroke-linejoin="round"/>'
-            '<path d="M-150 -20 H150" stroke="#333" stroke-width="7" stroke-linecap="round"/>')
-EMPTY = ('<ellipse cx="0" cy="40" rx="300" ry="60" fill="none" stroke="#C8574F" stroke-width="6" stroke-dasharray="18 14"/>')
+SEED = '<ellipse rx="11" ry="8" fill="#6B4E2E"/>'
+ENVELOPE = (f'<rect x="-130" y="-78" width="260" height="150" rx="10" fill="#FFFDF6" stroke="{G1}" stroke-width="4"/>'
+            f'<path d="M-130 -78 L0 -4 L130 -78" fill="none" stroke="{G1}" stroke-width="3"/>')
+BOWL_SVG = (f'<path d="M-130 -20 Q-126 80 0 86 Q126 80 130 -20 Z" fill="#FFFDF6" stroke="{G1}" stroke-width="4" stroke-linejoin="round"/>'
+            f'<path d="M-146 -20 H146" stroke="{G1}" stroke-width="5" stroke-linecap="round"/>')
+EMPTY = '<ellipse cx="0" cy="34" rx="320" ry="56" fill="none" stroke="#B5483F" stroke-width="4" stroke-dasharray="14 12"/>'
 
 
 CSS_EXTRA = """
+@font-face{font-family:NotoK;src:url("{FONTS}/NotoSansKR-Black.otf")}
+.dots{display:none}
 .scene{position:absolute;left:0;top:0;width:1080px;height:1920px;overflow:visible}
 .k{opacity:0}
-.me{position:absolute;left:-10px;top:650px;width:400px;height:522px;overflow:visible;z-index:2}
-.lab{position:absolute;opacity:0;font:700 42px/1.15 Hand;background:#fff;border:4px solid #333;border-radius:20px;padding:6px 16px;white-space:nowrap;transform-origin:center}
-.lab.red{color:#C8574F;border-color:#C8574F}.lab.grn{color:#3E7C5B;border-color:#3E7C5B}.lab.ghost{background:transparent;border-style:dashed}
-.lab.navy{background:#34507A;color:#fff;border-color:#34507A}
+.badge{font:24px NotoB;color:#5b4a12;background:rgba(255,255,255,.6)}
+.ttl{font:46px/1.2 NotoB;color:#1E2B24;letter-spacing:-1px}
+.lab{position:absolute;opacity:0;font:38px/1.2 NotoB;color:#1E2B24;background:#FFFDF6;border:3px solid #2F4F3E;border-radius:12px;padding:8px 18px;white-space:nowrap;transform-origin:center}
+.lab .hl,.box .hl,.big .hl{background:linear-gradient(transparent 60%,rgba(255,214,60,.95) 60%,rgba(255,214,60,.95) 92%,transparent 92%)}
+.lab.red{color:#B5483F;border-color:#B5483F}.lab.grn{color:#2F4F3E}.lab.ghost{background:transparent;border-style:dashed}
+.lab.navy{background:#2F4F3E;color:#fff}
+.box{font:50px/1.38 NotoB;color:#1E2B24;background:#FFFDF6;border:3px solid #2F4F3E;border-radius:18px;padding:26px 40px;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+.box.dark{background:#2F4F3E;color:#fff;border-color:#2F4F3E}
+.box.dark .hl{background:none;color:#FFD84D}
+.hook .big{font:96px/1.18 NotoK;color:#1E2B24;letter-spacing:-3px;background:#FFFDF6;border:3px solid #2F4F3E;border-radius:22px;padding:40px 44px 34px;box-shadow:0 10px 30px rgba(0,0,0,.14)}
+.hook .big small{font:38px NotoB;color:#4b5a52;letter-spacing:-.5px;margin-top:18px}
+.sub span{font:42px/1.38 NotoB;background:#1E2B24;border-radius:14px;padding:14px 30px;letter-spacing:-.5px}
+.sub .hl{color:#FFD84D}
+.foot{color:#5b4a12}
 """
 
 
 def page_html(spec):
     labels = spec.get("labels", {})
-    css = duo.CSS.replace("{FONTS}", duo.FONTS) + CSS_EXTRA
+    css = duo.CSS.replace("{FONTS}", duo.FONTS) + CSS_EXTRA.replace("{FONTS}", duo.FONTS)
     s = [f'<!doctype html><html><head><meta charset="utf-8"><style>{css}</style></head><body><div class="dots"></div>',
          f'<div class="top"><span class="badge">{html.escape(spec.get("badge", "제 이야기"))}</span>'
          f'<div class="ttl">{duo.rich(spec["title"])}</div></div>',
          '<svg class="scene" viewBox="0 0 1080 1920">',
-         f'<rect x="0" y="{GROUND}" width="1080" height="160" fill="#C79A63"/>',
-         f'<path d="M0 {GROUND} Q270 {GROUND-14} 540 {GROUND} T1080 {GROUND}" stroke="#6E9E4E" stroke-width="14" fill="none"/>',
+         f'<rect x="0" y="{GROUND}" width="1080" height="150" fill="rgba(47,79,62,.10)"/>',
+         f'<path d="M40 {GROUND} H1040" stroke="{G1}" stroke-width="5" stroke-linecap="round"/>',
          f'<g class="k" data-k="empty">{EMPTY}</g>',
          f'<g class="k" data-k="bowl">{BOWL_SVG}</g>', f'<g class="k" data-k="env">{ENVELOPE}</g>', f'<g class="k" data-k="env2">{ENVELOPE}</g>']
     heights = [260, 380, 500]
@@ -87,8 +101,6 @@ def page_html(spec):
         s.append(f'<g class="k" data-k="s{i}">{SEED}</g>')
         s.append(f'<g class="k" data-k="t{i}">{SEED}</g>')
     s.append('</svg>')
-    poses = "".join(f'<g class="pose" data-p="{p}" style="display:none">{duo.person("sprout", p)}</g>' for p in nc.ARMS)
-    s.append(f'<svg class="me" viewBox="0 0 360 470" overflow="visible">{poses}</svg>')
     for lid, lb in labels.items():
         s.append(f'<div class="lab k {lb.get("style", "")}" data-k="L.{lid}" style="left:{lb["x"]}px;top:{lb["y"]}px">{duo.rich(lb["text"])}</div>')
     for cid in ("conclude", "ask", "cta"):
@@ -162,7 +174,7 @@ def choreo(spec, tl):
             T.fade(f"s{i}", ts + 0.9, 0.35)
         T.fade("env", t0 + 2.6, 0.4)
     if "empty" in at:
-        T.pop("empty", at["empty"]["start"] + 0.3, 740, GROUND)
+        T.pop("empty", at["empty"]["start"] + 0.3, 540, GROUND)
     if "change" in at:
         plant_at = next(b.get("plant_at", 1.6) for b in spec["beats"] if b["key"] == "change")  # 녹음의 '한 줌' 시점
         t0 = at["change"]["start"] + 0.2
