@@ -31,7 +31,7 @@ BOWL = (800, 640)
 SPOTS = [(560, GROUND), (740, GROUND), (920, GROUND)]
 ENV_S, BOWL_S, SEED_S, PLANT_S = 1.5, 1.4, 1.5, 1.2
 N_SEED = 12
-KEYS = ["hook", "payday", "spend", "empty", "change", "rest", "sprout", "grow", "names", "conclude", "ask"]
+KEYS = ["hook", "payday", "spend", "empty", "change", "rest", "sprout", "grow", "names", "conclude", "ask", "cta"]
 
 
 def seed_home(i):
@@ -91,7 +91,7 @@ def page_html(spec):
     s.append(f'<svg class="me" viewBox="0 0 360 470" overflow="visible">{poses}</svg>')
     for lid, lb in labels.items():
         s.append(f'<div class="lab k {lb.get("style", "")}" data-k="L.{lid}" style="left:{lb["x"]}px;top:{lb["y"]}px">{duo.rich(lb["text"])}</div>')
-    for cid in ("conclude", "ask"):
+    for cid in ("conclude", "ask", "cta"):
         c = spec.get(cid)
         if c:
             cls = "box dark" if cid == "conclude" else "box"
@@ -164,13 +164,14 @@ def choreo(spec, tl):
     if "empty" in at:
         T.pop("empty", at["empty"]["start"] + 0.3, 740, GROUND)
     if "change" in at:
+        plant_at = next(b.get("plant_at", 1.6) for b in spec["beats"] if b["key"] == "change")  # 녹음의 '한 줌' 시점
         t0 = at["change"]["start"] + 0.2
         T.fade("empty", t0, 0.3)
         T.pop("env2", t0 + 0.2, *ENV, s=ENV_S)
         for i in range(N_SEED):
             T.pop(f"t{i}", t0 + 0.5 + 0.04 * i, *seed_home(i), s=SEED_S)
         for j in range(3):  # 한 줌(앞의 세 알)을 먼저 땅으로
-            T.move(f"t{j}", t0 + 1.6 + 0.3 * j, SPOTS[j][0], SPOTS[j][1] - 6, 0.8)
+            T.move(f"t{j}", t0 + plant_at + 0.3 * j, SPOTS[j][0], SPOTS[j][1] - 6, 0.8)
     if "rest" in at:
         t0 = at["rest"]["start"] + 0.2
         for i in range(3, N_SEED):
@@ -198,11 +199,11 @@ def choreo(spec, tl):
         T.pop("L." + lid, t)
         if "~" + lid in lab_times:
             T.fade("L." + lid, lab_times["~" + lid])
-    for cid in ("conclude", "ask"):
-        if cid in at:
-            T.pop("C." + cid, at[cid]["start"] + 0.2)
-            if cid == "conclude" and "ask" in at:
-                T.fade("C.conclude", at["ask"]["start"])
+    order = [c for c in ("conclude", "ask", "cta") if c in at]
+    for i, cid in enumerate(order):
+        T.pop("C." + cid, at[cid]["start"] + 0.2)
+        if i + 1 < len(order):
+            T.fade("C." + cid, at[order[i + 1]]["start"])
     for el in T.k:
         T.k[el].sort(key=lambda r: r[0])
     return T.k
@@ -237,6 +238,10 @@ SEEK_JS = """(st) => {
 def timeline(spec):
     t, out = 0.0, []
     for b in spec["beats"]:
+        if "t" in b:  # 녹음에 맞춘 장면 시간 [시작, 끝]
+            out.append(dict(start=float(b["t"][0]), end=float(b["t"][1])))
+            t = out[-1]["end"]
+            continue
         d = duo.beat_len(b)
         out.append(dict(start=t, end=t + d))
         t += d
