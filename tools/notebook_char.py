@@ -1108,9 +1108,70 @@ BOARD_VARIANT = {
               "border-radius:12px;text-align:center;font:900 72px/1.1 NotoK;letter-spacing:8px;opacity:var(--p,0);"
               "transform:rotate(-8deg) scale(calc(1.6 - .6 * var(--p,0)))}"
               ".seal small{display:block;font:700 24px NotoB;letter-spacing:3px}",
+    # 타자기(2026-11-16 사용자: "손가락이 나와서 타자기 치는 모습, 내가 나를 위해 계획을 세우고 실행하는 느낌, 바탕은 진하지 않게"):
+    # 밝은 책상 위 타자기와 두 손, 타자기에 끼운 종이에 계획이 찍힌다. 손은 글자가 써지는 동안 번갈아 키를 누른다.
+    "typewriter": "html,body{background:var(--desk)!important}"
+                  ".paper{left:110px!important;right:110px!important;top:{PT2}px!important;bottom:{PB2}px!important;"
+                  "background:#FFFFFF!important;border-radius:2px;box-shadow:0 10px 30px rgba(60,50,30,.18)}"
+                  ":root{--bink:#2B2B2B;--bsub:#9A9A94}"
+                  ".series{left:64px;top:{S2}px;font:700 24px NotoB;letter-spacing:2px}"
+                  ".step{right:64px;top:{S2}px;color:var(--bsub)}.step b{color:var(--bink)}"
+                  ".title{left:64px;top:{T2}px;font:700 {TF2}px NotoB;border-bottom:3px solid var(--bink);padding-bottom:12px}"
+                  ".body{left:64px;right:40px;top:{B2}px;font:700 {BF2}px/1.6 NotoB;letter-spacing:-1px}"
+                  ".art{left:{AX2}px!important;top:{AY2}px;width:{AW2}px;height:{AH2}px}"
+                  ".foot{left:0!important;width:100%!important;bottom:{FB2}px;font-size:22px}"
+                  ".big{left:50px;right:50px;top:{HY2}px;font-size:{HF2}px}"
+                  ".scene.hook .body{top:{HB2}px;left:50px;right:50px;font-size:{HBF3}px}"
+                  ".scene.hook .art{top:{HA2}px}"
+                  ".seal{position:absolute;right:56px;bottom:{SB2}px;border:6px solid #C8453B;color:#C8453B;padding:6px 26px 10px;"
+                  "border-radius:10px;text-align:center;font:900 60px/1.15 NotoK;letter-spacing:6px;mix-blend-mode:multiply;"
+                  "opacity:calc(.88 * var(--p,0));transform:rotate(-9deg) scale(calc(1.5 - .5 * var(--p,0)))}"
+                  ".seal small{display:block;font:700 20px NotoB;letter-spacing:2px}"
+                  ".tw{position:absolute;left:0;top:{TWY}px;width:1080px;height:760px}",
 }
-BOARD_LAYOUT = {"reel": dict(BSY=110, BTY=170, BTF=50, BBY=330, BBF=70, HS2=48, HBF2=60, BAR=92, BARY=26, BTF2=40, SEALB=170),
-                "card": dict(BSY=90, BTY=140, BTF=50, BBY=270, BBF=56, HS2=40, HBF2=50, BAR=80, BARY=22, BTF2=36, SEALB=110)}
+BOARD_LAYOUT = {"reel": dict(BSY=110, BTY=170, BTF=50, BBY=330, BBF=70, HS2=48, HBF2=60, BAR=92, BARY=26, BTF2=40, SEALB=170,
+                         PT2=110, PB2=730, S2=56, T2=110, TF2=44, B2=230, BF2=60, AX2=150, AY2=440, AW2=560, AH2=486,
+                         FB2=60, HY2=120, HF2=150, HB2=600, HBF3=52, HA2=740, SB2=110, TWY=1150),
+                "card": dict(BSY=90, BTY=140, BTF=50, BBY=270, BBF=56, HS2=40, HBF2=50, BAR=80, BARY=22, BTF2=36, SEALB=110,
+                         PT2=50, PB2=470, S2=40, T2=80, TF2=34, B2=160, BF2=44, AX2=240, AY2=340, AW2=380, AH2=330,
+                         FB2=40, HY2=80, HF2=110, HB2=380, HBF3=40, HA2=470, SB2=70, TWY=860)}
+
+
+def _tw_keys():
+    out = []
+    rows = [(190, 11, 0), (262, 11, 30), (334, 10, 60), (406, 9, 95)]
+    for y, n, off in rows:
+        x0 = 540 - (n - 1) * 41 + off - 30
+        for i in range(n):
+            out.append(f'<circle cx="{x0 + i * 82}" cy="{y}" r="29" fill="#F4F1E8" stroke="#1E2B25" stroke-width="4"/>')
+    return "".join(out)
+
+
+def _hand():
+    skin, ink, sleeve = "#EBC7A8", "#2B2B2B", "#CFC8B8"
+    fingers = "".join(f'<rect x="{x}" y="{-h}" width="30" height="{h + 40}" rx="15" fill="{skin}" stroke="{ink}" stroke-width="4"/>'
+                      for x, h in ((-66, 105), (-31, 140), (4, 145), (39, 128)))
+    return (f'<rect x="-78" y="60" width="156" height="420" rx="20" fill="{sleeve}" stroke="{ink}" stroke-width="4"/>'
+            f'<rect x="-78" y="60" width="156" height="34" rx="12" fill="#B9B19F" stroke="{ink}" stroke-width="4"/>'
+            f'{fingers}<rect x="-74" y="-30" width="148" height="104" rx="44" fill="{skin}" stroke="{ink}" stroke-width="4"/>'
+            f'<rect x="58" y="-10" width="30" height="86" rx="15" fill="{skin}" stroke="{ink}" stroke-width="4" transform="rotate(-38 73 33)"/>')
+
+
+TYPEWRITER_SVG = (
+    '<svg class="tw" viewBox="0 0 1080 760">'
+    '<ellipse cx="540" cy="740" rx="520" ry="40" fill="rgba(60,50,30,.12)"/>'
+    '<rect x="40" y="96" width="1000" height="680" rx="64" fill="#2F4F3E" stroke="#1E2B25" stroke-width="5"/>'
+    '<rect x="80" y="120" width="920" height="40" rx="18" fill="#3C6250"/>'
+    '<rect x="96" y="14" width="888" height="70" rx="35" fill="#2A2F2C" stroke="#1E2B25" stroke-width="5"/>'
+    '<rect x="96" y="40" width="888" height="10" fill="#3E4541"/>'
+    '<circle cx="70" cy="49" r="38" fill="#1F2422" stroke="#1E2B25" stroke-width="5"/>'
+    '<circle cx="1010" cy="49" r="38" fill="#1F2422" stroke="#1E2B25" stroke-width="5"/>'
+    '<rect x="150" y="84" width="780" height="18" fill="#9AA39E"/>'
+    + _tw_keys() +
+    '<rect x="330" y="456" width="420" height="40" rx="20" fill="#F4F1E8" stroke="#1E2B25" stroke-width="4"/>'
+    f'<g id="handL" transform="translate(360 430)">{_hand()}</g>'
+    f'<g id="handR" transform="translate(720 430) scale(-1 1)">{_hand()}</g>'
+    '</svg>')
 
 
 def board_css(spec, mode):
@@ -1123,6 +1184,10 @@ def board_css(spec, mode):
     for k, v in BOARD_LAYOUT[mode].items():
         css = css.replace("{" + k + "}", str(v))
     hl = BOARD_HL.get(spec.get("theme"), "rgba(255,225,77,.6)")
+    if style == "typewriter":
+        hl = {"butter": "rgba(245,203,78,.7)", "sky": "rgba(143,195,230,.7)"}.get(spec.get("theme"), hl)
+        desk = {"butter": "#FBF0CF", "sky": "#E4F0F8"}.get(spec.get("theme"), "#F3EFE6")
+        return css + f":root{{--yel:{hl};--bacc:#2B2B2B;--desk:{desk}}}"
     acc = th["accent"] if style == "whiteboard" else ("#F5CB4E" if spec.get("theme") == "butter" else "#9FD0F0")
     return css + f":root{{--yel:{hl};--bacc:{acc}}}"
 
@@ -1197,6 +1262,8 @@ def page_html(spec, mode):
     doc = doc.replace("</style>", css + hook_css + theme_css(spec) + (board_css(spec, mode) if is_board(spec) else "") + "</style>")
     if is_board(spec):
         doc = doc.replace(nb.SPROUT, '<div class="preload">가<i>가</i></div>')
+        if spec.get("style") == "typewriter":
+            doc = doc.replace("</body>", TYPEWRITER_SVG + "</body>")
     # 장면마다 그림·캐릭터를 끼워 넣는다 (장면 div 의 끝 바로 앞).
     for si, sc in enumerate(spec["scenes"]):
         art = sc.get("art")
@@ -1210,6 +1277,9 @@ def page_html(spec, mode):
             if spec.get("style") == "record" and si == len(spec["scenes"]) - 1:
                 seal = html.escape(spec.get("seal", "SEALED"))
                 art_svg += f'<div class="seal">{seal}<small>기록 · 저장 · 봉인</small></div>'
+            if spec.get("style") == "typewriter" and si == len(spec["scenes"]) - 1:
+                seal = html.escape(spec.get("seal", "실행"))
+                art_svg += f'<div class="seal">{seal}<small>나를 위한 계획</small></div>'
         if sc.get("big"):
             new_marker = f'<div class="scene hook" data-s="{si}" data-hook="1" style="display:none">'
             doc = doc.replace(marker, new_marker + hook_html(sc) + art_svg + draw_character(spec, sc.get("pose", "point")), 1)
@@ -1225,6 +1295,13 @@ SEEK_JS = nb.SEEK_JS.rstrip()[:-1] + """
   const onc = cs.filter(c => c.classList.contains('on'));
   if (onc.length) onc[onc.length - 1].classList.add('cur');
   document.body.classList.toggle('off', onc.length >= cs.length && (t % 1) >= 0.65);
+  const typing = onc.length < cs.length && onc.length > 0;
+  const beat = Math.floor(t * 7) % 2;
+  const hl = document.getElementById('handL'), hr = document.getElementById('handR');
+  if (hl) {
+    hl.setAttribute('transform', 'translate(360 430) translate(0 ' + (typing && beat === 0 ? 14 : 0) + ')');
+    hr.setAttribute('transform', 'translate(720 430) translate(0 ' + (typing && beat === 1 ? 14 : 0) + ') scale(-1 1)');
+  }
   const nm = sc.querySelectorAll('.mk, .ci').length;
   sc.querySelectorAll('.seal').forEach(e => e.style.setProperty('--p', Math.max(0, Math.min(1, (markP - nm) / 0.6))));
   const gt = document.querySelector('.paper > .title');
