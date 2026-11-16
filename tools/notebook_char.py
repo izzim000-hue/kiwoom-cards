@@ -1127,14 +1127,14 @@ BOARD_VARIANT = {
                   "border-radius:10px;text-align:center;font:900 60px/1.15 NotoK;letter-spacing:6px;mix-blend-mode:multiply;"
                   "opacity:calc(.88 * var(--p,0));transform:rotate(-9deg) scale(calc(1.5 - .5 * var(--p,0)))}"
                   ".seal small{display:block;font:700 20px NotoB;letter-spacing:2px}"
-                  ".tw{position:absolute;left:0;top:{TWY}px;width:1080px;height:760px}",
+                  ".tw{position:absolute;left:108px;top:{TWY}px;width:864px;height:608px}",
 }
 BOARD_LAYOUT = {"reel": dict(BSY=110, BTY=170, BTF=50, BBY=330, BBF=70, HS2=48, HBF2=60, BAR=92, BARY=26, BTF2=40, SEALB=170,
-                         PT2=110, PB2=730, S2=56, T2=110, TF2=44, B2=230, BF2=60, AX2=150, AY2=440, AW2=560, AH2=486,
-                         FB2=60, HY2=120, HF2=150, HB2=600, HBF3=52, HA2=740, SB2=110, TWY=1150),
+                         PT2=110, PB2=330, S2=60, T2=120, TF2=48, B2=260, BF2=72, AX2=130, AY2=540, AW2=600, AH2=520,
+                         FB2=70, HY2=150, HF2=180, HB2=740, HBF3=58, HA2=900, SB2=130, TWY=1560),
                 "card": dict(BSY=90, BTY=140, BTF=50, BBY=270, BBF=56, HS2=40, HBF2=50, BAR=80, BARY=22, BTF2=36, SEALB=110,
-                         PT2=50, PB2=470, S2=40, T2=80, TF2=34, B2=160, BF2=44, AX2=240, AY2=340, AW2=380, AH2=330,
-                         FB2=40, HY2=80, HF2=110, HB2=380, HBF3=40, HA2=470, SB2=70, TWY=860)}
+                         PT2=50, PB2=220, S2=44, T2=90, TF2=38, B2=190, BF2=54, AX2=200, AY2=420, AW2=460, AH2=400,
+                         FB2=40, HY2=90, HF2=130, HB2=460, HBF3=44, HA2=580, SB2=80, TWY=1100)}
 
 
 def _tw_keys():
@@ -1147,14 +1147,32 @@ def _tw_keys():
     return "".join(out)
 
 
+def _finger(x, length, ang, w, skin, line):
+    tip = -length
+    r = w / 2
+    path = (f'<g transform="rotate({ang} {x} 0)">'
+            f'<path d="M{x - r} 30 L{x - r * 0.92} {tip + r} Q{x - r * 0.9} {tip} {x} {tip} Q{x + r * 0.9} {tip} {x + r * 0.92} {tip + r} L{x + r} 30 Z" '
+            f'fill="{skin}" stroke="{line}" stroke-width="3" stroke-linejoin="round"/>'
+            f'<rect x="{x - w * 0.3:.1f}" y="{tip + 5}" width="{w * 0.6:.1f}" height="{w * 0.75:.1f}" rx="{w * 0.28:.1f}" fill="#F7E2D3" stroke="#D9A88A" stroke-width="1.5"/>'
+            f'<path d="M{x - w * 0.22:.1f} {tip + length * 0.42:.1f} q{w * 0.22:.1f} 4 {w * 0.44:.1f} 0" fill="none" stroke="#C9967A" stroke-width="2" stroke-linecap="round"/>'
+            f'<path d="M{x - w * 0.24:.1f} {tip + length * 0.70:.1f} q{w * 0.24:.1f} 5 {w * 0.48:.1f} 0" fill="none" stroke="#C9967A" stroke-width="2" stroke-linecap="round"/>'
+            '</g>')
+    return path
+
+
 def _hand():
-    skin, ink, sleeve = "#EBC7A8", "#2B2B2B", "#CFC8B8"
-    fingers = "".join(f'<rect x="{x}" y="{-h}" width="30" height="{h + 40}" rx="15" fill="{skin}" stroke="{ink}" stroke-width="4"/>'
-                      for x, h in ((-66, 105), (-31, 140), (4, 145), (39, 128)))
-    return (f'<rect x="-78" y="60" width="156" height="420" rx="20" fill="{sleeve}" stroke="{ink}" stroke-width="4"/>'
-            f'<rect x="-78" y="60" width="156" height="34" rx="12" fill="#B9B19F" stroke="{ink}" stroke-width="4"/>'
-            f'{fingers}<rect x="-74" y="-30" width="148" height="104" rx="44" fill="{skin}" stroke="{ink}" stroke-width="4"/>'
-            f'<rect x="58" y="-10" width="30" height="86" rx="15" fill="{skin}" stroke="{ink}" stroke-width="4" transform="rotate(-38 73 33)"/>')
+    """왼손 등(위에서 본 모습). 오른손은 scale(-1 1)로 뒤집는다."""
+    skin, line, sleeve = "#EFCDB2", "#9A6B50", "#E4DED1"
+    fingers = "".join(_finger(x, L, a, w, skin, line) for x, L, a, w in
+                      ((-54, 96, -8, 32), (-19, 124, -3, 34), (16, 134, 2, 35), (51, 118, 8, 33)))
+    thumb = (f'<g transform="rotate(40 70 100)">'
+             f'<path d="M54 120 L55 10 Q56 -12 71 -12 Q86 -12 87 10 L88 120 Z" fill="{skin}" stroke="{line}" stroke-width="3"/>'
+             f'<rect x="61" y="-6" width="20" height="24" rx="9" fill="#F7E2D3" stroke="#D9A88A" stroke-width="1.5"/></g>')
+    back = (f'<path d="M-76 0 C-82 60 -74 140 -58 220 L62 220 C80 140 90 60 76 -4 C50 -22 -46 -22 -76 0 Z" '
+            f'fill="{skin}" stroke="{line}" stroke-width="3"/>'
+            f'<path d="M-40 40 q8 -6 16 0 M-6 34 q8 -6 16 0 M30 38 q8 -6 16 0" fill="none" stroke="#D2A588" stroke-width="2" stroke-linecap="round"/>')
+    cuff = f'<rect x="-74" y="200" width="150" height="300" rx="14" fill="{sleeve}" stroke="{line}" stroke-width="3"/>'
+    return thumb + fingers + back + cuff
 
 
 TYPEWRITER_SVG = (
@@ -1169,8 +1187,8 @@ TYPEWRITER_SVG = (
     '<rect x="150" y="84" width="780" height="18" fill="#9AA39E"/>'
     + _tw_keys() +
     '<rect x="330" y="456" width="420" height="40" rx="20" fill="#F4F1E8" stroke="#1E2B25" stroke-width="4"/>'
-    f'<g id="handL" transform="translate(360 430)">{_hand()}</g>'
-    f'<g id="handR" transform="translate(720 430) scale(-1 1)">{_hand()}</g>'
+    f'<g id="handL" transform="translate(360 360)">{_hand()}</g>'
+    f'<g id="handR" transform="translate(720 360) scale(-1 1)">{_hand()}</g>'
     '</svg>')
 
 
@@ -1299,8 +1317,8 @@ SEEK_JS = nb.SEEK_JS.rstrip()[:-1] + """
   const beat = Math.floor(t * 7) % 2;
   const hl = document.getElementById('handL'), hr = document.getElementById('handR');
   if (hl) {
-    hl.setAttribute('transform', 'translate(360 430) translate(0 ' + (typing && beat === 0 ? 14 : 0) + ')');
-    hr.setAttribute('transform', 'translate(720 430) translate(0 ' + (typing && beat === 1 ? 14 : 0) + ') scale(-1 1)');
+    hl.setAttribute('transform', 'translate(360 360) translate(0 ' + (typing && beat === 0 ? 10 : 0) + ')');
+    hr.setAttribute('transform', 'translate(720 360) translate(0 ' + (typing && beat === 1 ? 10 : 0) + ') scale(-1 1)');
   }
   const nm = sc.querySelectorAll('.mk, .ci').length;
   sc.querySelectorAll('.seal').forEach(e => e.style.setProperty('--p', Math.max(0, Math.min(1, (markP - nm) / 0.6))));
