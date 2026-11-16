@@ -1,0 +1,36 @@
+{
+ "title": "월급날 순서, 하나 바꿨을 뿐인데",
+ "badge": "제 이야기 · 금액은 예시",
+ "foot": "금액은 이해를 돕는 예시 · 이자·세금·할부수수료 제외 단순 계산 · 특정 상품 권유 아님",
+ "left":  {"name": "예전의 나", "age": "", "look": "sprout"},
+ "right": {"name": "바꾼 뒤의 나", "age": "", "look": "sprout"},
+ "hook": {"big": "‘남으면 저축’|하던 ==예전의 나==", "sub": "순서 하나 바꿨더니"},
+ "items": {
+  "L.pay":  {"side": "L", "y": 60,  "type": "tag", "style": "navy", "text": "월급 그대로"},
+  "R.pay":  {"side": "R", "y": 60,  "type": "tag", "style": "navy", "text": "월급 그대로"},
+  "L.d25":  {"side": "L", "y": 150, "type": "tag", "icon": "card", "text": "월급날,|카드값부터 빠져나감"},
+  "L.end":  {"side": "L", "y": 290, "type": "money", "label": "월말 통장", "value": "0원", "style": "red"},
+  "R.d25":  {"side": "R", "y": 150, "type": "tag", "icon": "bank", "style": "grn", "text": "월급날,|==저축 먼저== 옮김"},
+  "R.end":  {"side": "R", "y": 290, "type": "tag", "style": "ghost", "text": "남은 돈 안에서|생활"},
+  "L.jar":  {"side": "L", "y": 150, "type": "jar", "fill": 0.04, "value": "거의 0", "label": "1년 뒤"},
+  "R.jar":  {"side": "R", "y": 150, "type": "jar", "fill": 0.85, "value": "600만 원", "label": "1년 뒤 (월 50만 원 예시)", "src": "예시 계산 · 이자·세금 제외"},
+  "C.crisis": {"side": "C", "y": 760, "text": "그러다 갑자기|차 수리비 ==120만 원==", "src": "예시 금액"},
+  "L.fix":  {"side": "L", "y": 460, "type": "tag", "icon": "card", "style": "red", "text": "예전이라면|카드 할부"},
+  "R.fix":  {"side": "R", "y": 460, "type": "tag", "icon": "bank", "style": "grn", "text": "모아 둔 돈으로|해결"},
+  "C.end":  {"side": "C", "y": 720, "style": "dark", "text": "월급이 늘어난 게 아니라|==순서==만 바꿨을 뿐이에요"},
+  "C.ask":  {"side": "C", "y": 760, "text": "혹시 예전의 저처럼|‘남으면 저축’이신가요?"}
+ },
+ "beats": [
+  {"say": "저는 원래 ‘남으면 저축하자’ 하는 사람이었어요.", "d": 3.4},
+  {"say": "월급은 그대로였어요. 바꾼 건 딱 하나예요.", "show": ["L.pay", "eq", "R.pay"], "pose": {"L": "think", "R": "point"}},
+  {"say": "예전엔 월급날 아침, 카드값부터 빠져나갔어요.", "show": ["L.d25"], "focus": "L", "pose": {"L": "worry"}},
+  {"say": "월말엔 늘 바닥. ‘이번 달도 못 모았네’ 했죠.", "show": ["L.end"], "focus": "L", "pose": {"L": "think"}},
+  {"say": "그래서 순서를 바꿔 봤어요. 월급날, 저축부터 먼저 옮겼어요.", "show": ["R.d25"], "focus": "R", "pose": {"R": "point"}},
+  {"say": "처음엔 빠듯했는데, 남은 돈 안에서 살아지더라고요.", "show": ["R.end"], "focus": "R", "pose": {"R": "cheer"}},
+  {"say": "1년 지나니 처음으로 통장에 목돈이 보이더라고요.", "hide": ["L.d25", "L.end", "R.d25", "R.end", "eq"], "show": ["vs", "L.jar", "R.jar"], "pose": {"L": "worry", "R": "cheer"}},
+  {"say": "그러다 갑자기, 차 수리비 120만 원이 나왔어요.", "show": ["C.crisis"], "pose": {"L": "worry", "R": "think"}},
+  {"say": "예전 같으면 할부부터 긁었을 텐데, 이번엔 모아 둔 돈으로 해결했어요.", "hide": ["C.crisis"], "show": ["L.fix", "R.fix"], "pose": {"L": "worry", "R": "cheer"}},
+  {"say": "월급이 늘어난 게 아니라, ==순서==만 바꿨을 뿐이에요.", "show": ["C.end"], "focus": "C", "pose": {"R": "wave"}},
+  {"say": "혹시 예전의 저처럼 ‘남으면 저축’이신가요? 이번 월급날, 순서 하나만 바꿔 볼까요?", "hide": ["C.end"], "show": ["C.ask"], "focus": "C"}
+ ]
+}
