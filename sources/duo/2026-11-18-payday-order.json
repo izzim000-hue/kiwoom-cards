@@ -1,0 +1,296 @@
+{
+ "title": "같은 월급, 다른 1년",
+ "badge": "가상 인물 · 가상 예시",
+ "foot": "가상 예시 · 이자·세금·할부수수료 제외 단순 계산 · 특정 상품 권유 아님",
+ "left": {
+  "name": "정 과장",
+  "age": "41세",
+  "look": "a"
+ },
+ "right": {
+  "name": "윤 과장",
+  "age": "41세",
+  "look": "b"
+ },
+ "hook": {
+  "big": "같은 월급인데|1년 뒤 ==통장==이|달라졌어요",
+  "sub": "두 사람 이야기"
+ },
+ "items": {
+  "L.pay": {
+   "side": "L",
+   "y": 60,
+   "type": "tag",
+   "style": "navy",
+   "text": "월 실수령 350만 원"
+  },
+  "R.pay": {
+   "side": "R",
+   "y": 60,
+   "type": "tag",
+   "style": "navy",
+   "text": "월 실수령 350만 원"
+  },
+  "L.d25": {
+   "side": "L",
+   "y": 150,
+   "type": "tag",
+   "icon": "card",
+   "text": "25일, 카드값부터|빠져나감"
+  },
+  "R.d25": {
+   "side": "R",
+   "y": 150,
+   "type": "tag",
+   "icon": "bank",
+   "style": "grn",
+   "text": "25일, ==50만 원==부터|저축통장으로"
+  },
+  "L.rule": {
+   "side": "L",
+   "y": 290,
+   "type": "tag",
+   "style": "ghost",
+   "text": "“남으면 저축하자”"
+  },
+  "R.rule": {
+   "side": "R",
+   "y": 290,
+   "type": "tag",
+   "style": "ghost",
+   "text": "“남은 돈 안에서 쓰자”"
+  },
+  "L.end": {
+   "side": "L",
+   "y": 380,
+   "type": "money",
+   "label": "월말 생활비 통장",
+   "value": "0원",
+   "style": "red"
+  },
+  "R.end": {
+   "side": "R",
+   "y": 380,
+   "type": "money",
+   "label": "월말 생활비 통장",
+   "value": "0원",
+   "style": "red"
+  },
+  "L.jar": {
+   "side": "L",
+   "y": 150,
+   "type": "jar",
+   "fill": 0.05,
+   "value": "거의 0",
+   "label": "남을 때만 저축"
+  },
+  "R.jar": {
+   "side": "R",
+   "y": 150,
+   "type": "jar",
+   "fill": 0.85,
+   "value": "600만 원",
+   "label": "50만 원 × 12개월",
+   "src": "가상 계산 · 이자·세금 제외"
+  },
+  "C.crisis": {
+   "side": "C",
+   "y": 760,
+   "text": "그러다 갑자기|차 수리비 ==120만 원==",
+   "src": "가상 예시"
+  },
+  "L.fix": {
+   "side": "L",
+   "y": 460,
+   "type": "tag",
+   "icon": "card",
+   "style": "red",
+   "text": "카드 6개월 할부"
+  },
+  "R.fix": {
+   "side": "R",
+   "y": 460,
+   "type": "tag",
+   "icon": "bank",
+   "style": "grn",
+   "text": "저축통장에서 해결"
+  },
+  "L.next": {
+   "side": "L",
+   "y": 460,
+   "type": "tag",
+   "style": "red",
+   "text": "6개월간|카드값 ==+20만 원=="
+  },
+  "R.next": {
+   "side": "R",
+   "y": 460,
+   "type": "tag",
+   "style": "grn",
+   "text": "남은 돈|==480만 원== 그대로"
+  },
+  "C.end": {
+   "side": "C",
+   "y": 720,
+   "style": "dark",
+   "text": "두 사람을 가른 건|월급이 아니라 ==순서==였어요"
+  },
+  "C.ask": {
+   "side": "C",
+   "y": 900,
+   "text": "지금 나는|어느 쪽에 더 가까운가요?",
+   "mentor": true,
+   "mentor_pose": "wave",
+   "mentor_y": -330
+  }
+ },
+ "beats": [
+  {
+   "say": "같은 월급인데, 1년 뒤 통장이 완전히 달라졌어요.",
+   "d": 3.0
+  },
+  {
+   "say": "둘 다 마흔하나, 월급도 똑같이 350만 원이에요.",
+   "show": [
+    "L.pay",
+    "eq",
+    "R.pay"
+   ]
+  },
+  {
+   "say": "월급날 아침, 정 과장 통장에선 카드값부터 빠져나가요.",
+   "show": [
+    "L.d25"
+   ],
+   "focus": "L",
+   "pose": {
+    "L": "phone"
+   }
+  },
+  {
+   "say": "윤 과장은 그날 아침, ==50만 원==부터 저축통장으로 옮겨요.",
+   "show": [
+    "R.d25"
+   ],
+   "focus": "R",
+   "pose": {
+    "R": "book"
+   }
+  },
+  {
+   "say": "한 사람은 ‘남으면 저축’, 한 사람은 ‘남은 돈 안에서’.",
+   "show": [
+    "L.rule",
+    "R.rule"
+   ],
+   "pose": {
+    "L": "stand",
+    "R": "stand"
+   }
+  },
+  {
+   "say": "월말엔 둘 다 통장이 바닥이에요. 여기까진 똑같죠.",
+   "show": [
+    "L.end",
+    "R.end"
+   ],
+   "pose": {
+    "L": "sigh",
+    "R": "calm"
+   }
+  },
+  {
+   "say": "그렇게 1년, 윤 과장 저축통장엔 ==600만 원==이 모였어요.",
+   "hide": [
+    "L.d25",
+    "R.d25",
+    "L.rule",
+    "R.rule",
+    "L.end",
+    "R.end",
+    "eq"
+   ],
+   "show": [
+    "vs",
+    "L.jar",
+    "R.jar"
+   ],
+   "pose": {
+    "L": "oh",
+    "R": "happy"
+   }
+  },
+  {
+   "say": "그러다 갑자기, 차 수리비 120만 원이 필요해졌어요.",
+   "show": [
+    "C.crisis"
+   ],
+   "pose": {
+    "L": "worry",
+    "R": "oh"
+   }
+  },
+  {
+   "say": "정 과장은 카드 할부로, 윤 과장은 모아 둔 돈으로요.",
+   "hide": [
+    "C.crisis"
+   ],
+   "show": [
+    "L.fix",
+    "R.fix"
+   ],
+   "pose": {
+    "L": "card",
+    "R": "book"
+   }
+  },
+  {
+   "say": "정 과장은 여섯 달 동안 카드값이 ==20만 원씩== 더 나가고,",
+   "show": [
+    "L.next"
+   ],
+   "focus": "L",
+   "pose": {
+    "L": "sigh"
+   },
+   "hide": [
+    "L.fix"
+   ]
+  },
+  {
+   "say": "윤 과장 통장엔 480만 원이 그대로 남아 있어요.",
+   "show": [
+    "R.next"
+   ],
+   "focus": "R",
+   "pose": {
+    "R": "happy"
+   },
+   "hide": [
+    "R.fix"
+   ]
+  },
+  {
+   "say": "두 사람을 가른 건 월급이 아니라 ==순서==였어요.",
+   "show": [
+    "C.end"
+   ],
+   "pose": {
+    "L": "stand",
+    "R": "calm"
+   },
+   "focus": "C"
+  },
+  {
+   "say": "이번 월급날, 순서 하나만 바꿔 볼까요?",
+   "hide": [
+    "C.end"
+   ],
+   "show": [
+    "C.ask"
+   ],
+   "d": 4.6,
+   "focus": "C"
+  }
+ ]
+}
