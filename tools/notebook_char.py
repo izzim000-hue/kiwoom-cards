@@ -901,6 +901,23 @@ ART = {
 
 
 # ---------------------------------------------------------------- 색감 · 캐릭터 시안 (2026-11-13)
+# 11/18 릴스(비상금 통장): 기존 그림의 글자만 바꾼 변형
+def _relabel(name, *pairs):
+    out = []
+    for x in ART[name]:
+        for a, b in pairs:
+            x = x.replace(a, b)
+        out.append(x)
+    return out
+
+
+ART["emergency_accounts"] = _relabel("named_accounts", (">가족 여행<", ">생활비<"), (">아이 대학<", ">비상금<"), (">내 노후<", ">저축<"))
+ART["emergency_rename"] = _relabel("rename_app", (">적금 1<", ">통장 2<"), (">가족 여행<", ">비상금<"))
+ART["emergency_jar"] = _relabel("jar_full", (">1년 뒤<", ">비상금<"), (">360만 원<", ">든든<"))
+ART["installment_stack_plain"] = _relabel("installment_stack", (">월 40만<", ">할부<"))
+ART["sudden_bill_plain"] = _relabel("sudden_bill", (">200만 원<", ">목돈<"))
+
+
 # 원고에 "theme" 과 "character" 를 넣으면 바꿔 그린다. 없으면 지금까지와 같다(green / sprout).
 # 2026-11-16부터 기본 운영은 "character": "none" (캐릭터 없이 전문가 톤, 그림은 가운데).
 THEMES = {
