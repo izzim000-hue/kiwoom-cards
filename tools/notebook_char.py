@@ -964,7 +964,7 @@ ART = {
                   g(T(155, 450, "꺼내지 않는 돈", 30, GREEN), T(445, 450, "쓸 날이 정해진 돈", 30, "#34507A"))],
     "reward_plan": [g(box(110, 60, 380, 400, "#FFFEF2", 8, 6),
                       *[f'<path d="M140 {y} L460 {y}" stroke="#E2DAC0" stroke-width="3"/>' for y in (170, 250, 330)]),
-                    g(T(300, 140, "만기 전에 정할 것", 36, GREEN)),
+                    g(T(300, 140, "쓰실 거라면 같이 적어요", 34, GREEN)),
                     g(T(180, 230, "①", 36, "#C8574F"), T(330, 230, "언제 쓸지", 36)),
                     g(T(180, 310, "②", 36, "#C8574F"), T(330, 310, "얼마 쓸지", 36)),
                     g(T(180, 390, "③", 36, "#C8574F"), T(330, 390, "나머지는 어디로", 34))],
@@ -974,7 +974,7 @@ ART = {
                     g(arrow(275, 220, 325, 220, INK, 6)),
                     g(box(340, 110, 110, 220, "#E8F2EA", 14, 6), T(395, 200, "쌓을", 30), T(395, 240, "돈", 30)),
                     g(box(465, 110, 110, 220, "#FFF1A8", 14, 6), T(520, 200, "쓸", 30), T(520, 240, "돈", 30)),
-                    g(T(300, 430, "비율을 먼저 정해요", 36, GREEN))],
+                    g(T(300, 430, "얼마씩 나눌까요?", 36, GREEN))],
     "split_note": [g(box(90, 60, 420, 380, "#FFFEF2", 8, 6)),
                    g(T(300, 140, "내 돈 나눠 보기", 38, GREEN)),
                    g(T(140, 230, "계속 쌓을 돈", 34, INK, "start"),
@@ -1475,12 +1475,19 @@ def render_reel(spec, out):
         b, page = _open(pw, spec, "reel", work)
         enc = PipeEncoder(out)
         try:
+            # "cover": "live" 면 글씨만 완성된 채 시작하고 표시·그림은 0초부터 움직인다(2026-11-17, 첫 2초 이탈 대응).
             # "cover": true 면 첫 장면은 타이핑 없이 완성된 화면으로 보여 준다
             # (0초 첫 프레임이 곧 표지가 되어 프로필 그리드에서 어중간하게 보이지 않게, 2026-11-16 사용자 요청).
             cover_end = sch[0][3] if spec.get("cover") else 0
             for i in range(int(round(total * FPS))):
                 t = i / FPS
-                st = [0, 10 ** 6, 99, 99, t] if t < cover_end else _state(sch, t)
+                if t >= cover_end:
+                    st = _state(sch, t)
+                elif spec.get("cover") == "live":
+                    # 글씨는 0초부터 완성, 동그라미·형광펜·그림은 0초부터 바로 움직인다(정지 화면 없이)
+                    st = [0, 10 ** 6, t / 0.45, t + 0.45, t]
+                else:
+                    st = [0, 10 ** 6, 99, 99, t]
                 page.evaluate(SEEK_JS, st)
                 enc.write(page.screenshot(type="png"))
             enc.close()
