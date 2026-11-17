@@ -1,0 +1,11 @@
+{"series": "키움멘토 돈 노트", "title": "승진했는데 대출 이자는 그대로?",
+ "foot": "일반 정보 · 특정 상품 권유 아님",
+ "scenes": [
+  {"lines": ["작년에 승진했는데", "대출 이자는 ((그대로))"], "pose": "worry", "art": "loan_same"},
+  {"lines": ["은행이 알아서", "==낮춰 주는 줄== 알았어요"], "pose": "think", "art": "bank_wait"},
+  {"lines": ["알고 보니", "++내가 먼저++ 요청해야 해요"], "pose": "point", "art": "rate_request"},
+  {"lines": ["형편이 나아졌다면", "((금리인하요구))를 해요"], "pose": "think", "art": "rate_reasons"},
+  {"lines": ["앱에서 신청하면", "==결과를 알려== 줘요"], "pose": "point", "art": "rate_result"},
+  {"lines": ["받아들여질지는", "((은행 심사))에 달려요"], "pose": "think", "art": "rate_review", "foot": "일부 대출은 대상 아님"},
+  {"lines": ["오늘 내 대출 앱에서", "++금리인하요구++ 찾기"], "pose": "wave", "art": "rate_today"}
+ ]}

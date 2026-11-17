@@ -1,0 +1,11 @@
+{"series": "키움멘토 돈 노트", "title": "일요일 밤 10분, 돈 점검",
+ "foot": "일반 정보 · 개인 상황에 따라 다름",
+ "scenes": [
+  {"lines": ["일요일 밤, 잔액 보기가", "((무서웠던)) 적 있죠?"], "pose": "worry", "art": "sunday_night"},
+  {"lines": ["돈은 주중에 새는데", "==월말에야== 알았어요"], "pose": "think", "art": "month_end"},
+  {"lines": ["그래서 일요일 밤", "++10분만++ 쓰기로 했어요"], "pose": "point", "art": "timer_10"},
+  {"lines": ["① 지난주 쓴 돈", "==한 줄로== 적기"], "pose": "point", "art": "week_note"},
+  {"lines": ["② 다음 주 큰 지출", "((미리)) 표시하기"], "pose": "think", "art": "week_mark"},
+  {"lines": ["③ 한 주 생활비", "==한도== 정하기"], "pose": "cheer", "art": "week_budget", "foot": "금액은 예시(가정)"},
+  {"lines": ["이번 주 일요일,", "++오늘 밤++ 해 봐요"], "pose": "wave", "art": "sunday_check"}
+ ]}
