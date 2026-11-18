@@ -917,6 +917,45 @@ ART["emergency_jar"] = _relabel("jar_full", (">1년 뒤<", ">비상금<"), (">36
 ART["installment_stack_plain"] = _relabel("installment_stack", (">월 40만<", ">할부<"))
 ART["sudden_bill_plain"] = _relabel("sudden_bill", (">200만 원<", ">목돈<"))
 
+# 책 코너 1편: 『돈의 심리학』 골대(충분함)
+ART["raise_vanish_plain"] = _relabel("raise_vanish", (">월 +20만 원<", ">월급 올랐다<"))
+
+
+def _goal(x, y, s=1.0, color=INK):
+    """간단한 축구 골대(정면)."""
+    w, h = 170 * s, 110 * s
+    return (f'<path d="M{x} {y + h} L{x} {y} L{x + w} {y} L{x + w} {y + h}" fill="none" stroke="{color}" stroke-width="9" stroke-linecap="round"/>'
+            + "".join(f'<path d="M{x + w * k / 5:.0f} {y} L{x + w * k / 5:.0f} {y + h}" stroke="#BBB" stroke-width="3"/>' for k in range(1, 5))
+            + "".join(f'<path d="M{x} {y + h * k / 3:.0f} L{x + w} {y + h * k / 3:.0f}" stroke="#BBB" stroke-width="3"/>' for k in range(1, 3)))
+
+
+ART.update({
+    "open_book": [g('<path d="M300 130 Q200 90 70 110 L70 420 Q200 400 300 440 Z" fill="#fff" stroke="#333" stroke-width="6"/>',
+                    '<path d="M300 130 Q400 90 530 110 L530 420 Q400 400 300 440 Z" fill="#fff" stroke="#333" stroke-width="6"/>'),
+                  g(*[f'<path d="M105 {180 + i * 40} L265 {190 + i * 40}" stroke="#C9C9C9" stroke-width="5" stroke-linecap="round"/>' for i in range(5)],
+                    *[f'<path d="M335 {190 + i * 40} L495 {180 + i * 40}" stroke="#C9C9C9" stroke-width="5" stroke-linecap="round"/>' for i in (0, 1, 3, 4)]),
+                  g('<path d="M335 300 L495 290" stroke="#F4CF4C" stroke-width="22" stroke-linecap="round" opacity="0.85"/>',
+                    '<path d="M335 300 L495 290" stroke="#333" stroke-width="5" stroke-linecap="round"/>',
+                    T(415, 360, "밑줄 한 줄", 30, GREEN)),
+                  g(T(300, 70, "『돈의 심리학』", 38, GREEN))],
+    "goalpost_move": [g('<path d="M40 430 L560 430" stroke="#8CC56E" stroke-width="10" stroke-linecap="round"/>'),
+                      g(f'<g opacity="0.35">{_goal(60, 300, 0.75)}</g>', f'<g opacity="0.6">{_goal(220, 260, 0.9)}</g>'),
+                      g(_goal(390, 210, 1.05, "#C8574F"), arrow(150, 200, 430, 160, "#C8574F")),
+                      g(T(300, 120, "다가가면 또 멀어지는 골대", 32, INK))],
+    "enough_q": [g(box(40, 90, 230, 120, "#fff", 40, 5), T(155, 165, "얼마 더?", 42, "#9A9A9A"),
+                   '<path d="M70 120 L240 180" stroke="#C8574F" stroke-width="7" stroke-linecap="round"/>'),
+                 g(box(200, 260, 360, 150, "#FFF1A8", 50, 6), T(380, 350, "얼마면 충분?", 48, GREEN)),
+                 g(T(150, 470, "질문 순서를 바꿔요", 30, "#666", "start", 700))],
+    "enough_line": _jar(4, "생활") + [
+        g('<path d="M110 250 L490 250" stroke="#2F4F3E" stroke-width="6" stroke-dasharray="18 12"/>',
+          box(380, 196, 200, 50, "#E8F2EA", 25, 4), T(480, 232, "충분선", 30, GREEN)),
+        g(coin(300, 215, 80, 16), coin(300, 192, 80, 16), T(300, 160, "남는 돈", 34, GREEN))],
+    "my_goalpost": [g('<path d="M40 430 L560 430" stroke="#8CC56E" stroke-width="10" stroke-linecap="round"/>', _goal(215, 250, 1.0, GREEN)),
+                    g('<path d="M300 250 L300 120" stroke="#333" stroke-width="5"/>', '<path d="M300 120 L380 145 L300 170 Z" fill="#F4CF4C" stroke="#333" stroke-width="4"/>',
+                      T(300, 90, "여기까지면 충분", 32, GREEN)),
+                    g(T(300, 490, "내 골대는 어디?", 34, INK))],
+})
+
 
 # 원고에 "theme" 과 "character" 를 넣으면 바꿔 그린다. 없으면 지금까지와 같다(green / sprout).
 # 2026-11-16부터 기본 운영은 "character": "none" (캐릭터 없이 전문가 톤, 그림은 가운데).
