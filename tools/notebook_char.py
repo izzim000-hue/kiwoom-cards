@@ -973,7 +973,21 @@ def _note(rows):
     return out
 
 
+def _chain_step(n):
+    """따라가기를 한 칸씩: n칸 보이고 다음 칸 자리에 물음표."""
+    full = _chain(n >= 3)
+    keep = full[:2 * n - 1] if n < 3 else full
+    if n < 3:
+        y = 30 + n * 160
+        keep = keep + [g(arrow(300, y - 52, 300, y - 8, "#8A6A4A")),
+                       g(f'<rect x="90" y="{y}" width="420" height="100" rx="20" fill="none" stroke="#C8574F" stroke-width="5" stroke-dasharray="14 10"/>',
+                         T(300, y + 72, "?", 64, "#C8574F"))]
+    return keep
+
+
 ART.update({
+    "chain1": _chain_step(1),
+    "chain2": _chain_step(2),
     "trace_root": _chain(False),
     "trace_root_hl": _chain(True),
     "habit_note": _note([("내 습관", "세일이면 산다"), ("어디서?", "어릴 때 본 모습"), ("지금도?", "맞음 / 안 맞음")]),
