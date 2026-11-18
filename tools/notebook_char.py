@@ -952,6 +952,34 @@ ART.update({
 })
 
 
+def _chain(hl):
+    rows = [("세일이면 일단 산다", "#fff"), ("물건이 귀했던 시절", "#fff"), ("지금 나에게도 맞을까?", "#FFF1A8" if hl else "#fff")]
+    out = []
+    for i, (txt, fill) in enumerate(rows):
+        y = 30 + i * 160
+        out.append(g(box(90, y, 420, 100, fill, 20, 6), T(300, y + 64, txt, 36, GREEN if i == 2 else INK)))
+        if i < 2:
+            out.append(g(arrow(300, y + 108, 300, y + 152, "#8A6A4A")))
+    return out
+
+
+def _note(rows):
+    out = [g(box(40, 20, 520, 440, "#fff", 12, 6), '<rect x="40" y="20" width="520" height="70" fill="#2F4F3E" stroke="#333" stroke-width="6"/>',
+             T(300, 68, "내 돈 습관 3칸 노트", 34, "#fff"))]
+    for i, (k, v) in enumerate(rows):
+        y = 110 + i * 110
+        out.append(g(box(60, y, 180, 90, "#E8F2EA", 12, 4), T(150, y + 56, k, 30, GREEN),
+                     box(250, y, 290, 90, "#FBF7EC", 12, 4), T(395, y + 56, v, 30)))
+    return out
+
+
+ART.update({
+    "trace_root": _chain(False),
+    "trace_root_hl": _chain(True),
+    "habit_note": _note([("내 습관", "세일이면 산다"), ("어디서?", "어릴 때 본 모습"), ("지금도?", "맞음 / 안 맞음")]),
+})
+
+
 ART.update({
     "open_book": [g('<path d="M300 130 Q200 90 70 110 L70 420 Q200 400 300 440 Z" fill="#fff" stroke="#333" stroke-width="6"/>',
                     '<path d="M300 130 Q400 90 530 110 L530 420 Q400 400 300 440 Z" fill="#fff" stroke="#333" stroke-width="6"/>'),
