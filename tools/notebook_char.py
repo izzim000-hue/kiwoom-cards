@@ -963,9 +963,9 @@ def _chain(hl):
     return out
 
 
-def _note(rows):
+def _note(rows, title="내 돈 습관 3칸 노트"):
     out = [g(box(40, 20, 520, 440, "#fff", 12, 6), '<rect x="40" y="20" width="520" height="70" fill="#2F4F3E" stroke="#333" stroke-width="6"/>',
-             T(300, 68, "내 돈 습관 3칸 노트", 34, "#fff"))]
+             T(300, 68, title, 34, "#fff"))]
     for i, (k, v) in enumerate(rows):
         y = 110 + i * 110
         out.append(g(box(60, y, 180, 90, "#E8F2EA", 12, 4), T(150, y + 56, k, 30, GREEN),
@@ -1000,6 +1000,24 @@ ART.update({
                     g(T(300, 330, "불안", 70, "#C8574F")),
                     g(T(300, 40, "할인보다 먼저 산 것", 32, GREEN))],
     "action_note": _note([("문제", "안 쓰고 쌓임"), ("결론", "불안을 샀다"), ("실행", "장바구니 하루")]),
+    "keep_saving": [*[g(f'<rect x="{70 + i * 95}" y="{430 - h}" width="70" height="{h}" rx="8" fill="#C9D7CF" stroke="{INK}" stroke-width="4"/>') for i, h in enumerate((80, 130, 180, 230, 280))],
+                    g(arrow(90, 330, 540, 90, GREEN)), g(T(470, 60, "언제까지?", 38, "#C8574F"))],
+    "peak_curve": [g('<path d="M40 430 Q300 -40 560 430" fill="none" stroke="#2F4F3E" stroke-width="9" stroke-linecap="round"/>'),
+                   g('<path d="M300 200 L300 110" stroke="#333" stroke-width="5"/>', '<path d="M300 110 L370 130 L300 150 Z" fill="#F4CF4C" stroke="#333" stroke-width="4"/>',
+                     T(300, 90, "정점", 34, GREEN)),
+                   g(T(120, 470, "모으기", 32), T(480, 470, "꺼내 쓰기", 32, "#C8574F"))],
+    "withdraw_fear": _jar(3, "평생 모은 돈") + [g(arrow(470, 300, 570, 380, "#C8574F")), g(T(300, 40, "꺼내는 순간, 불안", 34, "#C8574F"))],
+    "not_others": [g(_person(300, 140, 1.2, "나", "#FFF1A8")),
+                   g(box(80, 380, 440, 90, "#E8F2EA", 45, 5), T(300, 438, "남 얘기가 아니더라고요", 32, GREEN))],
+    "peak_q": [g('<path d="M60 360 L540 360" stroke="#333" stroke-width="6"/>',
+                 *[T(110 + i * 125, 410, a, 32) for i, a in enumerate(("40", "50", "60", "70"))],
+                 *[f'<path d="M{110 + i * 125} 350 L{110 + i * 125} 370" stroke="#333" stroke-width="5"/>' for i in range(4)]),
+               g('<path d="M300 350 L300 200" stroke="#333" stroke-width="5" stroke-dasharray="10 8"/>', T(300, 180, "?", 90, "#C8574F")),
+               g(T(300, 470, "내 돈의 정점은 몇 살?", 32, GREEN))],
+    "no_peak": [g('<path d="M40 430 Q300 300 560 60" fill="none" stroke="#9A9A9A" stroke-width="8" stroke-dasharray="16 10"/>'),
+                g(T(300, 130, "정점 없음", 40, "#C8574F")),
+                g(box(120, 380, 360, 80, "#FBE3E0", 40, 5), T(300, 432, "꺼내 쓰는 계획도 없음", 30))],
+    "peak_note": _note([("내 정점", "○○살"), ("그다음", "꺼내 쓰기"), ("오늘", "이 한 줄")], "내 돈의 정점 노트"),
     "habit_note": _note([("내 습관", "세일이면 산다"), ("어디서?", "어릴 때 본 모습"), ("지금도?", "맞음 / 안 맞음")]),
 })
 
@@ -1465,6 +1483,9 @@ SEEK_JS = nb.SEEK_JS.rstrip()[:-1] + """
   const eyes = sc.querySelector('.eyes');
   if (eyes) { const ph = t % 3.4; eyes.setAttribute('transform', ph < 0.12 ? 'translate(0 152) scale(1 0.1)' : ''); }
 }"""
+
+
+ART["open_book_dwz"] = _relabel("open_book", (">『돈의 심리학』<", ">『DIE WITH ZERO』<"))
 
 
 def schedule(spec):
