@@ -929,6 +929,29 @@ def _goal(x, y, s=1.0, color=INK):
             + "".join(f'<path d="M{x} {y + h * k / 3:.0f} L{x + w} {y + h * k / 3:.0f}" stroke="#BBB" stroke-width="3"/>' for k in range(1, 3)))
 
 
+def _person(x, y, s, label, fill):
+    r = 34 * s
+    return (f'<circle cx="{x}" cy="{y}" r="{r:.0f}" fill="#FFF3E4" stroke="#333" stroke-width="5"/>'
+            f'<path d="M{x - 55 * s:.0f} {y + 120 * s:.0f} Q{x - 55 * s:.0f} {y + 45 * s:.0f} {x} {y + 45 * s:.0f} Q{x + 55 * s:.0f} {y + 45 * s:.0f} {x + 55 * s:.0f} {y + 120 * s:.0f} Z" fill="{fill}" stroke="#333" stroke-width="5"/>'
+            + T(x, y + 165 * s, label, 30))
+
+
+ART.update({
+    "three_people": [g(_person(110, 170, 1.0, "엄마 세대", "#C9D7CF")), g(_person(300, 150, 1.15, "나", "#FFF1A8")), g(_person(490, 190, 0.9, "아이 세대", "#D6EAF5")),
+                     g(T(300, 450, "겪은 시대가 다르면, 돈 습관도 달라요", 30, GREEN))],
+    "habit_root": [g('<path d="M300 260 L300 120" stroke="#2F4F3E" stroke-width="10" stroke-linecap="round"/>',
+                     '<path d="M300 170 Q240 120 230 80 Q290 90 300 160" fill="#8CC56E" stroke="#333" stroke-width="5"/>',
+                     '<path d="M300 150 Q360 100 380 60 Q310 70 300 140" fill="#8CC56E" stroke="#333" stroke-width="5"/>',
+                     '<path d="M60 260 L540 260" stroke="#8A6A4A" stroke-width="8"/>'),
+                   g('<path d="M300 260 Q250 320 170 360 M300 260 Q300 340 300 400 M300 260 Q350 320 430 360" stroke="#8A6A4A" stroke-width="7" fill="none" stroke-linecap="round"/>'),
+                   g(T(140, 410, "어릴 때 본 돈", 28, "#666"), T(300, 450, "처음 번 돈", 28, "#666"), T(460, 410, "한 번 놀란 일", 28, "#666")),
+                   g(T(300, 40, "보이는 습관 아래에는", 30, GREEN))],
+    "habit_q": [g(_person(300, 140, 1.1, "", "#FFF1A8")),
+                g(T(150, 140, "?", 90, "#C8574F"), T(460, 120, "?", 70, "#C8574F")),
+                g(box(110, 330, 380, 90, "#E8F2EA", 45, 5), T(300, 388, "이 습관, 어디서 왔지?", 34, GREEN))],
+})
+
+
 ART.update({
     "open_book": [g('<path d="M300 130 Q200 90 70 110 L70 420 Q200 400 300 440 Z" fill="#fff" stroke="#333" stroke-width="6"/>',
                     '<path d="M300 130 Q400 90 530 110 L530 420 Q400 400 300 440 Z" fill="#fff" stroke="#333" stroke-width="6"/>'),
