@@ -1488,6 +1488,90 @@ SEEK_JS = nb.SEEK_JS.rstrip()[:-1] + """
 ART["open_book_dwz"] = _relabel("open_book", (">『돈의 심리학』<", ">『DIE WITH ZERO』<"))
 
 
+# ---- 릴스 2026-11: 노벨 재단 / 황금알을 낳는 거위
+RED = "#C8574F"
+
+
+def _medal(cx, cy, r=110, label="노벨상"):
+    return (f'<path d="M{cx - 60} {cy - r - 90} L{cx - 20} {cy - r + 10} L{cx + 20} {cy - r + 10} L{cx + 60} {cy - r - 90}" '
+            f'fill="#9CC9EE" stroke="{INK}" stroke-width="6" stroke-linejoin="round"/>'
+            f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="#F4CF4C" stroke="{INK}" stroke-width="6"/>'
+            f'<circle cx="{cx}" cy="{cy}" r="{r - 22}" fill="none" stroke="#C9A227" stroke-width="5"/>'
+            + T(cx, cy + 14, label, 40))
+
+
+def _goose(x, y, s=1.0, mood=""):
+    eye = (f'<circle cx="182" cy="-38" r="7" fill="{INK}"/>' if mood != "shock"
+           else f'<circle cx="182" cy="-38" r="11" fill="#fff" stroke="{INK}" stroke-width="4"/><circle cx="182" cy="-38" r="4" fill="{INK}"/>')
+    return (f'<g transform="translate({x} {y}) scale({s})">'
+            f'<path d="M-150 60 Q-170 -10 -120 -30 L-150 -70 Q-90 -50 -60 -30 Q40 -40 110 0 Q140 -40 150 -80 Q150 -130 190 -130 '
+            f'Q230 -125 220 -80 Q200 -40 180 20 Q170 120 40 130 Q-110 135 -150 60 Z" fill="#fff" stroke="{INK}" stroke-width="6" stroke-linejoin="round"/>'
+            f'<path d="M-60 40 Q0 80 80 40" fill="none" stroke="#C9C9C9" stroke-width="6" stroke-linecap="round"/>'
+            f'<path d="M218 -98 L262 -86 L218 -72 Z" fill="#F29C38" stroke="{INK}" stroke-width="5" stroke-linejoin="round"/>'
+            f'{eye}'
+            f'<path d="M0 128 L-10 170 M50 128 L60 170" stroke="#F29C38" stroke-width="9" stroke-linecap="round"/></g>')
+
+
+def _egg(x, y, s=1.0, cracked=False):
+    crack = (f'<path d="M{x - 30 * s} {y} L{x - 10 * s} {y - 14 * s} L{x + 4 * s} {y + 6 * s} L{x + 20 * s} {y - 10 * s} L{x + 34 * s} {y + 2 * s}" '
+             f'stroke="{RED}" stroke-width="6" fill="none" stroke-linejoin="round"/>' if cracked else "")
+    return (f'<ellipse cx="{x}" cy="{y}" rx="{38 * s}" ry="{48 * s}" fill="#F4CF4C" stroke="{INK}" stroke-width="5"/>'
+            f'<ellipse cx="{x - 12 * s}" cy="{y - 18 * s}" rx="{8 * s}" ry="{12 * s}" fill="#FFF6C8"/>' + crack)
+
+
+ART.update({
+    # 노벨 재단 편
+    "jar_drain": _jar(2, "은퇴자금") + [g(arrow(470, 380, 570, 380, RED)), g(arrow(470, 430, 570, 430, RED))],
+    "nobel_medal": [g(_medal(300, 300)), g(box(30, 400, 200, 80, "#fff", 40, 5), T(130, 452, "1901년", 36)),
+                    g(arrow(240, 440, 360, 440)), g(box(370, 400, 200, 80, "#FFF1A8", 40, 5), T(470, 452, "2026년", 36)),
+                    g(T(300, 70, "125년째 매년 상금", 40, GREEN))],
+    "nobel_will": [g(box(100, 30, 400, 440, "#FBF7EC", 10, 6), T(300, 95, "노벨의 유언", 42, GREEN),
+                     *[f'<path d="M140 {150 + i * 40} L460 {150 + i * 40}" stroke="#D9D2BF" stroke-width="4"/>' for i in range(3)]),
+                   g(box(140, 280, 150, 110, "#E8F2EA", 14, 5), T(215, 348, "원금", 40, GREEN)),
+                   g(arrow(300, 335, 350, 335), box(360, 280, 110, 110, "#FFF1A8", 14, 5), T(415, 348, "이자", 36)),
+                   g(T(300, 440, "이자로 해마다 상을", 30, INK))],
+    "safe_shrink": [g(box(40, 160, 180, 200, "#C9D7CF", 14, 6), f'<circle cx="130" cy="260" r="40" fill="#fff" stroke="{INK}" stroke-width="6"/>',
+                      f'<path d="M130 230 L130 260 L152 270" stroke="{INK}" stroke-width="6" fill="none" stroke-linecap="round"/>',
+                      T(130, 400, "안전하게만", 32)),
+                    *[g(*[coin(330 + i * 100, 440 - k * 24, 40, 12) for k in range(n)]) for i, n in enumerate((7, 5, 3))],
+                    g(arrow(300, 140, 560, 300, RED, 8), T(470, 140, "수십 년간 ↓", 36, RED))],
+    "split_many": [g(box(220, 20, 160, 90, "#E8F2EA", 18, 6), T(300, 78, "기금", 40, GREEN)),
+                   g(arrow(260, 120, 120, 220), arrow(300, 120, 300, 220), arrow(340, 120, 480, 220)),
+                   *[g(box(40 + i * 180, 240, 160, 150, ("#EAF4F8", "#FFF1A8", "#FBE3E0")[i], 16, 5),
+                       *[coin(120 + i * 180, 370 - k * 22, 46, 12) for k in range(3)]) for i in range(3)],
+                   g(T(300, 460, "한 바구니에 몰지 않기", 34, GREEN))],
+    "restore_1991": [g('<path d="M60 430 L560 430" stroke="#333" stroke-width="6" stroke-linecap="round"/>'),
+                     g(f'<path d="M70 150 Q200 380 330 360 Q440 340 530 150" fill="none" stroke="{GREEN}" stroke-width="10" stroke-linecap="round"/>'),
+                     g(f'<path d="M70 150 L540 150" stroke="#999" stroke-width="4" stroke-dasharray="14 12"/>', T(140, 130, "처음 가치", 28, "#666")),
+                     g(f'<circle cx="530" cy="150" r="18" fill="#F4CF4C" stroke="{INK}" stroke-width="5"/>',
+                       box(380, 40, 200, 72, "#FFF1A8", 36, 5), T(480, 88, "1991년", 36)),
+                     g(T(300, 480, "상금 가치를 되찾다", 32, GREEN))],
+    "take_keep": [g(box(40, 110, 240, 300, "#FFF1A8", 18, 6), T(160, 180, "꺼낼 돈", 40),
+                    *[coin(160, 380 - k * 24, 60, 14) for k in range(3)]),
+                  g(box(320, 110, 240, 300, "#E8F2EA", 18, 6), T(440, 180, "지킬 돈", 40, GREEN),
+                    *[coin(440, 380 - k * 24, 60, 14) for k in range(6)]),
+                  g(T(300, 70, "먼저 나눠 보기", 36, GREEN))],
+    "two_note": _note([("꺼낼 돈", "○○만 원"), ("지킬 돈", "○○만 원"), ("오늘", "두 칸 적기")], "내 은퇴자금 두 칸 노트"),
+    # 황금알 거위 편
+    "goose_egg": [g(_goose(270, 300, 1.15)), g(_egg(470, 430, 0.9)), g(box(330, 20, 250, 80, "#FFF1A8", 40, 5), T(455, 74, "하루 한 알", 38))],
+    "goose_hurry": [g(_goose(170, 340, 0.9)), g(_egg(380, 450, 0.6)),
+                    g(box(400, 20, 190, 170, "#FBE3E0", 20, 5), T(495, 72, "급한 일", 34, RED),
+                      T(495, 118, "병원비", 28), T(495, 160, "경조사", 28)),
+                    g(T(110, 70, "기다리기", 32, "#666"), T(110, 110, "너무 길어", 32, "#666"))],
+    "no_pocket": [g(f'<rect x="40" y="130" width="220" height="260" rx="18" fill="none" stroke="#999" stroke-width="6" stroke-dasharray="18 14"/>',
+                    T(150, 240, "당장 쓸 칸", 34, "#888"), T(150, 300, "없음", 44, "#888")),
+                  g(arrow(270, 260, 340, 260, RED)),
+                  g(box(350, 130, 210, 260, "#EAF4F8", 18, 6), T(455, 200, "오래 둔", 32), T(455, 245, "적금·연금", 32),
+                    f'<path d="M455 270 L430 310 L470 340 L445 385" stroke="{RED}" stroke-width="7" fill="none" stroke-linecap="round"/>'),
+                  g(T(300, 460, "급할 때 결국 여기를", 32, RED))],
+    "goose_safe": [g(box(30, 200, 330, 260, "#E8F2EA", 20, 6), _goose(195, 330, 0.75), T(195, 245, "지킬 거위", 32, GREEN)),
+                   g(box(390, 260, 180, 200, "#FFF1A8", 20, 6), _egg(445, 400, 0.55), _egg(515, 400, 0.55), T(480, 310, "꺼낼 알", 30)),
+                   g(T(300, 120, "미리 나눈 칸", 44, GREEN))],
+    "three_note": _note([("단기", "오늘 꺼낼 알"), ("중기", "몇 년 뒤 쓸 알"), ("장기", "지킬 거위")], "내 돈 세 칸 노트"),
+})
+ART["broken_jar_hurry"] = _relabel("broken_jar", (">이자 ↓<", ">급해서<"), (">적금<", ">오래 둔<"))
+
+
 def schedule(spec):
     if spec.get("timing"):
         return _timed_schedule(spec)
