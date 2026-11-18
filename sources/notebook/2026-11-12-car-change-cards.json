@@ -1,0 +1,11 @@
+{"series": "키움멘토 돈 노트", "title": "차 바꾸고 싶을 때",
+ "foot": "일반 정보 · 개인 상황에 따라 다름",
+ "scenes": [
+  {"lines": ["차 탄 지 10년,", "새 차가 ((자꾸)) 보여요"], "pose": "think", "art": "car_old"},
+  {"lines": ["차값만 보면", "==할 만해== 보였거든요"], "pose": "think", "art": "car_price"},
+  {"lines": ["보험·세금·기름값이", "((같이)) 따라오더라고요"], "pose": "worry", "art": "car_costs"},
+  {"lines": ["그래서 바꾸기 전에", "++세 가지++를 적었어요"], "pose": "point", "art": "car_three"},
+  {"lines": ["수리비가 더 적어서", "==1년 더== 타기로 했어요"], "pose": "cheer", "art": "car_more_year"},
+  {"lines": ["아낀 만큼은", "++차 통장++에 모아요"], "pose": "cheer", "art": "car_jar"},
+  {"lines": ["바꾸고 싶을 때", "((한 달 총비용))부터"], "pose": "wave", "art": "car_check"}
+ ]}

@@ -1,0 +1,11 @@
+{"series": "키움멘토 돈 노트", "title": "적금, 왜 자꾸 깰까?",
+ "foot": "일반 정보 · 개인 상황에 따라 다름",
+ "scenes": [
+  {"lines": ["적금을 들고", "((세 번이나)) 깼어요"], "pose": "worry", "art": "break_three"},
+  {"lines": ["급할 때마다", "==그냥 모은 돈==이었거든요"], "pose": "think", "art": "plain_money"},
+  {"lines": ["그래서 통장마다", "++이름을++ 붙였어요"], "pose": "point", "art": "named_accounts"},
+  {"lines": ["이름이 생기니", "((깨기가)) 아깝더라고요"], "pose": "think", "art": "too_precious"},
+  {"lines": ["1년 뒤 그 돈으로", "==가족 여행==을 갔어요"], "pose": "cheer", "art": "suitcase"},
+  {"lines": ["목표가 있는 돈은", "++오래++ 버텨요"], "pose": "cheer", "art": "goal_hold"},
+  {"lines": ["내 적금에도", "((이름)) 하나 붙여 봐요"], "pose": "wave", "art": "rename_app"}
+ ]}
