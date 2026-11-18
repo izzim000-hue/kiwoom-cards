@@ -990,6 +990,16 @@ ART.update({
     "chain2": _chain_step(2),
     "trace_root": _chain(False),
     "trace_root_hl": _chain(True),
+    "check_month": [g(box(110, 40, 380, 300, "#fff", 10, 6), '<rect x="110" y="40" width="380" height="60" fill="#C8574F" stroke="#333" stroke-width="6"/>',
+                      T(300, 82, "세일 때 산 것", 32, "#fff")),
+                    g(T(300, 170, "한 달 안에", 40), T(300, 230, "써 봤나요?", 40)),
+                    g(box(150, 380, 130, 90, "#E8F2EA", 20, 5), T(215, 440, "O", 52, GREEN),
+                      box(320, 380, 130, 90, "#FBE3E0", 20, 5), T(385, 440, "X", 52, "#C8574F"))],
+    "anxiety_bag": [g('<path d="M190 170 L410 170 L440 450 L160 450 Z" fill="#FFF1A8" stroke="#333" stroke-width="6"/>',
+                      '<path d="M240 170 Q240 90 300 90 Q360 90 360 170" fill="none" stroke="#333" stroke-width="7"/>'),
+                    g(T(300, 330, "불안", 70, "#C8574F")),
+                    g(T(300, 40, "할인보다 먼저 산 것", 32, GREEN))],
+    "action_note": _note([("문제", "안 쓰고 쌓임"), ("결론", "불안을 샀다"), ("실행", "장바구니 하루")]),
     "habit_note": _note([("내 습관", "세일이면 산다"), ("어디서?", "어릴 때 본 모습"), ("지금도?", "맞음 / 안 맞음")]),
 })
 
