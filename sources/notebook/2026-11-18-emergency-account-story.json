@@ -1,0 +1,62 @@
+{
+  "series": "키움멘토 돈 노트",
+  "title": "갑자기 나갈 돈, 할부 대신",
+  "foot": "금액은 예시 · 형편에 맞게 정하세요",
+  "theme": "butter",
+  "style": "typewriter",
+  "seal": "실행",
+  "scenes": [
+    {
+      "big": "갑자기|==목돈==",
+      "bigsub": "경조사·수리비, 어떻게 막으세요?",
+      "lines": [
+        "예전엔 ((카드 할부))로",
+        "막고 있더라고요"
+      ],
+      "art": "sudden_bill_plain"
+    },
+    {
+      "lines": [
+        "경조사·수리비·병원비,",
+        "==생각보다 자주== 오더라고요"
+      ],
+      "art": "card_bills"
+    },
+    {
+      "lines": [
+        "할부가 쌓이니까",
+        "다음 달이 ==더 빠듯==했어요"
+      ],
+      "art": "installment_stack_plain"
+    },
+    {
+      "lines": [
+        "그래서 ==비상금 통장==을",
+        "따로 하나 만들어 봤어요"
+      ],
+      "art": "emergency_accounts"
+    },
+    {
+      "lines": [
+        "월급날, 생활비 전에",
+        "((조금씩)) 먼저 옮겨 두고요"
+      ],
+      "art": "payday_auto",
+      "foot": true
+    },
+    {
+      "lines": [
+        "갑자기 나갈 일이 와도",
+        "==할부 없이== 넘기더라고요"
+      ],
+      "art": "emergency_jar"
+    },
+    {
+      "lines": [
+        "오늘 통장 하나에",
+        "==비상금== 이름 붙여 볼까요?"
+      ],
+      "art": "emergency_rename"
+    }
+  ]
+}
