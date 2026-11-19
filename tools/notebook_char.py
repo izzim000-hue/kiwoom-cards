@@ -918,6 +918,17 @@ ART["installment_stack_plain"] = _relabel("installment_stack", (">월 40만<", "
 ART["sudden_bill_plain"] = _relabel("sudden_bill", (">200만 원<", ">목돈<"))
 
 
+# 11/20 릴스(카드 한 장으로): 기존 그림의 글자만 바꾼 변형
+ART["wallet_cards"] = _relabel("card_bills", (">할부 내역<", ">내 카드<"), *[(f">할부 {i}<", f">카드 {i}<") for i in range(1, 7)], (">6개?!<", ">여러 장<"))
+ART["card_list"] = _relabel("list_paper", (">내 할부 목록<", ">내 카드 정리<"), (">폰 · 남은 8개월<", ">A · 주로 씀<"),
+                            (">가전 · 남은 5개월<", ">B · 실적 때문에<"), (">옷 · 남은 2개월<", ">C · 거의 안 씀<"),
+                            (">여행 · 남은 3개월<", ">D · 연회비만<"), (">끝나는 달 표시<", ">어디 썼는지 흩어짐<"))
+ART["card_scatter"] = _relabel("mixed", (">통장 하나<", ">이번 달<"), (">월세<", ">A카드<"), (">카드값<", ">B카드<"), (">저축?<", ">C카드<"), (">비상금<", ">D카드<"))
+ART["card_gather"] = _relabel("gather_one", (">조금<", ">카드<"), (">한 통장<", ">한 장<"))
+ART["perf_stop"] = _relabel("stop_sign", (">새 할부<", ">실적 채우기<"), (">끝날 때까지만<", ">필요한 것만<"))
+ART["wallet_today"] = _relabel("found_check", (">내 계좌 조회<", ">지갑 속 카드 세기<"), (">휴면 계좌 확인<", ">안 쓰는 카드 표시<"), (">카드 포인트<", ">연회비 확인<"))
+
+
 # 원고에 "theme" 과 "character" 를 넣으면 바꿔 그린다. 없으면 지금까지와 같다(green / sprout).
 # 2026-11-16부터 기본 운영은 "character": "none" (캐릭터 없이 전문가 톤, 그림은 가운데).
 THEMES = {
