@@ -30,8 +30,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from reelkit import browser, constants  # noqa: E402
 
 FPS = 30
-CPS = 16            # 초당 써지는 글자
-MARK_S = 0.5        # 형광펜·칸 그리는 시간
+CPS = 34            # 초당 써지는 글자
+MARK_S = 0.3        # 형광펜·칸 그리는 시간
 MARK_RE = re.compile(r"(==.+?==)")
 NUMS = "①②③④⑤⑥⑦"
 
@@ -96,7 +96,7 @@ def load(path):
             raise SpecError(f"원고에 '{k}' 가 없습니다")
     valid = {"title", "close", "cta"} | {f"row{i + 1}" for i in range(len(spec["rows"]))}
     for sc in spec["scenes"]:
-        if sc.get("show") not in valid or float(sc.get("dur", 0)) < 4:
+        if sc.get("show") not in valid or float(sc.get("dur", 0)) < 3:
             raise SpecError(f"장면 오류(show 값 또는 4초 미만): {sc}")
     return spec
 
@@ -182,11 +182,11 @@ def state_at(sch, counts, t):
         if t >= e:
             groups[g] = [10 ** 6, 1]
         elif t >= s:
-            local = t - s - 0.25
+            local = t - s - 0.1
             n = max(0, int(local * CPS))
             type_end = counts[g] / CPS
             groups[g] = [n, (local - type_end) / MARK_S if local > type_end else 0]
-            fade = min(1, (t - s) / 0.3)
+            fade = min(1, (t - s) / 0.15)
             cap = (i, fade)
         else:
             groups[g] = [0, 0]
