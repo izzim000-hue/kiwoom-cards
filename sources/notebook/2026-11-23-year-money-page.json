@@ -1,0 +1,18 @@
+{
+  "series": "키움멘토 돈 노트",
+  "title": "올해 가기 전, 돈 한 장",
+  "foot": "일반 정보 · 숫자는 대략으로도 충분해요",
+  "theme": "butter",
+  "style": "typewriter",
+  "seal": "실행",
+  "scenes": [
+    {"big": "올해|==남은 돈==", "bigsub": "연말마다 허전하지 않으세요?",
+     "lines": ["연말마다 남은 게", "((없네)) 하고 넘겼어요"], "art": "year_empty"},
+    {"lines": ["어디로 갔는지", "==기억이 안 나더라고요=="], "art": "year_where"},
+    {"lines": ["그래서 12월 전에", "올해 돈을 ==한 장==에 적었어요"], "art": "year_sheet"},
+    {"lines": ["들어온 돈, 큰 지출,", "((모은 돈)) 세 줄만요"], "art": "year_sheet"},
+    {"lines": ["적고 나니", "==새는 곳==이 보이더라고요"], "art": "year_leak"},
+    {"lines": ["내년 계획도", "==한 줄로== 정리되더라고요"], "art": "year_goal"},
+    {"lines": ["올해 가기 전에", "==돈 한 장== 같이 적어 볼까요?"], "art": "year_today", "foot": true}
+  ]
+}
