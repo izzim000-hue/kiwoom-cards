@@ -54,8 +54,7 @@ body{background:#888;font-family:NK;color:var(--ink);word-break:keep-all}
 .cv .r{height:82px;border-top:1px solid var(--line);font-size:28px}
 .cv .r .n{color:var(--muted);font-weight:700}
 .cv .box{width:34px;height:34px;border-width:2.5px;border-radius:4px}
-.cv .r.blur div:nth-child(2){filter:blur(7px)}
-.cv .r.fade{opacity:.35}
+.cv .r.fade{opacity:.45}
 .cv .save{position:absolute;right:84px;bottom:130px;font-size:28px;font-weight:700;color:var(--green)}
 /* checklist */
 .ck .tbl{position:absolute;left:84px;right:84px;top:370px;border-top:3px solid var(--ink);border-bottom:3px solid var(--ink)}
@@ -117,7 +116,7 @@ def card(spec, c, i, n):
     if t == "cover":
         rows = ""
         for k, q in enumerate(c["preview"][:4]):
-            cls = ["", "", "blur", "blur fade"][k]
+            cls = ""
             rows += (f'<div class="r {cls}"><div class="n">{k+1:02d}</div><div>{html.escape(q)}</div>'
                      '<div><i class="box"></i></div><div><i class="box"></i></div></div>')
         body = (f'<div class="rule"></div><div class="title">{fmt(c["title"])}</div><div class="sub">{fmt(c["sub"])}</div>'
