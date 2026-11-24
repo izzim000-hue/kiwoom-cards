@@ -16,6 +16,7 @@ SPEC.json
   checklist title, rows[{q, sub?}], judge(==강조== 가능)
   steps     title, rows[{no, do}]               '모름'이 나온 줄별 첫 한 걸음
   sheet     title, cols[4], rows[첫 칸 글자], note   저장해서 채우는 빈 양식
+            rows 항목을 리스트로 주면 칸을 채운 표("dense": true 면 줄 높이를 줄임)
   why       kicker, big, body                  설계사의 판단 한 문장
   last      title, body, question
 본문에서 ==글자== 는 강조(형광 밑줄 또는 금색 글자)로 바뀐다.
@@ -80,6 +81,8 @@ body{background:#888;font-family:NK;color:var(--ink);word-break:keep-all}
 .sh .h div{background:var(--green);color:#fff;font-size:25px;font-weight:700;padding:20px 22px}
 .sh .r div{height:118px;border-top:1px solid var(--line);border-left:1px solid var(--line);padding:0 22px;display:flex;align-items:center;font-size:29px;font-weight:700}
 .sh .r div:first-child{border-left:none}
+.sh .dense .r div{height:100px;font-size:30px}
+.sh .dense .r div .hl{background:none;color:var(--green);font-weight:900}
 .sh .note{position:absolute;left:84px;right:84px;top:1050px;font-size:30px;line-height:1.55;color:#46504A}
 .sh .note b{color:var(--green)}
 /* why */
@@ -103,7 +106,7 @@ CIRCLE = ('<svg class="circ" width="140" height="70" viewBox="0 0 140 70"><path 
 
 def fmt(s):
     s = html.escape(s or "")
-    s = re.sub(r"==(.+?)==", r'<span class="hl">\1</span>', s)
+    s = re.sub(r"==(.+?)==", r'<span class="hl">\1</span>', s, flags=re.S)
     return s.replace("\n", "<br>")
 
 
@@ -140,9 +143,11 @@ def card(spec, c, i, n):
         cls = "st"
     elif t == "sheet":
         hd = "".join(f"<div>{html.escape(x)}</div>" for x in c["cols"])
-        rows = "".join('<div class="r">' + f"<div>{html.escape(x)}</div>" + "<div></div>" * (len(c["cols"]) - 1) + "</div>"
-                       for x in c["rows"])
-        body = (f'<div class="t2">{fmt(c["title"])}</div><div class="tbl"><div class="h">{hd}</div>{rows}</div>'
+        def srow(x):  # 문자열이면 첫 칸만(빈 양식), 리스트면 칸을 채운 표
+            cells = x if isinstance(x, list) else [x] + [""] * (len(c["cols"]) - 1)
+            return '<div class="r">' + "".join(f"<div>{fmt(v)}</div>" for v in cells) + "</div>"
+        rows = "".join(srow(x) for x in c["rows"])
+        body = (f'<div class="t2">{fmt(c["title"])}</div><div class="tbl{" dense" if c.get("dense") else ""}"><div class="h">{hd}</div>{rows}</div>'
                 f'<div class="note">{fmt(c["note"]).replace("<span class=\"hl\">", "<b>").replace("</span>", "</b>")}</div>')
         cls = "sh"
     elif t == "why":
