@@ -118,10 +118,10 @@ def content(L, mode, big, quote, key, cap):
         y = 100
         d.text((X0 - 6, y - 40), '“', font=serif(180, 'Bold'), fill=GOLD)
         y += 150
-        f = sans(26)
+        f = sans(40)
         tw = d.textlength('협찬 후기', font=f)
-        d.rounded_rectangle((W - X0 - tw - 36, y - 110, W - X0, y - 64), radius=23, outline=GOLD, width=2)
-        d.text((W - X0 - 18 - tw / 2, y - 87), '협찬 후기', font=f, fill=GOLD, anchor='mm')
+        d.rounded_rectangle((W - X0 - tw - 52, y - 130, W - X0, y - 62), radius=34, fill=GOLD)
+        d.text((W - X0 - 26 - tw / 2, y - 96), '협찬 후기', font=f, fill=(20, 34, 27), anchor='mm')
         d.line((X0, y, X0, y + len(quote) * 110 - 20), fill=GOLD, width=4)
         for ln in quote:
             d.text((X0 + 34, y), ln, font=serif(72), fill=INK)
